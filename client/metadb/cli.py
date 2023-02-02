@@ -3,9 +3,9 @@ import stat
 import json
 import argparse
 import pandas as pd
-from metadbclient import version, utils, settings
-from metadbclient.config import Config
-from metadbclient.api import Client
+from metadb import version, utils, settings
+from metadb.config import Config
+from metadb.api import Client
 
 
 def register():

@@ -1,4 +1,4 @@
-from metadbclient.config import Config
-from metadbclient.api import Client, Session
-from metadbclient.field import Field
-from metadbclient import utils, settings
+from metadb.config import Config
+from metadb.api import Client, Session
+from metadb.field import Field
+from metadb import utils, settings

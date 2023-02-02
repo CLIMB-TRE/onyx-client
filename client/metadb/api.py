@@ -3,9 +3,9 @@ import sys
 import csv
 import json
 import requests
-from metadbclient import utils, settings
-from metadbclient.field import Field
-from metadbclient.config import Config
+from metadb import utils, settings
+from metadb.field import Field
+from metadb.config import Config
 
 
 class Client:
@@ -333,8 +333,8 @@ class Client:
         )
         utils.raise_for_status(response)
 
-        for x in response.json()["results"]:
-            yield x
+        for result in response.json()["results"]:
+            yield result
 
         _next = response.json()["next"]
 
@@ -345,31 +345,46 @@ class Client:
             )
             utils.raise_for_status(response)
 
-            for x in response.json()["results"]:
-                yield x
+            for result in response.json()["results"]:
+                yield result
 
             _next = response.json()["next"]
 
     @utils.session_required
-    def query(self, project, query):
+    def query(self, project, query=None):
         """
         Get records from the database.
         """
-        if not isinstance(query, Field):
-            raise Exception("Query must be of type Field")
-
-        params = {}
+        if query:
+            if not isinstance(query, Field):
+                raise Exception("Query must be of type Field")
+            else:
+                query = query.query
 
         response = self.request(
             method=requests.post,
             url=self.endpoints["query"](project),
-            json=query.query,
-            params=params,
+            json=query,
         )
         utils.raise_for_status(response)
 
-        for x in response.json()["results"]:
-            yield x
+        for result in response.json()["results"]:
+            yield result
+
+        _next = response.json()["next"]
+
+        while _next is not None:
+            response = self.request(
+                method=requests.post,
+                url=_next,
+                json=query,
+            )
+            utils.raise_for_status(response)
+
+            for result in response.json()["results"]:
+                yield result
+
+            _next = response.json()["next"]
 
     @utils.session_required
     def update(self, project, cid, fields):

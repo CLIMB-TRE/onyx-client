@@ -1,7 +1,7 @@
 import os
 import stat
 import json
-from metadbclient import utils, settings
+from metadb import utils, settings
 
 
 class Config:
