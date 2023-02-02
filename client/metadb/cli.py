@@ -1,8 +1,9 @@
 import os
+import sys
+import csv
 import stat
 import json
 import argparse
-import pandas as pd
 from metadb import version, utils, settings
 from metadb.config import Config
 from metadb.api import Client
@@ -444,22 +445,15 @@ class GetCommands:
         Get pathogen records from the database.
         """
         fields = utils.construct_fields_dict(fields)
-
         results = self.client.get(project, cid, fields)
 
         result = next(results)
-        if result.ok:
-            table = pd.json_normalize(result.json()["results"])
-            print(table.to_csv(index=False, sep="\t"), end="")
-        else:
-            utils.print_response(result)
+        writer = csv.DictWriter(sys.stdout, delimiter="\t", fieldnames=result.keys())
+        writer.writeheader()
+        writer.writerow(result)
 
         for result in results:
-            if result.ok:
-                table = pd.json_normalize(result.json()["results"])
-                print(table.to_csv(index=False, sep="\t", header=False), end="")
-            else:
-                utils.print_response(result)
+            writer.writerow(result)
 
 
 class UpdateCommands:
