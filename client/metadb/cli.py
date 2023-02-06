@@ -447,13 +447,16 @@ class GetCommands:
         fields = utils.construct_fields_dict(fields)
         results = self.client.get(project, cid, fields)
 
-        result = next(results)
-        writer = csv.DictWriter(sys.stdout, delimiter="\t", fieldnames=result.keys())
-        writer.writeheader()
-        writer.writerow(result)
-
-        for result in results:
+        result = next(results, None)
+        if result:
+            writer = csv.DictWriter(
+                sys.stdout, delimiter="\t", fieldnames=result.keys()
+            )
+            writer.writeheader()
             writer.writerow(result)
+
+            for result in results:
+                writer.writerow(result)
 
 
 class UpdateCommands:
