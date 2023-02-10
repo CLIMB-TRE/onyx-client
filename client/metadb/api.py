@@ -336,7 +336,7 @@ class Client:
         for result in response.json()["results"]:
             yield result
 
-        _next = response.json()["next"]
+        _next = response.json().get("next")
 
         while _next is not None:
             response = self.request(
@@ -348,7 +348,7 @@ class Client:
             for result in response.json()["results"]:
                 yield result
 
-            _next = response.json()["next"]
+            _next = response.json().get("next")
 
     @utils.session_required
     def query(self, project, query=None):
@@ -371,7 +371,7 @@ class Client:
         for result in response.json()["results"]:
             yield result
 
-        _next = response.json()["next"]
+        _next = response.json().get("next")
 
         while _next is not None:
             response = self.request(
@@ -384,7 +384,7 @@ class Client:
             for result in response.json()["results"]:
                 yield result
 
-            _next = response.json()["next"]
+            _next = response.json().get("next")
 
     @utils.session_required
     def update(self, project, cid, fields):

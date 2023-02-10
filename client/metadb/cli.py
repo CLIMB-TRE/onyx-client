@@ -3,6 +3,7 @@ import sys
 import csv
 import stat
 import json
+import requests
 import argparse
 from metadb import version, utils, settings
 from metadb.config import Config
@@ -447,16 +448,19 @@ class GetCommands:
         fields = utils.construct_fields_dict(fields)
         results = self.client.get(project, cid, fields)
 
-        result = next(results, None)
-        if result:
-            writer = csv.DictWriter(
-                sys.stdout, delimiter="\t", fieldnames=result.keys()
-            )
-            writer.writeheader()
-            writer.writerow(result)
-
-            for result in results:
+        try:
+            result = next(results, None)
+            if result:
+                writer = csv.DictWriter(
+                    sys.stdout, delimiter="\t", fieldnames=result.keys()
+                )
+                writer.writeheader()
                 writer.writerow(result)
+
+                for result in results:
+                    writer.writerow(result)
+        except requests.HTTPError:
+            pass
 
 
 class UpdateCommands:
