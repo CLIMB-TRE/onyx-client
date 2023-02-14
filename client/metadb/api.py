@@ -3,6 +3,7 @@ import sys
 import csv
 import json
 import requests
+import concurrent.futures
 from metadb import utils, settings
 from metadb.field import Field
 from metadb.config import Config
@@ -37,16 +38,21 @@ class Client:
         }
 
     def request(self, method, **kwargs):
+        """
+        Carry out a request while handling token authorisation.
+        """
         kwargs.setdefault("headers", {}).update(
             {"Authorization": f"Token {self.token}"}
         )
         method_response = method(**kwargs)
+
         if method_response.status_code == 401:
             password = self.get_password()
             login_response = requests.post(
                 self.endpoints["login"],
                 auth=(self.username, password),
             )
+
             if login_response.ok:
                 self.token = login_response.json().get("token")
                 self.expiry = login_response.json().get("expiry")
@@ -118,7 +124,8 @@ class Client:
 
     def get_password(self):
         if self.env_password:
-            # If the password is meant to be an env var, grab it. If its not there, this is unintended so raise an error
+            # If the password is meant to be an env var, grab it.
+            # If its not there, this is unintended so an error is raised
             password_env_var = (
                 settings.PASSWORD_ENV_VAR_PREFIX
                 + self.username.upper()
@@ -158,7 +165,7 @@ class Client:
     @utils.session_required
     def logout(self):
         """
-        Log out the user.
+        Log out the user in this client.
         """
         response = self.request(
             method=requests.post,
@@ -174,7 +181,7 @@ class Client:
     @utils.session_required
     def logoutall(self):
         """
-        Log out the user everywhere.
+        Log out the user in all clients.
         """
         response = self.request(
             method=requests.post,
@@ -277,7 +284,7 @@ class Client:
         return response
 
     @utils.session_required
-    def csv_create(self, project, csv_path, delimiter=None):
+    def csv_create(self, project, csv_path, delimiter=None, multithreaded=False):
         """
         Post a .csv or .tsv containing pathogen records to the database.
         """
@@ -291,13 +298,40 @@ class Client:
             else:
                 reader = csv.DictReader(csv_file, delimiter=delimiter)
 
-            for record in reader:
+            record = next(reader, None)
+
+            if record:
                 response = self.request(
                     method=requests.post,
                     url=self.endpoints["create"](project),
                     json=record,
                 )
                 yield response
+
+                if multithreaded:
+                    # TODO: Prevent multithreaded option if password not set in environment
+                    # Because a multithreaded password entry spells disaster
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        futures = [
+                            executor.submit(
+                                self.request,
+                                requests.post,
+                                url=self.endpoints["create"](project),
+                                json=record,
+                            )
+                            for record in reader
+                        ]
+                        for future in concurrent.futures.as_completed(futures):
+                            yield future.result()
+
+                else:
+                    for record in reader:
+                        response = self.request(
+                            method=requests.post,
+                            url=self.endpoints["create"](project),
+                            json=record,
+                        )
+                        yield response
         finally:
             if csv_file is not sys.stdin:
                 csv_file.close()
@@ -326,29 +360,20 @@ class Client:
 
                 fields.setdefault(field, []).append(values)
 
-        response = self.request(
-            method=requests.get,
-            url=self.endpoints["get"](project),
-            params=fields,
-        )
-        utils.raise_for_status(response)
-
-        for result in response.json()["results"]:
-            yield result
-
-        _next = response.json().get("next")
-
+        _next = self.endpoints["get"](project)
+        params = fields
         while _next is not None:
             response = self.request(
                 method=requests.get,
                 url=_next,
+                params=params,
             )
             utils.raise_for_status(response)
+            _next = response.json().get("next")
+            params = None
 
             for result in response.json()["results"]:
                 yield result
-
-            _next = response.json().get("next")
 
     @utils.session_required
     def query(self, project, query=None):
@@ -361,18 +386,7 @@ class Client:
             else:
                 query = query.query
 
-        response = self.request(
-            method=requests.post,
-            url=self.endpoints["query"](project),
-            json=query,
-        )
-        utils.raise_for_status(response)
-
-        for result in response.json()["results"]:
-            yield result
-
-        _next = response.json().get("next")
-
+        _next = self.endpoints["query"](project)
         while _next is not None:
             response = self.request(
                 method=requests.post,
@@ -380,11 +394,10 @@ class Client:
                 json=query,
             )
             utils.raise_for_status(response)
+            _next = response.json().get("next")
 
             for result in response.json()["results"]:
                 yield result
-
-            _next = response.json().get("next")
 
     @utils.session_required
     def update(self, project, cid, fields):
