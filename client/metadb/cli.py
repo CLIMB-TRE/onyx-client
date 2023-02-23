@@ -421,21 +421,32 @@ class GetCommands(SessionRequired):
         Get records from the database.
         """
         fields = utils.construct_fields_dict(fields)
-        results = self.client.get(project, cid, fields)
 
-        try:
-            result = next(results, None)
-            if result:
-                writer = csv.DictWriter(
-                    sys.stdout, delimiter="\t", fieldnames=result.keys()
-                )
-                writer.writeheader()
-                writer.writerow(result)
+        if cid:
+            fields.setdefault("cid", []).append(cid)
+            response = self.client.request(
+                method=requests.get,
+                url=self.client.endpoints["get"](project),
+                params=fields,
+            )
+            utils.print_response(response)
 
-                for result in results:
+        else:
+            results = self.client.get(project, cid, fields)
+
+            try:
+                result = next(results, None)
+                if result:
+                    writer = csv.DictWriter(
+                        sys.stdout, delimiter="\t", fieldnames=result.keys()
+                    )
+                    writer.writeheader()
                     writer.writerow(result)
-        except requests.HTTPError:
-            pass
+
+                    for result in results:
+                        writer.writerow(result)
+            except requests.HTTPError:
+                pass
 
 
 class UpdateCommands(SessionRequired):
