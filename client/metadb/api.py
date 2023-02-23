@@ -9,6 +9,9 @@ from metadb.field import Field
 from metadb.config import Config
 
 
+# TODO: Learn OAuth
+
+
 class Client:
     def __init__(self, config):
         """
@@ -29,12 +32,12 @@ class Client:
             "admin_waiting": f"{self.url}/accounts/admin/waiting/",
             "admin_users": f"{self.url}/accounts/admin/users/",
             # data
-            "pathogens": f"{self.url}/data/projects/",
             "create": lambda x: f"{self.url}/data/create/{x}/",
             "get": lambda x: f"{self.url}/data/get/{x}/",
             "query": lambda x: f"{self.url}/data/query/{x}/",
             "update": lambda x, y: f"{self.url}/data/update/{x}/{y}/",
             "suppress": lambda x, y: f"{self.url}/data/suppress/{x}/{y}/",
+            "delete": lambda x, y: f"{self.url}/data/delete/{x}/{y}/",
         }
 
     def request(self, method, **kwargs):
@@ -261,20 +264,9 @@ class Client:
         return response
 
     @utils.session_required
-    def list_projects(self):
-        """
-        List the current pathogens within the database.
-        """
-        response = self.request(
-            method=requests.get,
-            url=self.endpoints["pathogens"],
-        )
-        return response
-
-    @utils.session_required
     def create(self, project, fields):
         """
-        Post a pathogen record to the database.
+        Post a record to the database.
         """
         response = self.request(
             method=requests.post,
@@ -286,7 +278,7 @@ class Client:
     @utils.session_required
     def csv_create(self, project, csv_path, delimiter=None, multithreaded=False):
         """
-        Post a .csv or .tsv containing pathogen records to the database.
+        Post a .csv or .tsv containing records to the database.
         """
         if csv_path == "-":
             csv_file = sys.stdin
@@ -402,7 +394,7 @@ class Client:
     @utils.session_required
     def update(self, project, cid, fields):
         """
-        Update a pathogen record in the database.
+        Update a record in the database.
         """
         response = self.request(
             method=requests.patch,
@@ -414,7 +406,7 @@ class Client:
     @utils.session_required
     def csv_update(self, project, csv_path, delimiter=None):
         """
-        Use a .csv or .tsv to update pathogen records in the database.
+        Use a .csv or .tsv to update records in the database.
         """
         if csv_path == "-":
             csv_file = sys.stdin
@@ -444,7 +436,7 @@ class Client:
     @utils.session_required
     def suppress(self, project, cid):
         """
-        Suppress a pathogen record in the database.
+        Suppress a record in the database.
         """
         response = self.request(
             method=requests.delete,
@@ -455,7 +447,7 @@ class Client:
     @utils.session_required
     def csv_suppress(self, project, csv_path, delimiter=None):
         """
-        Use a .csv or .tsv to suppress pathogen records in the database.
+        Use a .csv or .tsv to suppress records in the database.
         """
         if csv_path == "-":
             csv_file = sys.stdin
@@ -475,6 +467,46 @@ class Client:
                 response = self.request(
                     method=requests.delete,
                     url=self.endpoints["suppress"](project, cid),
+                )
+                yield response
+        finally:
+            if csv_file is not sys.stdin:
+                csv_file.close()
+
+    @utils.session_required
+    def delete(self, project, cid):
+        """
+        Delete a record in the database.
+        """
+        response = self.request(
+            method=requests.delete,
+            url=self.endpoints["delete"](project, cid),
+        )
+        return response
+
+    @utils.session_required
+    def csv_delete(self, project, csv_path, delimiter=None):
+        """
+        Use a .csv or .tsv to delete records in the database.
+        """
+        if csv_path == "-":
+            csv_file = sys.stdin
+        else:
+            csv_file = open(csv_path)
+        try:
+            if delimiter is None:
+                reader = csv.DictReader(csv_file)
+            else:
+                reader = csv.DictReader(csv_file, delimiter=delimiter)
+
+            for record in reader:
+                cid = record.get("cid")
+                if cid is None:
+                    raise KeyError("cid column must be provided")
+
+                response = self.request(
+                    method=requests.delete,
+                    url=self.endpoints["delete"](project, cid),
                 )
                 yield response
         finally:
