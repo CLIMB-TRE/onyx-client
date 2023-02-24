@@ -10,109 +10,34 @@ from metadb.config import Config
 from metadb.api import Client
 
 
-def register():
-    """
-    Create a new user.
-    """
-    config = Config()
-    client = Client(config)
-
-    first_name = utils.get_input("first name")
-    last_name = utils.get_input("last name")
-    email = utils.get_input("email address")
-    site = utils.get_input("site code")
-
-    password = utils.get_input("password", password=True)
-    password2 = utils.get_input("password (again)", password=True)
-
-    while password != password2:
-        print("Passwords do not match. Please try again.")
-        password = utils.get_input("password", password=True)
-        password2 = utils.get_input("password (again)", password=True)
-
-    registration = client.register(
-        first_name=first_name,
-        last_name=last_name,
-        email=email,
-        site=site,
-        password=password,
-    )
-
-    utils.print_response(registration)
-
-    if registration.ok:
-        print("Account created successfully.")
-        check = ""
-        while not check:
-            check = input(
-                "Would you like to add this account to the config? [y/n]: "
-            ).upper()
-
-        if check == "Y":
-            results = registration.json()["results"]
-            if len(results) != 1:
-                raise Exception("Expected only one result in response")
-
-            username = results[0]["username"]
-            client.config.add_user(username)
-            print("The user has been added to the config.")
+class ConfigRequired:
+    def __init__(self):
+        self.config = Config()
 
 
-def login(username, env_password):
-    """
-    Log in as a user.
-    """
-    config = Config()
-    client = Client(config)
-
-    response = client.login(
-        username=username,
-        env_password=env_password,
-    )
-    utils.print_response(response, status_only=True)
+class ClientRequired(ConfigRequired):
+    def __init__(self):
+        super().__init__()
+        self.client = Client(self.config)
 
 
-def logout(username, env_password):
-    """
-    Log out the current user.
-    """
-    config = Config()
-    client = Client(config)
-    client.continue_session(username=username, env_password=env_password)
-
-    response = client.logout()
-    utils.print_response(response, status_only=True)
+class SessionRequired(ClientRequired):
+    def __init__(self, username, env_password):
+        super().__init__()
+        self.client.continue_session(username=username, env_password=env_password)
 
 
-def logoutall(username, env_password):
-    """
-    Log out the current user everywhere.
-    """
-    config = Config()
-    client = Client(config)
-    client.continue_session(username=username, env_password=env_password)
-
-    response = client.logoutall()
-    utils.print_response(response, status_only=True)
-
-
-class ConfigCommands:
+class ConfigCommands(ConfigRequired):
     """
     Commands involving creation/altering of the config.
     """
 
-    def __init__(self):
-        self.config = Config()
-
     @classmethod
     def add_commands(cls, command):
-        config_parser = command.add_parser(
-            "config", help="Commands for creating/manipulating the config."
-        )
+        config_parser = command.add_parser("config", help="Config-specific commands.")
         config_commands_parser = config_parser.add_subparsers(
             dest="config_command", metavar="{config-command}"
         )
-
         create_config_parser = config_commands_parser.add_parser(
             "create", help="Create a config for the client."
         )
@@ -124,18 +49,15 @@ class ConfigCommands:
             "--config-dir",
             help="Path to the config directory.",
         )
-
         set_default_user_parser = config_commands_parser.add_parser(
             "set-default-user", help="Set the default user in the config of the client."
         )
         set_default_user_parser.add_argument(
             "username", nargs="?", help="User to be set as the default."
         )
-
         get_default_user_parser = config_commands_parser.add_parser(
             "get-default-user", help="Get the default user in the config of the client."
         )
-
         add_user_parser = config_commands_parser.add_parser(
             "add-user",
             help="Add a pre-existing metadb user to the config of the client.",
@@ -143,7 +65,6 @@ class ConfigCommands:
         add_user_parser.add_argument(
             "username", nargs="?", help="User to be added to the config."
         )
-
         list_config_users_parser = config_commands_parser.add_parser(
             "list-users", help="List all users in the config of the client."
         )
@@ -237,11 +158,108 @@ class ConfigCommands:
             print(user)
 
 
-class SessionRequired:
-    def __init__(self, username, env_password):
-        config = Config()
-        self.client = Client(config)
+class RegisterCommands(ClientRequired):
+    """
+    Commands involving registration.
+    """
+
+    @classmethod
+    def add_commands(cls, command):
+        register_parser = command.add_parser(
+            "register", help="Register a new user in metadb."
+        )
+
+    def register(self):
+        """
+        Create a new user.
+        """
+        first_name = utils.get_input("first name")
+        last_name = utils.get_input("last name")
+        email = utils.get_input("email address")
+        site = utils.get_input("site code")
+
+        password = utils.get_input("password", password=True)
+        password2 = utils.get_input("password (again)", password=True)
+
+        while password != password2:
+            print("Passwords do not match. Please try again.")
+            password = utils.get_input("password", password=True)
+            password2 = utils.get_input("password (again)", password=True)
+
+        registration = self.client.register(
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            site=site,
+            password=password,
+        )
+
+        utils.print_response(registration)
+
+        if registration.ok:
+            print("Account created successfully.")
+            check = ""
+            while not check:
+                check = input(
+                    "Would you like to add this account to the config? [y/n]: "
+                ).upper()
+
+            if check == "Y":
+                results = registration.json()["results"]
+                if len(results) != 1:
+                    raise Exception("Expected only one result in response")
+
+                username = results[0]["username"]
+                self.client.config.add_user(username)
+                print("The user has been added to the config.")
+
+
+class LoginCommands(ClientRequired):
+    """
+    Commands involving login/logout.
+    """
+
+    @classmethod
+    def add_commands(cls, command, user_parser):
+        login_parser = command.add_parser(
+            "login", parents=[user_parser], help="Log in to metadb."
+        )
+        logout_parser = command.add_parser(
+            "logout",
+            parents=[user_parser],
+            help="Log out of metadb.",
+        )
+        logoutall_parser = command.add_parser(
+            "logoutall",
+            parents=[user_parser],
+            help="Log out of metadb everywhere.",
+        )
+
+    def login(self, username, env_password):
+        """
+        Log in as a user.
+        """
+        response = self.client.login(
+            username=username,
+            env_password=env_password,
+        )
+        utils.print_response(response, status_only=True)
+
+    def logout(self, username, env_password):
+        """
+        Log out the current user.
+        """
         self.client.continue_session(username=username, env_password=env_password)
+        response = self.client.logout()
+        utils.print_response(response, status_only=True)
+
+    def logoutall(self, username, env_password):
+        """
+        Log out the current user everywhere.
+        """
+        self.client.continue_session(username=username, env_password=env_password)
+        response = self.client.logoutall()
+        utils.print_response(response, status_only=True)
 
 
 class SiteCommands(SessionRequired):
@@ -255,18 +273,15 @@ class SiteCommands(SessionRequired):
         site_commands_parser = site_parser.add_subparsers(
             dest="site_command", metavar="{site-command}"
         )
-
         site_approve_parser = site_commands_parser.add_parser(
             "approve", parents=[user_parser], help="Approve another user in metadb."
         )
         site_approve_parser.add_argument("username", help="User to be approved.")
-
         site_waiting_parser = site_commands_parser.add_parser(
             "list-waiting",
             parents=[user_parser],
             help="List users waiting for site approval.",
         )
-
         site_list_users_parser = site_commands_parser.add_parser(
             "list-users",
             parents=[user_parser],
@@ -306,20 +321,17 @@ class AdminCommands(SessionRequired):
         admin_commands_parser = admin_parser.add_subparsers(
             dest="admin_command", metavar="{admin-command}"
         )
-
         admin_approve_parser = admin_commands_parser.add_parser(
             "approve",
             parents=[user_parser],
             help="Admin-approve another user in metadb.",
         )
         admin_approve_parser.add_argument("username", help="User to be admin-approved.")
-
         admin_waiting_parser = admin_commands_parser.add_parser(
             "list-waiting",
             parents=[user_parser],
             help="List users waiting for admin approval.",
         )
-
         admin_list_users_parser = admin_commands_parser.add_parser(
             "list-users", parents=[user_parser], help="List all users in metadb."
         )
@@ -348,7 +360,7 @@ class AdminCommands(SessionRequired):
 
 class CreateCommands(SessionRequired):
     """
-    Commands for creating.
+    Commands for creating records.
     """
 
     @classmethod
@@ -357,25 +369,18 @@ class CreateCommands(SessionRequired):
             "create", parents=[user_parser], help="Upload metadata to metadb."
         )
         create_parser.add_argument("project")
-        create_parser.add_argument(
+        create_exclusive_parser = create_parser.add_mutually_exclusive_group(
+            required=True
+        )
+        create_exclusive_parser.add_argument(
             "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
         )
-
-        csv_create_parser = command.add_parser(
-            "csv-create",
-            parents=[user_parser],
-            help="Upload metadata to metadb via a .csv file.",
+        create_exclusive_parser.add_argument(
+            "--csv", help="Upload metadata to metadb via a .csv file."
         )
-        csv_create_parser.add_argument("project")
-        csv_create_parser.add_argument("csv")
-
-        tsv_create_parser = command.add_parser(
-            "tsv-create",
-            parents=[user_parser],
-            help="Upload metadata to metadb via a .tsv file.",
+        create_exclusive_parser.add_argument(
+            "--tsv", help="Upload metadata to metadb via a .tsv file."
         )
-        tsv_create_parser.add_argument("project")
-        tsv_create_parser.add_argument("tsv")
 
     def create(self, project, fields):
         """
@@ -385,24 +390,17 @@ class CreateCommands(SessionRequired):
         creation = self.client.create(project, fields)
         utils.print_response(creation)
 
-    def csv_create(self, project, csv_path):
+    def csv_create(self, project, csv_path, delimiter=None):
         """
-        Post new records to the database, using a csv.
+        Post new records to the database, using a csv or tsv.
         """
-        creations = self.client.csv_create(project, csv_path)
-        utils.execute_uploads(creations)
-
-    def tsv_create(self, project, tsv_path):
-        """
-        Post new records to the database, using a tsv.
-        """
-        creations = self.client.csv_create(project, tsv_path, delimiter="\t")
+        creations = self.client.csv_create(project, csv_path, delimiter=delimiter)
         utils.execute_uploads(creations)
 
 
 class GetCommands(SessionRequired):
     """
-    Commands for getting.
+    Commands for getting records.
     """
 
     @classmethod
@@ -451,7 +449,7 @@ class GetCommands(SessionRequired):
 
 class UpdateCommands(SessionRequired):
     """
-    Commands for updating.
+    Commands for updating records.
     """
 
     @classmethod
@@ -462,26 +460,19 @@ class UpdateCommands(SessionRequired):
             help="Update metadata within metadb.",
         )
         update_parser.add_argument("project")
-        update_parser.add_argument("cid")
         update_parser.add_argument(
             "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
         )
-
-        csv_update_parser = command.add_parser(
-            "csv-update",
-            parents=[user_parser],
-            help="Update metadata within metadb via a .csv file.",
+        update_exclusive_parser = update_parser.add_mutually_exclusive_group(
+            required=True
         )
-        csv_update_parser.add_argument("project")
-        csv_update_parser.add_argument("csv")
-
-        tsv_update_parser = command.add_parser(
-            "tsv-update",
-            parents=[user_parser],
-            help="Update metadata within metadb via a .tsv file.",
+        update_exclusive_parser.add_argument("cid", nargs="?", help="optional")
+        update_exclusive_parser.add_argument(
+            "--csv", help="Update metadata within metadb via a .csv file."
         )
-        tsv_update_parser.add_argument("project")
-        tsv_update_parser.add_argument("tsv")
+        update_exclusive_parser.add_argument(
+            "--tsv", help="Update metadata within metadb via a .tsv file."
+        )
 
     def update(self, project, cid, fields):
         """
@@ -491,24 +482,17 @@ class UpdateCommands(SessionRequired):
         update = self.client.update(project, cid, fields)
         utils.print_response(update)
 
-    def csv_update(self, project, csv_path):
+    def csv_update(self, project, csv_path, delimiter=None):
         """
-        Update records in the database, using a csv.
+        Update records in the database, using a csv or tsv.
         """
-        updates = self.client.csv_update(project, csv_path)
-        utils.execute_uploads(updates)
-
-    def tsv_update(self, project, tsv_path):
-        """
-        Update records in the database, using a tsv.
-        """
-        updates = self.client.csv_update(project, tsv_path, delimiter="\t")
+        updates = self.client.csv_update(project, csv_path, delimiter=delimiter)
         utils.execute_uploads(updates)
 
 
 class SuppressCommands(SessionRequired):
     """
-    Commands for suppressing (soft deleting).
+    Commands for suppressing (soft deleting) records.
     """
 
     @classmethod
@@ -519,23 +503,16 @@ class SuppressCommands(SessionRequired):
             help="Suppress metadata within metadb.",
         )
         suppress_parser.add_argument("project")
-        suppress_parser.add_argument("cid")
-
-        csv_suppress_parser = command.add_parser(
-            "csv-suppress",
-            parents=[user_parser],
-            help="Suppress metadata within metadb via a .csv file.",
+        suppress_exclusive_parser = suppress_parser.add_mutually_exclusive_group(
+            required=True
         )
-        csv_suppress_parser.add_argument("project")
-        csv_suppress_parser.add_argument("csv")
-
-        tsv_suppress_parser = command.add_parser(
-            "tsv-suppress",
-            parents=[user_parser],
-            help="Suppress metadata within metadb via a .tsv file.",
+        suppress_exclusive_parser.add_argument("cid", nargs="?", help="optional")
+        suppress_exclusive_parser.add_argument(
+            "--csv", help="Suppress metadata within metadb via a .csv file."
         )
-        tsv_suppress_parser.add_argument("project")
-        tsv_suppress_parser.add_argument("tsv")
+        suppress_exclusive_parser.add_argument(
+            "--tsv", help="Suppress metadata within metadb via a .tsv file."
+        )
 
     def suppress(self, project, cid):
         """
@@ -544,24 +521,17 @@ class SuppressCommands(SessionRequired):
         suppression = self.client.suppress(project, cid)
         utils.print_response(suppression)
 
-    def csv_suppress(self, project, csv_path):
+    def csv_suppress(self, project, csv_path, delimiter=None):
         """
-        Suppress records in the database, using a csv.
+        Suppress records in the database, using a csv or tsv.
         """
-        suppressions = self.client.csv_suppress(project, csv_path)
-        utils.execute_uploads(suppressions)
-
-    def tsv_suppress(self, project, tsv_path):
-        """
-        Suppress records in the database, using a tsv.
-        """
-        suppressions = self.client.csv_suppress(project, tsv_path, delimiter="\t")
+        suppressions = self.client.csv_suppress(project, csv_path, delimiter=delimiter)
         utils.execute_uploads(suppressions)
 
 
 class DeleteCommands(SessionRequired):
     """
-    Commands for deleting.
+    Commands for deleting records.
     """
 
     @classmethod
@@ -572,23 +542,16 @@ class DeleteCommands(SessionRequired):
             help="Delete metadata within metadb.",
         )
         delete_parser.add_argument("project")
-        delete_parser.add_argument("cid")
-
-        csv_delete_parser = command.add_parser(
-            "csv-delete",
-            parents=[user_parser],
-            help="Delete metadata within metadb via a .csv file.",
+        delete_exclusive_parser = delete_parser.add_mutually_exclusive_group(
+            required=True
         )
-        csv_delete_parser.add_argument("project")
-        csv_delete_parser.add_argument("csv")
-
-        tsv_delete_parser = command.add_parser(
-            "tsv-delete",
-            parents=[user_parser],
-            help="Delete metadata within metadb via a .tsv file.",
+        delete_exclusive_parser.add_argument("cid", nargs="?", help="optional")
+        delete_exclusive_parser.add_argument(
+            "--csv", help="Delete metadata within metadb via a .csv file."
         )
-        tsv_delete_parser.add_argument("project")
-        tsv_delete_parser.add_argument("tsv")
+        delete_exclusive_parser.add_argument(
+            "--tsv", help="Delete metadata within metadb via a .tsv file."
+        )
 
     def delete(self, project, cid):
         """
@@ -597,18 +560,11 @@ class DeleteCommands(SessionRequired):
         deletion = self.client.delete(project, cid)
         utils.print_response(deletion)
 
-    def csv_delete(self, project, csv_path):
+    def csv_delete(self, project, csv_path, delimiter=None):
         """
-        Delete records in the database, using a csv.
+        Delete records in the database, using a csv or tsv.
         """
-        deletions = self.client.csv_delete(project, csv_path)
-        utils.execute_uploads(deletions)
-
-    def tsv_delete(self, project, tsv_path):
-        """
-        Delete records in the database, using a tsv.
-        """
-        deletions = self.client.csv_delete(project, tsv_path, delimiter="\t")
+        deletions = self.client.csv_delete(project, csv_path, delimiter=delimiter)
         utils.execute_uploads(deletions)
 
 
@@ -624,110 +580,83 @@ def run(args):
             config_commands = ConfigCommands()
             if args.config_command == "set-default-user":
                 config_commands.set_default_user(args.username)
-
             elif args.config_command == "get-default-user":
                 config_commands.get_default_user()
-
             elif args.config_command == "add-user":
                 config_commands.add_user(args.username)
-
             elif args.config_command == "list-users":
                 config_commands.list_users()
 
     elif args.command == "site":
-        site_commands = SiteCommands(
-            username=args.user,
-            env_password=args.env_password,
-        )
-
+        site_commands = SiteCommands(args.user, args.env_password)
         if args.site_command == "approve":
             site_commands.approve(args.username)
-
         elif args.site_command == "list-waiting":
             site_commands.list_waiting()
-
         elif args.site_command == "list-users":
             site_commands.list_users()
 
     elif args.command == "admin":
-        admin_commands = AdminCommands(
-            username=args.user,
-            env_password=args.env_password,
-        )
-
+        admin_commands = AdminCommands(args.user, args.env_password)
         if args.admin_command == "approve":
             admin_commands.approve(args.username)
-
         elif args.admin_command == "list-waiting":
             admin_commands.list_waiting()
-
         elif args.admin_command == "list-users":
             admin_commands.list_users()
 
     elif args.command == "register":
-        register()
+        register_commands = RegisterCommands()
+        register_commands.register()
 
-    elif args.command == "login":
-        login(args.user, args.env_password)
+    elif args.command in ["login", "logout", "logoutall"]:
+        login_commands = LoginCommands()
+        if args.command == "login":
+            login_commands.login(args.user, args.env_password)
+        elif args.command == "logout":
+            login_commands.logout(args.user, args.env_password)
+        elif args.command == "logoutall":
+            login_commands.logoutall(args.user, args.env_password)
 
-    elif args.command == "logout":
-        logout(args.user, args.env_password)
-
-    elif args.command == "logoutall":
-        logoutall(args.user, args.env_password)
-
-    elif args.command in ["create", "csv-create", "tsv-create"]:
+    elif args.command == "create":
         create_commands = CreateCommands(args.user, args.env_password)
-
-        if args.command == "create":
+        if args.field:
             create_commands.create(args.project, args.field)
-
-        elif args.command == "csv-create":
+        elif args.csv:
             create_commands.csv_create(args.project, args.csv)
-
-        elif args.command == "tsv-create":
-            create_commands.tsv_create(args.project, args.tsv)
+        elif args.tsv:
+            create_commands.csv_create(args.project, args.tsv, delimiter="\t")
 
     elif args.command == "get":
         get_commands = GetCommands(args.user, args.env_password)
-
         get_commands.get(args.project, args.cid, args.field)
 
-    elif args.command in ["update", "csv-update", "tsv-update"]:
+    elif args.command == "update":
         update_commands = UpdateCommands(args.user, args.env_password)
-
-        if args.command == "update":
+        if args.cid and args.field:
             update_commands.update(args.project, args.cid, args.field)
-
-        elif args.command == "csv-update":
+        elif args.csv:
             update_commands.csv_update(args.project, args.csv)
+        elif args.tsv:
+            update_commands.csv_update(args.project, args.tsv, delimiter="\t")
 
-        elif args.command == "tsv-update":
-            update_commands.tsv_update(args.project, args.tsv)
-
-    elif args.command in ["suppress", "csv-suppress", "tsv-suppress"]:
+    elif args.command == "suppress":
         suppress_commands = SuppressCommands(args.user, args.env_password)
-
-        if args.command == "suppress":
+        if args.cid:
             suppress_commands.suppress(args.project, args.cid)
-
-        elif args.command == "csv-suppress":
+        elif args.csv:
             suppress_commands.csv_suppress(args.project, args.csv)
+        elif args.tsv:
+            suppress_commands.csv_suppress(args.project, args.tsv, delimiter="\t")
 
-        elif args.command == "tsv-suppress":
-            suppress_commands.tsv_suppress(args.project, args.tsv)
-
-    elif args.command in ["delete", "csv-delete", "tsv-delete"]:
-        suppress_commands = DeleteCommands(args.user, args.env_password)
-
-        if args.command == "delete":
-            suppress_commands.delete(args.project, args.cid)
-
-        elif args.command == "csv-delete":
-            suppress_commands.csv_delete(args.project, args.csv)
-
-        elif args.command == "tsv-delete":
-            suppress_commands.tsv_delete(args.project, args.tsv)
+    elif args.command == "delete":
+        delete_commands = DeleteCommands(args.user, args.env_password)
+        if args.cid:
+            delete_commands.delete(args.project, args.cid)
+        elif args.csv:
+            delete_commands.csv_delete(args.project, args.csv)
+        elif args.tsv:
+            delete_commands.csv_delete(args.project, args.tsv, delimiter="\t")
 
 
 def get_args():
@@ -743,7 +672,6 @@ def get_args():
         action="store_true",
         help="If a password is required, the client will look for the env variable with format 'METADB_<user>_PASSWORD'.",
     )
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-v",
@@ -752,46 +680,21 @@ def get_args():
         version=version.__version__,
         help="Client version number.",
     )
-
-    command = parser.add_subparsers(dest="command", metavar="{command}")
-
+    command = parser.add_subparsers(dest="command", metavar="{command}", required=True)
     ConfigCommands.add_commands(command)
-
     SiteCommands.add_commands(command, user_parser=user_parser)
-
     AdminCommands.add_commands(command, user_parser=user_parser)
-
-    register_parser = command.add_parser(
-        "register", help="Register a new user in metadb."
-    )
-
-    login_parser = command.add_parser(
-        "login", parents=[user_parser], help="Log in to metadb."
-    )
-
-    logout_parser = command.add_parser(
-        "logout",
-        parents=[user_parser],
-        help="Log out of metadb.",
-    )
-
-    logoutall_parser = command.add_parser(
-        "logoutall",
-        parents=[user_parser],
-        help="Log out of metadb everywhere.",
-    )
-
+    RegisterCommands.add_commands(command)
+    LoginCommands.add_commands(command, user_parser=user_parser)
     CreateCommands.add_commands(command, user_parser=user_parser)
-
     GetCommands.add_commands(command, user_parser=user_parser)
-
     UpdateCommands.add_commands(command, user_parser=user_parser)
-
     SuppressCommands.add_commands(command, user_parser=user_parser)
-
     DeleteCommands.add_commands(command, user_parser=user_parser)
-
     args = parser.parse_args()
+
+    if args.command == "update" and (args.cid and not args.field):
+        parser.error("the following arguments are required: -f/--field")
 
     return args
 
