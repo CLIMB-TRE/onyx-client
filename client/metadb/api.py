@@ -38,6 +38,7 @@ class Client:
             "update": lambda x, y: f"{self.url}/data/update/{x}/{y}/",
             "suppress": lambda x, y: f"{self.url}/data/suppress/{x}/{y}/",
             "delete": lambda x, y: f"{self.url}/data/delete/{x}/{y}/",
+            "testcreate": lambda x: f"{self.url}/data/testcreate/{x}/",
         }
 
     def request(self, method, **kwargs):
@@ -264,22 +265,34 @@ class Client:
         return response
 
     @utils.session_required
-    def create(self, project, fields):
+    def create(self, project, fields, test=False):
         """
         Post a record to the database.
         """
+        if test:
+            endpoint = "testcreate"
+        else:
+            endpoint = "create"
+
         response = self.request(
             method=requests.post,
-            url=self.endpoints["create"](project),
+            url=self.endpoints[endpoint](project),
             json=fields,
         )
         return response
 
     @utils.session_required
-    def csv_create(self, project, csv_path, delimiter=None, multithreaded=False):
+    def csv_create(
+        self, project, csv_path, delimiter=None, multithreaded=False, test=False
+    ):
         """
         Post a .csv or .tsv containing records to the database.
         """
+        if test:
+            endpoint = "testcreate"
+        else:
+            endpoint = "create"
+
         if csv_path == "-":
             csv_file = sys.stdin
         else:
@@ -295,7 +308,7 @@ class Client:
             if record:
                 response = self.request(
                     method=requests.post,
-                    url=self.endpoints["create"](project),
+                    url=self.endpoints[endpoint](project),
                     json=record,
                 )
                 yield response
@@ -308,7 +321,7 @@ class Client:
                             executor.submit(
                                 self.request,
                                 requests.post,
-                                url=self.endpoints["create"](project),
+                                url=self.endpoints[endpoint](project),
                                 json=record,
                             )
                             for record in reader
@@ -320,7 +333,7 @@ class Client:
                     for record in reader:
                         response = self.request(
                             method=requests.post,
-                            url=self.endpoints["create"](project),
+                            url=self.endpoints[endpoint](project),
                             json=record,
                         )
                         yield response
