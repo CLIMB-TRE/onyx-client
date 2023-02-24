@@ -665,7 +665,7 @@ def get_args():
         "-p",
         "--env-password",
         action="store_true",
-        help="If a password is required, the client will look for the env variable with format 'METADB_<user>_PASSWORD'.",
+        help="When a password is required, the client will use the env variable with format 'METADB_<USER>_PASSWORD'.",
     )
     parser = argparse.ArgumentParser(parents=[user_parser])
     parser.add_argument(
