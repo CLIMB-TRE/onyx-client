@@ -349,7 +349,7 @@ class CreateCommands(SessionRequired):
 
     @classmethod
     def add_commands(cls, command):
-        create_parser = command.add_parser("create", help="Upload metadata.")
+        create_parser = command.add_parser("create", help="Upload metadata records.")
         create_parser.add_argument("project")
         create_exclusive_parser = create_parser.add_mutually_exclusive_group(
             required=True
@@ -364,7 +364,7 @@ class CreateCommands(SessionRequired):
             "--tsv", help="Upload metadata via a .tsv file."
         )
         testcreate_parser = command.add_parser(
-            "testcreate", help="Test uploading metadata."
+            "testcreate", help="Test uploading metadata records."
         )
         testcreate_parser.add_argument("project")
         testcreate_exclusive_parser = testcreate_parser.add_mutually_exclusive_group(
@@ -400,49 +400,61 @@ class CreateCommands(SessionRequired):
 
 class GetCommands(SessionRequired):
     """
-    Commands for getting records.
+    Commands for getting a record.
     """
 
     @classmethod
     def add_commands(cls, command):
-        get_parser = command.add_parser("get", help="Get metadata.")
+        get_parser = command.add_parser("get", help="Get a metadata record.")
         get_parser.add_argument("project")
-        get_parser.add_argument("cid", nargs="?", help="optional")
-        get_parser.add_argument(
+        get_parser.add_argument("cid")
+
+    def get(self, project, cid):
+        """
+        Get a record from the database.
+        """
+        response = self.client.request(
+            method=requests.get,
+            url=self.client.endpoints["get"](project),
+            params={"cid": cid},
+        )
+        utils.print_response(response)
+
+
+class FilterCommands(SessionRequired):
+    """
+    Commands for filtering records.
+    """
+
+    @classmethod
+    def add_commands(cls, command):
+        filter_parser = command.add_parser("filter", help="Filter metadata records.")
+        filter_parser.add_argument("project")
+        filter_parser.add_argument(
             "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
         )
 
-    def get(self, project, cid, fields):
+    def filter(self, project, fields):
         """
-        Get records from the database.
+        Filter records from the database.
         """
         fields = utils.construct_fields_dict(fields)
 
-        if cid:
-            fields.setdefault("cid", []).append(cid)
-            response = self.client.request(
-                method=requests.get,
-                url=self.client.endpoints["get"](project),
-                params=fields,
-            )
-            utils.print_response(response)
+        results = self.client.filter(project, fields)
 
-        else:
-            results = self.client.get(project, cid, fields)
+        try:
+            result = next(results, None)
+            if result:
+                writer = csv.DictWriter(
+                    sys.stdout, delimiter="\t", fieldnames=result.keys()
+                )
+                writer.writeheader()
+                writer.writerow(result)
 
-            try:
-                result = next(results, None)
-                if result:
-                    writer = csv.DictWriter(
-                        sys.stdout, delimiter="\t", fieldnames=result.keys()
-                    )
-                    writer.writeheader()
+                for result in results:
                     writer.writerow(result)
-
-                    for result in results:
-                        writer.writerow(result)
-            except requests.HTTPError:
-                pass
+        except requests.HTTPError:
+            pass
 
 
 class UpdateCommands(SessionRequired):
@@ -452,7 +464,7 @@ class UpdateCommands(SessionRequired):
 
     @classmethod
     def add_commands(cls, command):
-        update_parser = command.add_parser("update", help="Update metadata.")
+        update_parser = command.add_parser("update", help="Update metadata records.")
         update_parser.add_argument("project")
         update_parser.add_argument(
             "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
@@ -491,7 +503,9 @@ class SuppressCommands(SessionRequired):
 
     @classmethod
     def add_commands(cls, command):
-        suppress_parser = command.add_parser("suppress", help="Suppress metadata.")
+        suppress_parser = command.add_parser(
+            "suppress", help="Suppress metadata records."
+        )
         suppress_parser.add_argument("project")
         suppress_exclusive_parser = suppress_parser.add_mutually_exclusive_group(
             required=True
@@ -526,7 +540,7 @@ class DeleteCommands(SessionRequired):
 
     @classmethod
     def add_commands(cls, command):
-        delete_parser = command.add_parser("delete", help="Delete metadata.")
+        delete_parser = command.add_parser("delete", help="Delete metadata records.")
         delete_parser.add_argument("project")
         delete_exclusive_parser = delete_parser.add_mutually_exclusive_group(
             required=True
@@ -624,7 +638,11 @@ def run(args):
 
     elif args.command == "get":
         get_commands = GetCommands(args.user, args.env_password)
-        get_commands.get(args.project, args.cid, args.field)
+        get_commands.get(args.project, args.cid)
+
+    elif args.command == "filter":
+        filter_commands = FilterCommands(args.user, args.env_password)
+        filter_commands.filter(args.project, args.field)
 
     elif args.command == "update":
         update_commands = UpdateCommands(args.user, args.env_password)
@@ -683,6 +701,7 @@ def get_args():
     LoginCommands.add_commands(command)
     CreateCommands.add_commands(command)
     GetCommands.add_commands(command)
+    FilterCommands.add_commands(command)
     UpdateCommands.add_commands(command)
     SuppressCommands.add_commands(command)
     DeleteCommands.add_commands(command)

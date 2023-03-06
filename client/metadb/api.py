@@ -9,9 +9,6 @@ from metadb.field import Field
 from metadb.config import Config
 
 
-# TODO: Learn OAuth
-
-
 class Client:
     def __init__(self, config):
         """
@@ -342,15 +339,26 @@ class Client:
                 csv_file.close()
 
     @utils.session_required
-    def get(self, project, cid=None, fields=None, **kwargs):
+    def get(self, project, cid):
         """
-        Get records from the database.
+        Get a particular record from the database.
+        """
+        response = self.request(
+            method=requests.get,
+            url=self.endpoints["get"](project),
+            params={"cid": cid},
+        )
+        utils.raise_for_status(response)
+        results = response.json()["results"]
+        return results[0] if results else None
+
+    @utils.session_required
+    def filter(self, project, fields=None, **kwargs):
+        """
+        Filter records from the database.
         """
         if fields is None:
             fields = {}
-
-        if cid is not None:
-            fields.setdefault("cid", []).append(cid)
 
         for field, values in kwargs.items():
             if isinstance(values, list):
