@@ -14,8 +14,10 @@ class Field:
 
         field, value = next(iter(kwargs.items()))
 
-        if (field not in ["&", "|", "^", "~"]) and (type(value) in [list, tuple, set]):
-            value = ",".join(map(str, value))
+        if field not in ["&", "|", "^", "~"]:
+            if type(value) in [list, tuple, set]:
+                # Multi-value lookups require values in a comma-separated string
+                value = ",".join(map(str, value))
 
         self.query = {field: value}
 

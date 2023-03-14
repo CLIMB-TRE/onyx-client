@@ -36,6 +36,15 @@ def construct_unique_fields_dict(arg_fields):
     return fields
 
 
+def construct_scope_list(arg_fields):
+    """
+    Takes a list of list of scopes: `[[scope, scope, ...], [scope, scope, ...], ...]`
+
+    Returns a list of scopes: `[scope, scope, scope, ...]`
+    """
+    return [s for scopes in arg_fields for s in scopes]
+
+
 def print_response(response, pretty_print=True, status_only=False):
     """
     Print the response and make it look lovely.

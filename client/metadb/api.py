@@ -339,57 +339,47 @@ class Client:
                 csv_file.close()
 
     @utils.session_required
-    def get(self, project, cid):
+    def get(self, project, cid, scope=None):
         """
         Get a particular record from the database.
         """
         response = self.request(
             method=requests.get,
             url=self.endpoints["get"](project),
-            params={"cid": cid},
+            params={"cid": cid, "scope": scope},
         )
         utils.raise_for_status(response)
         results = response.json()["results"]
         return results[0] if results else None
 
     @utils.session_required
-    def filter(self, project, fields=None, **kwargs):
+    def filter(self, project, fields=None, scope=None):
         """
         Filter records from the database.
         """
         if fields is None:
             fields = {}
 
-        for field, values in kwargs.items():
-            if isinstance(values, list):
-                for v in values:
-                    if isinstance(v, tuple):
-                        v = ",".join(str(x) for x in v)
-
-                    fields.setdefault(field, []).append(v)
-            else:
-                if isinstance(values, tuple):
-                    values = ",".join(str(x) for x in values)
-
-                fields.setdefault(field, []).append(values)
+        if scope:
+            fields["scope"] = scope
 
         _next = self.endpoints["get"](project)
-        params = fields
+
         while _next is not None:
             response = self.request(
                 method=requests.get,
                 url=_next,
-                params=params,
+                params=fields,
             )
             utils.raise_for_status(response)
             _next = response.json().get("next")
-            params = None
+            fields = None
 
             for result in response.json()["results"]:
                 yield result
 
     @utils.session_required
-    def query(self, project, query=None):
+    def query(self, project, query=None, scope=None):
         """
         Get records from the database.
         """
@@ -399,15 +389,19 @@ class Client:
             else:
                 query = query.query
 
+        fields = {"scope": scope}
         _next = self.endpoints["query"](project)
+
         while _next is not None:
             response = self.request(
                 method=requests.post,
                 url=_next,
                 json=query,
+                params=fields,
             )
             utils.raise_for_status(response)
             _next = response.json().get("next")
+            fields = None
 
             for result in response.json()["results"]:
                 yield result

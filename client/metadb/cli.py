@@ -408,15 +408,19 @@ class GetCommands(SessionRequired):
         get_parser = command.add_parser("get", help="Get a metadata record.")
         get_parser.add_argument("project")
         get_parser.add_argument("cid")
+        get_parser.add_argument("-s", "--scope", nargs="+", action="append")
 
-    def get(self, project, cid):
+    def get(self, project, cid, scope=None):
         """
         Get a record from the database.
         """
+        if scope:
+            scope = utils.construct_scope_list(scope)
+
         response = self.client.request(
             method=requests.get,
             url=self.client.endpoints["get"](project),
-            params={"cid": cid},
+            params={"cid": cid, "scope": scope},
         )
         utils.print_response(response)
 
@@ -433,14 +437,17 @@ class FilterCommands(SessionRequired):
         filter_parser.add_argument(
             "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
         )
+        filter_parser.add_argument("-s", "--scope", nargs="+", action="append")
 
-    def filter(self, project, fields):
+    def filter(self, project, fields, scope=None):
         """
         Filter records from the database.
         """
         fields = utils.construct_fields_dict(fields)
+        if scope:
+            scope = utils.construct_scope_list(scope)
 
-        results = self.client.filter(project, fields)
+        results = self.client.filter(project, fields, scope=scope)
 
         try:
             result = next(results, None)
@@ -638,11 +645,11 @@ def run(args):
 
     elif args.command == "get":
         get_commands = GetCommands(args.user, args.env_password)
-        get_commands.get(args.project, args.cid)
+        get_commands.get(args.project, args.cid, scope=args.scope)
 
     elif args.command == "filter":
         filter_commands = FilterCommands(args.user, args.env_password)
-        filter_commands.filter(args.project, args.field)
+        filter_commands.filter(args.project, args.field, scope=args.scope)
 
     elif args.command == "update":
         update_commands = UpdateCommands(args.user, args.env_password)
