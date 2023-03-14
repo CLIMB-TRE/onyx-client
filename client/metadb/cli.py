@@ -419,8 +419,8 @@ class GetCommands(SessionRequired):
 
         response = self.client.request(
             method=requests.get,
-            url=self.client.endpoints["get"](project),
-            params={"cid": cid, "scope": scope},
+            url=self.client.endpoints["get"](project, cid),
+            params={"scope": scope},
         )
         utils.print_response(response)
 

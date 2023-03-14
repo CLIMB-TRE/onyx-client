@@ -30,7 +30,8 @@ class Client:
             "admin_users": f"{self.url}/accounts/admin/users/",
             # data
             "create": lambda x: f"{self.url}/data/create/{x}/",
-            "get": lambda x: f"{self.url}/data/get/{x}/",
+            "get": lambda x, y: f"{self.url}/data/get/{x}/{y}/",
+            "filter": lambda x: f"{self.url}/data/filter/{x}/",
             "query": lambda x: f"{self.url}/data/query/{x}/",
             "update": lambda x, y: f"{self.url}/data/update/{x}/{y}/",
             "suppress": lambda x, y: f"{self.url}/data/suppress/{x}/{y}/",
@@ -345,8 +346,8 @@ class Client:
         """
         response = self.request(
             method=requests.get,
-            url=self.endpoints["get"](project),
-            params={"cid": cid, "scope": scope},
+            url=self.endpoints["get"](project, cid),
+            params={"scope": scope},
         )
         utils.raise_for_status(response)
         results = response.json()["results"]
@@ -363,7 +364,7 @@ class Client:
         if scope:
             fields["scope"] = scope
 
-        _next = self.endpoints["get"](project)
+        _next = self.endpoints["filter"](project)
 
         while _next is not None:
             response = self.request(
