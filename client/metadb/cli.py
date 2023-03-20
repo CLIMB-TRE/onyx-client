@@ -195,19 +195,16 @@ class RegisterCommands(ClientRequired):
         if registration.ok:
             print("Account created successfully.")
             check = ""
-            while not check:
+            while check not in ["Y", "N"]:
                 check = input(
                     "Would you like to add this account to the config? [y/n]: "
                 ).upper()
 
             if check == "Y":
-                results = registration.json()["results"]
-                if len(results) != 1:
-                    raise Exception("Expected only one result in response")
-
-                username = results[0]["username"]
-                self.client.config.add_user(username)
+                self.client.config.add_user(registration.json()["data"]["username"])
                 print("The user has been added to the config.")
+            else:
+                print("The user has not been added to the config.")
 
 
 class LoginCommands(ClientRequired):

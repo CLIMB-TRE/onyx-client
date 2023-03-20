@@ -56,8 +56,8 @@ class Client:
             )
 
             if login_response.ok:
-                self.token = login_response.json().get("token")
-                self.expiry = login_response.json().get("expiry")
+                self.token = login_response.json()["data"]["token"]
+                self.expiry = login_response.json()["data"]["expiry"]
                 self.config.write_token(self.username, self.token, self.expiry)
 
                 kwargs.setdefault("headers", {}).update(
@@ -158,8 +158,8 @@ class Client:
             self.endpoints["login"], auth=(self.username, password)
         )
         if response.ok:
-            self.token = response.json().get("token")
-            self.expiry = response.json().get("expiry")
+            self.token = response.json()["data"]["token"]
+            self.expiry = response.json()["data"]["expiry"]
             self.config.write_token(self.username, self.token, self.expiry)
 
         return response
@@ -350,7 +350,7 @@ class Client:
             params={"scope": scope},
         )
         utils.raise_for_status(response)
-        results = response.json()["results"]
+        results = response.json()["data"]["record"]
         return results[0] if results else None
 
     @utils.session_required
@@ -373,10 +373,10 @@ class Client:
                 params=fields,
             )
             utils.raise_for_status(response)
-            _next = response.json().get("next")
+            _next = response.json()["data"]["next"]
             fields = None
 
-            for result in response.json()["results"]:
+            for result in response.json()["data"]["records"]:
                 yield result
 
     @utils.session_required
@@ -401,10 +401,10 @@ class Client:
                 params=fields,
             )
             utils.raise_for_status(response)
-            _next = response.json().get("next")
+            _next = response.json()["data"]["next"]
             fields = None
 
-            for result in response.json()["results"]:
+            for result in response.json()["data"]["records"]:
                 yield result
 
     @utils.session_required
