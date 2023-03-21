@@ -4,8 +4,8 @@ def check_kwargs(kwargs):
 
 
 def check_field(field):
-    if not isinstance(field, Field):
-        raise Exception("Can only combine field with other fields")
+    if not isinstance(field, F):
+        raise Exception("Can only combine F object with other F objects")
 
 
 def combine_on_associative(operation, field1, field2):
@@ -44,10 +44,10 @@ def combine_on_associative(operation, field1, field2):
     else:
         field2_query = [field2.query]
 
-    return Field(**{operation: field1_query + field2_query})
+    return F(**{operation: field1_query + field2_query})
 
 
-class Field:
+class F:
     def __init__(self, **kwargs):
         check_kwargs(kwargs)
 
@@ -78,6 +78,6 @@ class Field:
         # But hey you never know
         self_key = next(iter(self.query))
         if self_key == "~":
-            return Field(**next(iter(self.query[self_key])))  # type: ignore
+            return F(**next(iter(self.query[self_key])))  # type: ignore
         else:
-            return Field(**{"~": [self.query]})
+            return F(**{"~": [self.query]})

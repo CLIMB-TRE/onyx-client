@@ -5,7 +5,7 @@ import json
 import requests
 import concurrent.futures
 from metadb import utils, settings
-from metadb.field import Field
+from metadb.field import F
 from metadb.config import Config
 
 
@@ -389,8 +389,8 @@ class Client:
         Get records from the database.
         """
         if query:
-            if not isinstance(query, Field):
-                raise Exception("Query must be of type Field")
+            if not isinstance(query, F):
+                raise Exception("Query must be an F object")
             else:
                 query = query.query
 
