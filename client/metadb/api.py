@@ -312,8 +312,12 @@ class Client:
                 yield response
 
                 if multithreaded:
-                    # TODO: Prevent multithreaded option if password not set in environment
-                    # Because a multithreaded password entry spells disaster
+                    # Bit of an experimental one
+                    if not self.env_password:
+                        raise Exception(
+                            "To use multithreaded upload, set env_password = True on the client"
+                        )
+
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         futures = [
                             executor.submit(
