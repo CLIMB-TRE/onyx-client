@@ -48,11 +48,10 @@ class Client:
         )
         method_response = method(**kwargs)
 
-        if method_response.status_code == 401:
-            password = self.get_password()
+        if method_response.status_code == 401 and self.env_password:
             login_response = requests.post(
                 self.endpoints["login"],
-                auth=(self.username, password),
+                auth=(self.username, self.get_password()),
             )
 
             if login_response.ok:
@@ -60,13 +59,9 @@ class Client:
                 self.expiry = login_response.json()["data"]["expiry"]
                 self.config.write_token(self.username, self.token, self.expiry)
 
-                kwargs.setdefault("headers", {}).update(
-                    {"Authorization": f"Token {self.token}"}
-                )
-                method_response = method(**kwargs)
+                return self.request(method, **kwargs)
 
-            else:
-                return login_response
+            login_response.raise_for_status()
 
         return method_response
 
@@ -346,7 +341,7 @@ class Client:
     @utils.session_required
     def get(self, project, cid, scope=None):
         """
-        Get a particular record from the database.
+        Get a record from the database.
         """
         response = self.request(
             method=requests.get,
@@ -354,8 +349,7 @@ class Client:
             params={"scope": scope},
         )
         utils.raise_for_status(response)
-        results = response.json()["data"]["record"]
-        return results[0] if results else None
+        return response.json()["data"]["record"]
 
     @utils.session_required
     def filter(self, project, fields=None, scope=None):
