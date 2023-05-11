@@ -4,8 +4,8 @@ import csv
 import json
 import requests
 import concurrent.futures
+from django_query_tools.client import F
 from metadb import utils, settings
-from metadb.field import F
 from metadb.config import Config
 
 
