@@ -217,7 +217,7 @@ class LoginCommands(ClientRequired):
         login_parser = command.add_parser("login", help="Log in to metadb.")
         logout_parser = command.add_parser("logout", help="Log out of metadb.")
         logoutall_parser = command.add_parser(
-            "logoutall", help="Log out of metadb on all devices."
+            "logoutall", help="Log out of metadb everywhere."
         )
 
     def login(self, username, env_password):
@@ -360,21 +360,8 @@ class CreateCommands(SessionRequired):
         create_exclusive_parser.add_argument(
             "--tsv", help="Upload metadata via a .tsv file."
         )
-        testcreate_parser = command.add_parser(
-            "testcreate", help="Test uploading metadata records."
-        )
-        testcreate_parser.add_argument("project")
-        testcreate_exclusive_parser = testcreate_parser.add_mutually_exclusive_group(
-            required=True
-        )
-        testcreate_exclusive_parser.add_argument(
-            "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
-        )
-        testcreate_exclusive_parser.add_argument(
-            "--csv", help="Test uploading metadata via a .csv file."
-        )
-        testcreate_exclusive_parser.add_argument(
-            "--tsv", help="Test uploading metadata via a .tsv file."
+        create_parser.add_argument(
+            "--test", action="store_true", help="Run the command as a test."
         )
 
     def create(self, project, fields, test=False):
@@ -483,20 +470,25 @@ class UpdateCommands(SessionRequired):
         update_exclusive_parser.add_argument(
             "--tsv", help="Update metadata via a .tsv file."
         )
+        update_parser.add_argument(
+            "--test", action="store_true", help="Run the command as a test."
+        )
 
-    def update(self, project, cid, fields):
+    def update(self, project, cid, fields, test=False):
         """
         Update a record in the database.
         """
         fields = utils.construct_unique_fields_dict(fields)
-        update = self.client.update(project, cid, fields)
+        update = self.client.update(project, cid, fields, test=test)
         utils.print_response(update)
 
-    def csv_update(self, project, csv_path, delimiter=None):
+    def csv_update(self, project, csv_path, delimiter=None, test=False):
         """
         Update records in the database, using a csv or tsv.
         """
-        updates = self.client.csv_update(project, csv_path, delimiter=delimiter)
+        updates = self.client.csv_update(
+            project, csv_path, delimiter=delimiter, test=test
+        )
         utils.execute_uploads(updates)
 
 
@@ -521,19 +513,24 @@ class SuppressCommands(SessionRequired):
         suppress_exclusive_parser.add_argument(
             "--tsv", help="Suppress metadata via a .tsv file."
         )
+        suppress_parser.add_argument(
+            "--test", action="store_true", help="Run the command as a test."
+        )
 
-    def suppress(self, project, cid):
+    def suppress(self, project, cid, test=False):
         """
         Suppress a record in the database.
         """
-        suppression = self.client.suppress(project, cid)
+        suppression = self.client.suppress(project, cid, test=test)
         utils.print_response(suppression)
 
-    def csv_suppress(self, project, csv_path, delimiter=None):
+    def csv_suppress(self, project, csv_path, delimiter=None, test=False):
         """
         Suppress records in the database, using a csv or tsv.
         """
-        suppressions = self.client.csv_suppress(project, csv_path, delimiter=delimiter)
+        suppressions = self.client.csv_suppress(
+            project, csv_path, delimiter=delimiter, test=test
+        )
         utils.execute_uploads(suppressions)
 
 
@@ -556,19 +553,24 @@ class DeleteCommands(SessionRequired):
         delete_exclusive_parser.add_argument(
             "--tsv", help="Delete metadata via a .tsv file."
         )
+        delete_parser.add_argument(
+            "--test", action="store_true", help="Run the command as a test."
+        )
 
-    def delete(self, project, cid):
+    def delete(self, project, cid, test=False):
         """
         Delete a record in the database.
         """
-        deletion = self.client.delete(project, cid)
+        deletion = self.client.delete(project, cid, test=test)
         utils.print_response(deletion)
 
-    def csv_delete(self, project, csv_path, delimiter=None):
+    def csv_delete(self, project, csv_path, delimiter=None, test=False):
         """
         Delete records in the database, using a csv or tsv.
         """
-        deletions = self.client.csv_delete(project, csv_path, delimiter=delimiter)
+        deletions = self.client.csv_delete(
+            project, csv_path, delimiter=delimiter, test=test
+        )
         utils.execute_uploads(deletions)
 
 
@@ -576,9 +578,7 @@ def run(args):
     if args.command == "config":
         if args.config_command == "create":
             ConfigCommands.create(
-                host=args.host,
-                port=args.port,
-                config_dir=args.config_dir,
+                host=args.host, port=args.port, config_dir=args.config_dir
             )
         else:
             config_commands = ConfigCommands()
@@ -622,22 +622,15 @@ def run(args):
         elif args.command == "logoutall":
             login_commands.logoutall(args.user, args.env_password)
 
-    elif args.command in ["create", "testcreate"]:
+    elif args.command == "create":
         create_commands = CreateCommands(args.user, args.env_password)
         if args.field:
-            create_commands.create(
-                args.project, args.field, test=(args.command == "testcreate")
-            )
+            create_commands.create(args.project, args.field, test=args.test)
         elif args.csv:
-            create_commands.csv_create(
-                args.project, args.csv, test=(args.command == "testcreate")
-            )
+            create_commands.csv_create(args.project, args.csv, test=args.test)
         elif args.tsv:
             create_commands.csv_create(
-                args.project,
-                args.tsv,
-                delimiter="\t",
-                test=(args.command == "testcreate"),
+                args.project, args.tsv, delimiter="\t", test=args.test
             )
 
     elif args.command == "get":
@@ -651,29 +644,35 @@ def run(args):
     elif args.command == "update":
         update_commands = UpdateCommands(args.user, args.env_password)
         if args.cid and args.field:
-            update_commands.update(args.project, args.cid, args.field)
+            update_commands.update(args.project, args.cid, args.field, test=args.test)
         elif args.csv:
-            update_commands.csv_update(args.project, args.csv)
+            update_commands.csv_update(args.project, args.csv, test=args.test)
         elif args.tsv:
-            update_commands.csv_update(args.project, args.tsv, delimiter="\t")
+            update_commands.csv_update(
+                args.project, args.tsv, delimiter="\t", test=args.test
+            )
 
     elif args.command == "suppress":
         suppress_commands = SuppressCommands(args.user, args.env_password)
         if args.cid:
-            suppress_commands.suppress(args.project, args.cid)
+            suppress_commands.suppress(args.project, args.cid, test=args.test)
         elif args.csv:
-            suppress_commands.csv_suppress(args.project, args.csv)
+            suppress_commands.csv_suppress(args.project, args.csv, test=args.test)
         elif args.tsv:
-            suppress_commands.csv_suppress(args.project, args.tsv, delimiter="\t")
+            suppress_commands.csv_suppress(
+                args.project, args.tsv, delimiter="\t", test=args.test
+            )
 
     elif args.command == "delete":
         delete_commands = DeleteCommands(args.user, args.env_password)
         if args.cid:
-            delete_commands.delete(args.project, args.cid)
+            delete_commands.delete(args.project, args.cid, test=args.test)
         elif args.csv:
-            delete_commands.csv_delete(args.project, args.csv)
+            delete_commands.csv_delete(args.project, args.csv, test=args.test)
         elif args.tsv:
-            delete_commands.csv_delete(args.project, args.tsv, delimiter="\t")
+            delete_commands.csv_delete(
+                args.project, args.tsv, delimiter="\t", test=args.test
+            )
 
 
 def get_args():

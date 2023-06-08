@@ -30,13 +30,16 @@ class Client:
             "admin_users": f"{self.url}/accounts/admin/users/",
             # data
             "create": lambda x: f"{self.url}/data/create/{x}/",
+            "testcreate": lambda x: f"{self.url}/data/testcreate/{x}/",
             "get": lambda x, y: f"{self.url}/data/get/{x}/{y}/",
             "filter": lambda x: f"{self.url}/data/filter/{x}/",
             "query": lambda x: f"{self.url}/data/query/{x}/",
             "update": lambda x, y: f"{self.url}/data/update/{x}/{y}/",
+            "testupdate": lambda x, y: f"{self.url}/data/testupdate/{x}/{y}/",
             "suppress": lambda x, y: f"{self.url}/data/suppress/{x}/{y}/",
+            "testsuppress": lambda x, y: f"{self.url}/data/testsuppress/{x}/{y}/",
             "delete": lambda x, y: f"{self.url}/data/delete/{x}/{y}/",
-            "testcreate": lambda x: f"{self.url}/data/testcreate/{x}/",
+            "testdelete": lambda x, y: f"{self.url}/data/testdelete/{x}/{y}/",
         }
 
     def request(self, method, **kwargs):
@@ -406,22 +409,32 @@ class Client:
                 yield result
 
     @utils.session_required
-    def update(self, project, cid, fields):
+    def update(self, project, cid, fields, test=False):
         """
         Update a record in the database.
         """
+        if test:
+            endpoint = "testupdate"
+        else:
+            endpoint = "update"
+
         response = self.request(
             method=requests.patch,
-            url=self.endpoints["update"](project, cid),
+            url=self.endpoints[endpoint](project, cid),
             json=fields,
         )
         return response
 
     @utils.session_required
-    def csv_update(self, project, csv_path, delimiter=None):
+    def csv_update(self, project, csv_path, delimiter=None, test=False):
         """
         Use a .csv or .tsv to update records in the database.
         """
+        if test:
+            endpoint = "testupdate"
+        else:
+            endpoint = "update"
+
         if csv_path == "-":
             csv_file = sys.stdin
         else:
@@ -439,7 +452,7 @@ class Client:
 
                 response = self.request(
                     method=requests.patch,
-                    url=self.endpoints["update"](project, cid),
+                    url=self.endpoints[endpoint](project, cid),
                     json=record,
                 )
                 yield response
@@ -448,21 +461,31 @@ class Client:
                 csv_file.close()
 
     @utils.session_required
-    def suppress(self, project, cid):
+    def suppress(self, project, cid, test=False):
         """
         Suppress a record in the database.
         """
+        if test:
+            endpoint = "testsuppress"
+        else:
+            endpoint = "suppress"
+
         response = self.request(
             method=requests.delete,
-            url=self.endpoints["suppress"](project, cid),
+            url=self.endpoints[endpoint](project, cid),
         )
         return response
 
     @utils.session_required
-    def csv_suppress(self, project, csv_path, delimiter=None):
+    def csv_suppress(self, project, csv_path, delimiter=None, test=False):
         """
         Use a .csv or .tsv to suppress records in the database.
         """
+        if test:
+            endpoint = "testsuppress"
+        else:
+            endpoint = "suppress"
+
         if csv_path == "-":
             csv_file = sys.stdin
         else:
@@ -480,7 +503,7 @@ class Client:
 
                 response = self.request(
                     method=requests.delete,
-                    url=self.endpoints["suppress"](project, cid),
+                    url=self.endpoints[endpoint](project, cid),
                 )
                 yield response
         finally:
@@ -488,21 +511,31 @@ class Client:
                 csv_file.close()
 
     @utils.session_required
-    def delete(self, project, cid):
+    def delete(self, project, cid, test=False):
         """
         Delete a record in the database.
         """
+        if test:
+            endpoint = "testdelete"
+        else:
+            endpoint = "delete"
+
         response = self.request(
             method=requests.delete,
-            url=self.endpoints["delete"](project, cid),
+            url=self.endpoints[endpoint](project, cid),
         )
         return response
 
     @utils.session_required
-    def csv_delete(self, project, csv_path, delimiter=None):
+    def csv_delete(self, project, csv_path, delimiter=None, test=False):
         """
         Use a .csv or .tsv to delete records in the database.
         """
+        if test:
+            endpoint = "testdelete"
+        else:
+            endpoint = "delete"
+
         if csv_path == "-":
             csv_file = sys.stdin
         else:
@@ -520,7 +553,7 @@ class Client:
 
                 response = self.request(
                     method=requests.delete,
-                    url=self.endpoints["delete"](project, cid),
+                    url=self.endpoints[endpoint](project, cid),
                 )
                 yield response
         finally:
