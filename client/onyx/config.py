@@ -1,7 +1,7 @@
 import os
 import stat
 import json
-from metadb import utils, settings
+from onyx import utils, settings
 
 
 class Config:

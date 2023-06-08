@@ -5,9 +5,9 @@ import stat
 import json
 import requests
 import argparse
-from metadb import version, utils, settings
-from metadb.config import Config
-from metadb.api import Client
+from onyx import version, utils, settings
+from onyx.config import Config
+from onyx.api import Client
 
 
 class ConfigRequired:
@@ -41,8 +41,8 @@ class ConfigCommands(ConfigRequired):
         create_parser = config_commands_parser.add_parser(
             "create", help="Create a config."
         )
-        create_parser.add_argument("--host", help="METADB host name.")
-        create_parser.add_argument("--port", type=int, help="METADB port number.")
+        create_parser.add_argument("--host", help="Onyx host name.")
+        create_parser.add_argument("--port", type=int, help="Onyx port number.")
         create_parser.add_argument(
             "--config-dir",
             help="Path to the config directory.",
@@ -110,7 +110,7 @@ class ConfigCommands(ConfigRequired):
             "Please create the following environment variable to store the path to your config:"
         )
         print("")
-        print(f"export METADB_CONFIG_DIR={config_dir}")
+        print(f"export ONYX_CONFIG_DIR={config_dir}")
         print("")
         print(
             "IMPORTANT: DO NOT CHANGE PERMISSIONS OF CONFIG FILE(S)".center(
@@ -214,10 +214,10 @@ class LoginCommands(ClientRequired):
 
     @classmethod
     def add_commands(cls, command):
-        login_parser = command.add_parser("login", help="Log in to metadb.")
-        logout_parser = command.add_parser("logout", help="Log out of metadb.")
+        login_parser = command.add_parser("login", help="Log in to onyx.")
+        logout_parser = command.add_parser("logout", help="Log out of onyx.")
         logoutall_parser = command.add_parser(
-            "logoutall", help="Log out of metadb everywhere."
+            "logoutall", help="Log out of onyx everywhere."
         )
 
     def login(self, username, env_password):
@@ -686,7 +686,7 @@ def get_args():
         "-p",
         "--env-password",
         action="store_true",
-        help="When a password is required, the client will use the env variable with format 'METADB_<USER>_PASSWORD'.",
+        help="When a password is required, the client will use the env variable with format 'ONYX_<USER>_PASSWORD'.",
     )
     parser = argparse.ArgumentParser(parents=[user_parser])
     parser.add_argument(
