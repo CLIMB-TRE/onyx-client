@@ -351,8 +351,7 @@ class Client:
             url=self.endpoints["get"](project, cid),
             params={"scope": scope},
         )
-        utils.raise_for_status(response)
-        return response.json()["data"]["record"]
+        return response
 
     @utils.session_required
     def filter(self, project, fields=None, scope=None):
@@ -373,12 +372,13 @@ class Client:
                 url=_next,
                 params=fields,
             )
-            utils.raise_for_status(response)
-            _next = response.json()["data"]["next"]
-            fields = None
+            yield response
 
-            for result in response.json()["data"]["records"]:
-                yield result
+            fields = None
+            if response.ok:
+                _next = response.json()["data"]["next"]
+            else:
+                _next = None
 
     @utils.session_required
     def query(self, project, query=None, scope=None):
@@ -401,12 +401,13 @@ class Client:
                 json=query,
                 params=fields,
             )
-            utils.raise_for_status(response)
-            _next = response.json()["data"]["next"]
-            fields = None
+            yield response
 
-            for result in response.json()["data"]["records"]:
-                yield result
+            fields = None
+            if response.ok:
+                _next = response.json()["data"]["next"]
+            else:
+                _next = None
 
     @utils.session_required
     def update(self, project, cid, fields, test=False):

@@ -173,3 +173,11 @@ def execute_uploads(uploads):
         print(f"Attempted: {attempted}")
         print(f"Successes: {successes}")
         print(f"Failures: {failures}")
+
+
+def iterate(responses):
+    for response in responses:
+        raise_for_status(response)
+
+        for result in response.json()["data"]["records"]:
+            yield result

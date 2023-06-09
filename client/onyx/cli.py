@@ -401,11 +401,7 @@ class GetCommands(SessionRequired):
         if scope:
             scope = utils.construct_scope_list(scope)
 
-        response = self.client.request(
-            method=requests.get,
-            url=self.client.endpoints["get"](project, cid),
-            params={"scope": scope},
-        )
+        response = self.client.get(project, cid, scope=scope)
         utils.print_response(response)
 
 
@@ -431,7 +427,7 @@ class FilterCommands(SessionRequired):
         if scope:
             scope = utils.construct_scope_list(scope)
 
-        results = self.client.filter(project, fields, scope=scope)
+        results = utils.iterate(self.client.filter(project, fields, scope=scope))
 
         try:
             result = next(results, None)
