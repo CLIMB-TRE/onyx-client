@@ -5,9 +5,9 @@ import stat
 import json
 import requests
 import argparse
-from onyx import version, utils, settings
-from onyx.config import Config
-from onyx.api import Client
+from . import version, utils, settings
+from .config import Config
+from .api import Client
 
 
 class ConfigRequired:
@@ -109,7 +109,7 @@ class ConfigCommands(ConfigRequired):
             "Please create the following environment variable to store the path to your config:"
         )
         print("")
-        print(f"export ONYX_CONFIG_DIR={os.path.abspath(config_dir)}")
+        print(f"export ONYX_CLIENT_CONFIG={os.path.abspath(config_dir)}")
         print("")
         print(
             "IMPORTANT: DO NOT CHANGE PERMISSIONS OF CONFIG FILE(S)".center(
@@ -129,8 +129,11 @@ class ConfigCommands(ConfigRequired):
         """
         Set the default user in the config.
         """
+        if username is None:
+            username = utils.get_input("username")
+
         self.config.set_default_user(username)
-        print(f"The user has been set as the default user.")
+        print(f"User '{username}' has been set as the default user.")
 
     def get_default(self):
         """
@@ -143,8 +146,11 @@ class ConfigCommands(ConfigRequired):
         """
         Add user to the config.
         """
+        if username is None:
+            username = utils.get_input("username")
+
         self.config.add_user(username)
-        print("The user has been added to the config.")
+        print(f"User '{username}' has been added to the config.")
 
     def users(self):
         """
@@ -200,10 +206,11 @@ class RegisterCommands(ClientRequired):
                 ).upper()
 
             if check == "Y":
-                self.client.config.add_user(registration.json()["data"]["username"])
-                print("The user has been added to the config.")
+                username = registration.json()["data"]["username"]
+                self.client.config.add_user(username)
+                print(f"User '{username}' has been added to the config.")
             else:
-                print("The user has not been added to the config.")
+                print(f"User '{username}' has not been added to the config.")
 
 
 class LoginCommands(ClientRequired):

@@ -5,8 +5,8 @@ import json
 import requests
 import concurrent.futures
 from django_query_tools.client import F
-from onyx import utils, settings
-from onyx.config import Config
+from . import utils, settings
+from .config import Config
 
 
 class Client:

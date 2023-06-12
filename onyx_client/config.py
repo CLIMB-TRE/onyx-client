@@ -1,7 +1,7 @@
 import os
 import stat
 import json
-from onyx import utils, settings
+from . import settings
 
 
 class Config:
@@ -46,7 +46,6 @@ class Config:
                 raise FileNotFoundError(
                     f"Config file does not exist in directory '{dir_path}'"
                 )
-
         else:
             # Find the config directory
             dir_path = os.environ[settings.CONFIG_DIR_ENV_VAR]
@@ -87,13 +86,10 @@ class Config:
         ) as token_file:
             json.dump({"token": token, "expiry": expiry}, token_file, indent=4)
 
-    def add_user(self, username=None):
+    def add_user(self, username):
         """
         Add user to the config.
         """
-        if username is None:
-            username = utils.get_input("username")
-
         # Username is case-insensitive
         username = username.lower()
 
@@ -145,13 +141,10 @@ class Config:
         # Read-write for OS user only
         os.chmod(token_path, stat.S_IRUSR | stat.S_IWUSR)
 
-    def set_default_user(self, username=None):
+    def set_default_user(self, username):
         """
         Set the default user in the config.
         """
-        if username is None:
-            username = utils.get_input("username")
-
         # Username is case-insensitive
         username = username.lower()
 
