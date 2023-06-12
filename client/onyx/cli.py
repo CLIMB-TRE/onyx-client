@@ -104,13 +104,12 @@ class ConfigCommands(ConfigRequired):
         # Read-write for OS user only
         os.chmod(config_file, stat.S_IRUSR | stat.S_IWUSR)
 
-        print("")
         print("Config created successfully.")
         print(
             "Please create the following environment variable to store the path to your config:"
         )
         print("")
-        print(f"export ONYX_CONFIG_DIR={config_dir}")
+        print(f"export ONYX_CONFIG_DIR={os.path.abspath(config_dir)}")
         print("")
         print(
             "IMPORTANT: DO NOT CHANGE PERMISSIONS OF CONFIG FILE(S)".center(

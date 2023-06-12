@@ -82,7 +82,9 @@ class Config:
                     )
 
     def write_token(self, username, token, expiry):
-        with open(self.users[username]["token"], "w") as token_file:
+        with open(
+            os.path.join(self.dir_path, self.users[username]["token"]), "w"
+        ) as token_file:
             json.dump({"token": token, "expiry": expiry}, token_file, indent=4)
 
     def add_user(self, username=None):
@@ -95,10 +97,9 @@ class Config:
         # Username is case-insensitive
         username = username.lower()
 
-        token_path = os.path.abspath(
-            os.path.join(self.dir_path, username + settings.TOKENS_FILE_POSTFIX)
-        )
-        self.users[username] = {"token": token_path}
+        token_file_name = username + settings.TOKENS_FILE_POSTFIX
+        token_path = os.path.join(self.dir_path, token_file_name)
+        self.users[username] = {"token": token_file_name}
 
         # Reload the config incase its changed
         # Not perfect but better than just blanket overwriting the file

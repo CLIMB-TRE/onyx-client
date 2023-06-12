@@ -115,7 +115,9 @@ class Client:
         self.env_password = env_password
 
         # Open the token file for the user and assign the current token, and its expiry, to the client
-        with open(self.config.users[username]["token"]) as token_file:
+        with open(
+            os.path.join(self.config.dir_path, self.config.users[username]["token"])
+        ) as token_file:
             token_data = json.load(token_file)
             self.token = token_data.get("token")
             self.expiry = token_data.get("expiry")
