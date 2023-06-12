@@ -18,7 +18,7 @@ $ conda activate onyx-client
 Install the client into the environment:
 
 ```
-$ pip install ./onyx-client
+$ pip install .
 ```
 
 Check it works:
