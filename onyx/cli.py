@@ -92,7 +92,9 @@ class ConfigCommands(ConfigRequired):
         config_file = os.path.join(config_dir, settings.CONFIG_FILE_NAME)
 
         if os.path.isfile(config_file):
-            raise FileExistsError(f"Config file already exists: {config_file}")
+            print(f"Config file already exists: {os.path.abspath(config_file)}")
+            print("If you wish to overwrite this config, please delete this file.")
+            exit()
 
         with open(config_file, "w") as config:
             json.dump(
