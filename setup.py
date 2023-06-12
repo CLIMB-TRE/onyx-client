@@ -8,4 +8,8 @@ setuptools.setup(
     version=__version__,  # type: ignore
     packages=setuptools.find_packages(),
     entry_points={"console_scripts": "onyx = onyx_client.cli:main"},
+    install_requires=[
+        "requests",
+        "django-query-tools",
+    ],
 )
