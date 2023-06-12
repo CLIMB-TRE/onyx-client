@@ -1,0 +1,8 @@
+name: onyx-client
+channels:
+  - defaults
+dependencies:
+  - pip
+  - pip:
+    - requests
+    - django-query-tools
