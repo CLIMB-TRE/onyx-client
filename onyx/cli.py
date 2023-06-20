@@ -207,8 +207,9 @@ class RegisterCommands(ClientRequired):
                     "Would you like to add this account to the config? [y/n]: "
                 ).upper()
 
+            username = registration.json()["data"]["username"]
+
             if check == "Y":
-                username = registration.json()["data"]["username"]
                 self.client.config.add_user(username)
                 print(f"User '{username}' has been added to the config.")
             else:
@@ -371,6 +372,7 @@ class CreateCommands(SessionRequired):
         create_parser.add_argument(
             "--test", action="store_true", help="Run the command as a test."
         )
+        create_parser.add_argument("--multithreaded", action="store_true")
 
     def create(self, project, fields, test=False):
         """
@@ -380,12 +382,18 @@ class CreateCommands(SessionRequired):
         creation = self.client.create(project, fields, test=test)
         utils.print_response(creation)
 
-    def csv_create(self, project, csv_path, delimiter=None, test=False):
+    def csv_create(
+        self, project, csv_path, delimiter=None, multithreaded=False, test=False
+    ):
         """
         Post new records to the database, using a csv or tsv.
         """
         creations = self.client.csv_create(
-            project, csv_path, delimiter=delimiter, test=test
+            project,
+            csv_path,
+            delimiter=delimiter,
+            multithreaded=multithreaded,
+            test=test,
         )
         utils.execute_uploads(creations)
 
@@ -578,6 +586,25 @@ class DeleteCommands(SessionRequired):
         utils.execute_uploads(deletions)
 
 
+class ProjectInformationCommands(SessionRequired):
+    """
+    Commands for viewing information regarding a project.
+    """
+
+    @classmethod
+    def add_commands(cls, command):
+        choices_parser = command.add_parser("choices", help="View choices for a field.")
+        choices_parser.add_argument("project")
+        choices_parser.add_argument("field")
+
+    def choices(self, project, field):
+        """
+        View choices for a field.
+        """
+        choices = self.client.choices(project, field)
+        utils.print_response(choices)
+
+
 def run(args):
     if args.command == "config":
         if args.config_command == "create":
@@ -631,10 +658,19 @@ def run(args):
         if args.field:
             create_commands.create(args.project, args.field, test=args.test)
         elif args.csv:
-            create_commands.csv_create(args.project, args.csv, test=args.test)
+            create_commands.csv_create(
+                args.project,
+                args.csv,
+                multithreaded=args.multithreaded,
+                test=args.test,
+            )
         elif args.tsv:
             create_commands.csv_create(
-                args.project, args.tsv, delimiter="\t", test=args.test
+                args.project,
+                args.tsv,
+                delimiter="\t",
+                multithreaded=args.multithreaded,
+                test=args.test,
             )
 
     elif args.command == "get":
@@ -678,6 +714,11 @@ def run(args):
                 args.project, args.tsv, delimiter="\t", test=args.test
             )
 
+    elif args.command in ["choices"]:
+        project_info_commands = ProjectInformationCommands(args.user, args.env_password)
+        if args.command == "choices":
+            project_info_commands.choices(args.project, args.field)
+
 
 def get_args():
     user_parser = argparse.ArgumentParser(add_help=False)
@@ -712,7 +753,11 @@ def get_args():
     UpdateCommands.add_commands(command)
     SuppressCommands.add_commands(command)
     DeleteCommands.add_commands(command)
+    ProjectInformationCommands.add_commands(command)
     args = parser.parse_args()
+
+    if args.command == "create" and args.multithreaded and not (args.csv or args.tsv):
+        parser.error("one of the arguments --csv --tsv is required")
 
     if args.command == "update" and (args.cid and not args.field):
         parser.error("the following arguments are required: -f/--field")

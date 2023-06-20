@@ -40,6 +40,7 @@ class Client:
             "testsuppress": lambda x, y: f"{self.url}/data/testsuppress/{x}/{y}/",
             "delete": lambda x, y: f"{self.url}/data/delete/{x}/{y}/",
             "testdelete": lambda x, y: f"{self.url}/data/testdelete/{x}/{y}/",
+            "choices": lambda x, y: f"{self.url}/data/choices/{x}/{y}/",
         }
 
     def request(self, method, **kwargs):
@@ -281,7 +282,13 @@ class Client:
 
     @utils.session_required
     def csv_create(
-        self, project, csv_path, delimiter=None, multithreaded=False, test=False
+        self,
+        project,
+        csv_path=None,
+        csv_file=None,
+        delimiter=None,
+        multithreaded=False,
+        test=False,
     ):
         """
         Post a .csv or .tsv containing records to the database.
@@ -291,10 +298,21 @@ class Client:
         else:
             endpoint = "create"
 
-        if csv_path == "-":
-            csv_file = sys.stdin
+        if multithreaded and not self.env_password:
+            raise Exception("Multithreaded upload requires env_password = True")
+
+        if csv_path and csv_file:
+            raise Exception("Cannot provide both csv_path and csv_file")
+
+        if csv_path:
+            if csv_path == "-":
+                csv_file = sys.stdin
+            else:
+                csv_file = open(csv_path)
         else:
-            csv_file = open(csv_path)
+            if not csv_file:
+                raise Exception("Must provide either csv_path or csv_file")
+
         try:
             if delimiter is None:
                 reader = csv.DictReader(csv_file)
@@ -313,11 +331,6 @@ class Client:
 
                 if multithreaded:
                     # Bit of an experimental one
-                    if not self.env_password:
-                        raise Exception(
-                            "To use multithreaded upload, set env_password = True on the client"
-                        )
-
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         futures = [
                             executor.submit(
@@ -340,7 +353,8 @@ class Client:
                         )
                         yield response
         finally:
-            if csv_file is not sys.stdin:
+            # Close the file, only if it was opened within this function
+            if csv_path and csv_file is not sys.stdin:
                 csv_file.close()
 
     @utils.session_required
@@ -562,6 +576,17 @@ class Client:
         finally:
             if csv_file is not sys.stdin:
                 csv_file.close()
+
+    @utils.session_required
+    def choices(self, project, field):
+        """
+        View choices for a field.
+        """
+        response = self.request(
+            method=requests.get,
+            url=self.endpoints["choices"](project, field),
+        )
+        return response
 
 
 class Session:

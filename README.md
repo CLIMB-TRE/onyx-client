@@ -42,6 +42,7 @@ positional arguments:
     update              Update metadata records.
     suppress            Suppress metadata records.
     delete              Delete metadata records.
+    choices             View choices for a field.
 
 options:
   -h, --help            show this help message and exit
@@ -52,7 +53,7 @@ options:
 
 ## Create a config
 ```
-$ onyx config create
+$ onyx config create --host <host> --port <port> --config-dir <config-directory>
 ```
 
 ## Register a user
@@ -92,7 +93,7 @@ $ onyx create <project> --tsv <tsv>
 from onyx import Session
 
 with Session() as client:
-    # Create from a csv of records
+    # Create from a csv of records, by providing the path
     responses = client.csv_create(
         "project",
         csv_path="/path/to/file.csv",
@@ -102,6 +103,20 @@ with Session() as client:
     # Iterating through the responses triggers the uploads
     for response in responses:
         print(response)
+
+    # Create from a csv of records, by providing a file handle
+
+    with open("/path/to/file.csv") as csv_file:
+        responses = client.csv_create(
+            "project",
+            csv_file=csv_file,
+            # delimiter="\t", # For uploading from a tsv
+        )
+
+        # Iterating through the responses triggers the uploads
+        for response in responses:
+            print(response)
+
 ```
 
 ## Retrieve data
