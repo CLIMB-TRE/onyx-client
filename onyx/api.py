@@ -15,32 +15,53 @@ class Client:
         Initialise the client with a given config.
         """
         self.config = config
-        self.url = f"http://{self.config.host}:{self.config.port}"
         self.endpoints = {
             # accounts
-            "register": f"{self.url}/accounts/register/",
-            "login": f"{self.url}/accounts/login/",
-            "logout": f"{self.url}/accounts/logout/",
-            "logoutall": f"{self.url}/accounts/logoutall/",
-            "site_approve": lambda x: f"{self.url}/accounts/site/approve/{x}/",
-            "site_waiting": f"{self.url}/accounts/site/waiting/",
-            "site_users": f"{self.url}/accounts/site/users/",
-            "admin_approve": lambda x: f"{self.url}/accounts/admin/approve/{x}/",
-            "admin_waiting": f"{self.url}/accounts/admin/waiting/",
-            "admin_users": f"{self.url}/accounts/admin/users/",
+            "register": os.path.join(self.config.domain, "accounts/register/"),
+            "login": os.path.join(self.config.domain, "accounts/login/"),
+            "logout": os.path.join(self.config.domain, "accounts/logout/"),
+            "logoutall": os.path.join(self.config.domain, "accounts/logoutall/"),
+            "site_approve": lambda x: os.path.join(
+                self.config.domain, f"accounts/site/approve/{x}/"
+            ),
+            "site_waiting": os.path.join(self.config.domain, "accounts/site/waiting/"),
+            "site_users": os.path.join(self.config.domain, "accounts/site/users/"),
+            "admin_approve": lambda x: os.path.join(
+                self.config.domain, f"accounts/admin/approve/{x}/"
+            ),
+            "admin_waiting": os.path.join(
+                self.config.domain, "accounts/admin/waiting/"
+            ),
+            "admin_users": os.path.join(self.config.domain, "accounts/admin/users/"),
             # data
-            "create": lambda x: f"{self.url}/data/create/{x}/",
-            "testcreate": lambda x: f"{self.url}/data/testcreate/{x}/",
-            "get": lambda x, y: f"{self.url}/data/get/{x}/{y}/",
-            "filter": lambda x: f"{self.url}/data/filter/{x}/",
-            "query": lambda x: f"{self.url}/data/query/{x}/",
-            "update": lambda x, y: f"{self.url}/data/update/{x}/{y}/",
-            "testupdate": lambda x, y: f"{self.url}/data/testupdate/{x}/{y}/",
-            "suppress": lambda x, y: f"{self.url}/data/suppress/{x}/{y}/",
-            "testsuppress": lambda x, y: f"{self.url}/data/testsuppress/{x}/{y}/",
-            "delete": lambda x, y: f"{self.url}/data/delete/{x}/{y}/",
-            "testdelete": lambda x, y: f"{self.url}/data/testdelete/{x}/{y}/",
-            "choices": lambda x, y: f"{self.url}/data/choices/{x}/{y}/",
+            "create": lambda x: os.path.join(self.config.domain, f"data/create/{x}/"),
+            "testcreate": lambda x: os.path.join(
+                self.config.domain, f"data/testcreate/{x}/"
+            ),
+            "get": lambda x, y: os.path.join(self.config.domain, f"data/get/{x}/{y}/"),
+            "filter": lambda x: os.path.join(self.config.domain, f"data/filter/{x}/"),
+            "query": lambda x: os.path.join(self.config.domain, f"data/query/{x}/"),
+            "update": lambda x, y: os.path.join(
+                self.config.domain, f"data/update/{x}/{y}/"
+            ),
+            "testupdate": lambda x, y: os.path.join(
+                self.config.domain, f"data/testupdate/{x}/{y}/"
+            ),
+            "suppress": lambda x, y: os.path.join(
+                self.config.domain, f"data/suppress/{x}/{y}/"
+            ),
+            "testsuppress": lambda x, y: os.path.join(
+                self.config.domain, f"data/testsuppress/{x}/{y}/"
+            ),
+            "delete": lambda x, y: os.path.join(
+                self.config.domain, f"data/delete/{x}/{y}/"
+            ),
+            "testdelete": lambda x, y: os.path.join(
+                self.config.domain, f"data/testdelete/{x}/{y}/"
+            ),
+            "choices": lambda x, y: os.path.join(
+                self.config.domain, f"data/choices/{x}/{y}/"
+            ),
         }
 
     def request(self, method, **kwargs):

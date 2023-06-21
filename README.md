@@ -53,7 +53,7 @@ options:
 
 ## Create a config
 ```
-$ onyx config create --host <host> --port <port> --config-dir <config-directory>
+$ onyx config create --domain https://onyx.domain.name --config-dir /path/to/config/
 ```
 
 ## Register a user

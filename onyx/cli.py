@@ -41,8 +41,7 @@ class ConfigCommands(ConfigRequired):
         create_parser = config_commands_parser.add_parser(
             "create", help="Create a config."
         )
-        create_parser.add_argument("--host", help="Onyx host name.")
-        create_parser.add_argument("--port", type=int, help="Onyx port number.")
+        create_parser.add_argument("--domain", help="Onyx domain name.")
         create_parser.add_argument(
             "--config-dir",
             help="Path to the config directory.",
@@ -68,15 +67,12 @@ class ConfigCommands(ConfigRequired):
         )
 
     @classmethod
-    def create(cls, host=None, port=None, config_dir=None):
+    def create(cls, domain=None, config_dir=None):
         """
         Generate the config directory and config file.
         """
-        if host is None:
-            host = utils.get_input("host")
-
-        if port is None:
-            port = utils.get_input("port", type=int)
+        if domain is None:
+            domain = utils.get_input("domain")
 
         if config_dir is None:
             config_dir = utils.get_input("config directory")
@@ -98,7 +94,7 @@ class ConfigCommands(ConfigRequired):
 
         with open(config_file, "w") as config:
             json.dump(
-                {"host": host, "port": port, "users": {}, "default_user": None},
+                {"domain": domain, "users": {}, "default_user": None},
                 config,
                 indent=4,
             )
@@ -608,9 +604,7 @@ class ProjectInformationCommands(SessionRequired):
 def run(args):
     if args.command == "config":
         if args.config_command == "create":
-            ConfigCommands.create(
-                host=args.host, port=args.port, config_dir=args.config_dir
-            )
+            ConfigCommands.create(domain=args.domain, config_dir=args.config_dir)
         else:
             config_commands = ConfigCommands()
             if args.config_command == "setdefault":

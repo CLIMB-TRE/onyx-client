@@ -24,8 +24,7 @@ class Config:
         # Set up the config object
         self.dir_path = dir_path
         self.file_path = file_path
-        self.host = config["host"]
-        self.port = config["port"]
+        self.domain = config["domain"]
         self.users = config["users"]
         self.default_user = config["default_user"]
 
@@ -111,8 +110,7 @@ class Config:
         self.validate_config(current_config)
 
         # Update the config
-        self.host = current_config["host"]
-        self.port = current_config["port"]
+        self.domain = current_config["domain"]
         self.users.update(current_config["users"])
 
         # If there is only one user in the config, make them the default_user
@@ -125,8 +123,7 @@ class Config:
         with open(self.file_path, "w") as config_file:
             json.dump(
                 {
-                    "host": self.host,
-                    "port": self.port,
+                    "domain": self.domain,
                     "users": self.users,
                     "default_user": self.default_user,
                 },
@@ -158,8 +155,7 @@ class Config:
         with open(self.file_path, "w") as config_file:
             json.dump(
                 {
-                    "host": self.host,
-                    "port": self.port,
+                    "domain": self.domain,
                     "users": self.users,
                     "default_user": self.default_user,
                 },

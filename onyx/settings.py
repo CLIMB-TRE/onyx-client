@@ -5,9 +5,9 @@ CONFIG_DIR_ENV_VAR = "ONYX_CLIENT_CONFIG"  # Name of environment variable that s
 PASSWORD_ENV_VAR_PREFIX = "ONYX_"
 PASSWORD_ENV_VAR_POSTFIX = "_PASSWORD"
 TOKENS_FILE_POSTFIX = "_token.json"
-CONFIG_FIELDS = ["host", "port", "users", "default_user"]
+CONFIG_FIELDS = ["domain", "users", "default_user"]
 USER_FIELDS = ["token"]
 MESSAGE_BAR_WIDTH = 100
 
-# Path to config directory as an option?
+# TODO: Path to config directory as an option?
 # CONFIG_PATH = "/path/to/config"
