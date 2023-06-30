@@ -126,6 +126,18 @@ class OnyxClient:
             self.token = token_data.get("token")
             self.expiry = token_data.get("expiry")
 
+        self._request = requests.request
+
+    def __enter__(self):
+        self.session = requests.Session()
+        self._request = self.session.request
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.session.close()
+        del self.session
+        self._request = requests.request
+
     def get_password(self):
         if self.env_password:
             # If the password is meant to be an env var, grab it.
@@ -149,10 +161,11 @@ class OnyxClient:
         kwargs.setdefault("headers", {}).update(
             {"Authorization": f"Token {self.token}"}
         )
-        method_response = requests.request(method, **kwargs)
+        method_response = self._request(method, **kwargs)
 
         if method_response.status_code == 401 and self.env_password:
-            login_response = requests.post(
+            login_response = self._request(
+                "post",
                 self.ENDPOINTS["login"](self.config.domain),
                 auth=(self.username, self.get_password()),
             )
@@ -161,7 +174,8 @@ class OnyxClient:
                 self.token = login_response.json()["data"]["token"]
                 self.expiry = login_response.json()["data"]["expiry"]
 
-                # TODO: Is there a potential infinite loop here
+                # TODO: There is a potential infinite loop here
+                # In the case where a valid-authed method somehow returns 401
                 return self.request(method, **kwargs)
 
             login_response.raise_for_status()
@@ -179,7 +193,8 @@ class OnyxClient:
         password = self.get_password()
 
         # Log in
-        response = requests.post(
+        response = self._request(
+            "post",
             auth=(self.username, password),
             url=self.ENDPOINTS["login"](self.config.domain),
         )
@@ -357,7 +372,7 @@ class OnyxClient:
                         futures = [
                             executor.submit(
                                 self.request,
-                                requests.post,
+                                "post",
                                 url=self.ENDPOINTS[endpoint](
                                     self.config.domain, project
                                 ),
@@ -611,33 +626,3 @@ class OnyxClient:
             url=self.ENDPOINTS["choices"](self.config.domain, project, field),
         )
         return response
-
-
-class OnyxSession:
-    def __init__(
-        self,
-        username=None,
-        env_password=False,
-        config_dir=None,
-        persist=True,
-    ):
-        self.session = requests.Session()  # TODO
-        self.config = OnyxConfig(dir_path=config_dir)
-        self.client = OnyxClient(
-            self.config,
-            username=username,
-            env_password=env_password,
-        )
-        self.persist = persist
-
-    def __enter__(self):
-        if not self.persist:
-            self.client.login().raise_for_status()
-
-        return self.client
-
-    def __exit__(self, type, value, traceback):
-        self.session.close()
-
-        if not self.persist:
-            self.client.logout()

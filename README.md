@@ -67,9 +67,9 @@ $ onyx register
 $ onyx create <project> --field <name> <value> --field <name> <value> ...
 ```
 ```python
-from onyx import OnyxSession
+from onyx import OnyxClient
 
-with OnyxSession() as client:
+with OnyxClient() as client:
     # Create a single record
     response = client.create(
         "project",
@@ -90,9 +90,9 @@ $ onyx create <project> --csv <csv>
 $ onyx create <project> --tsv <tsv>
 ```
 ```python
-from onyx import OnyxSession
+from onyx import OnyxClient
 
-with OnyxSession() as client:
+with OnyxClient() as client:
     # Create from a csv of records, by providing the path
     responses = client.csv_create(
         "project",
@@ -125,9 +125,9 @@ with OnyxSession() as client:
 $ onyx get <project> <cid>
 ```
 ```python
-from onyx import OnyxSession 
+from onyx import OnyxClient 
 
-with OnyxSession() as client:
+with OnyxClient() as client:
     response = client.get("project", "cid")
 
     # Print the response
@@ -139,10 +139,10 @@ with OnyxSession() as client:
 $ onyx filter <project> --field <name> <value> --field <name> <value> ...
 ```
 ```python
-from onyx import OnyxSession
+from onyx import OnyxClient
 
 # Retrieve all records matching ALL of the field requirements
-with OnyxSession() as client:
+with OnyxClient() as client:
     responses = client.filter(
         "project",
         fields={
@@ -161,9 +161,9 @@ with OnyxSession() as client:
 
 #### The `query` endpoint 
 ```python
-from onyx import OnyxSession, F
+from onyx import OnyxClient, F
 
-with OnyxSession() as client:
+with OnyxClient() as client:
     # The python bitwise operators can be used in a query.
     # These are:
     # AND: &
@@ -229,9 +229,9 @@ Most of these lookups (excluding `ne`, which is a custom lookup meaning `not equ
 $ onyx update <project> <cid> --field <name> <value> --field <name> <value> ...
 ```
 ```python
-from onyx import OnyxSession
+from onyx import OnyxClient
 
-with OnyxSession() as client:
+with OnyxClient() as client:
     response = client.update(
         "project",
         "cid",
@@ -252,9 +252,9 @@ $ onyx update <project> --csv <csv>
 $ onyx update <project> --tsv <tsv>
 ```
 ```python
-from onyx import OnyxSession
+from onyx import OnyxClient
 
-with OnyxSession() as client:
+with OnyxClient() as client:
     # Update from a csv of records
     responses = client.csv_update(
         "project",
@@ -273,9 +273,9 @@ with OnyxSession() as client:
 $ onyx suppress <project> <cid>
 ```
 ```python
-from onyx import OnyxSession 
+from onyx import OnyxClient 
 
-with OnyxSession() as client:
+with OnyxClient() as client:
     response = client.suppress("project", "cid")
     print(response)
 ```
@@ -286,9 +286,9 @@ $ onyx suppress <project> --csv <csv>
 $ onyx suppress <project> --tsv <tsv>
 ```
 ```python
-from onyx import OnyxSession
+from onyx import OnyxClient
 
-with OnyxSession() as client:
+with OnyxClient() as client:
     # Suppress from a csv of records
     responses = client.csv_suppress(
         "project",
@@ -307,9 +307,9 @@ with OnyxSession() as client:
 $ onyx delete <project> <cid>
 ```
 ```python
-from onyx import OnyxSession 
+from onyx import OnyxClient 
 
-with OnyxSession() as client:
+with OnyxClient() as client:
     response = client.delete("project", "cid")
     print(response)
 ```
@@ -320,9 +320,9 @@ $ onyx delete <project> --csv <csv>
 $ onyx delete <project> --tsv <tsv>
 ```
 ```python
-from onyx import OnyxSession
+from onyx import OnyxClient
 
-with OnyxSession() as client:
+with OnyxClient() as client:
     # Delete from a csv of records
     responses = client.csv_delete(
         "project",
