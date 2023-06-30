@@ -6,25 +6,23 @@ import json
 import requests
 import argparse
 from . import version, utils, settings
-from .config import Config
-from .api import Client
+from .config import OnyxConfig
+from .api import OnyxClient
 
 
 class ConfigRequired:
     def __init__(self):
-        self.config = Config()
+        self.config = OnyxConfig()
 
 
 class ClientRequired(ConfigRequired):
-    def __init__(self):
-        super().__init__()
-        self.client = Client(self.config)
-
-
-class SessionRequired(ClientRequired):
     def __init__(self, username, env_password):
         super().__init__()
-        self.client.continue_session(username=username, env_password=env_password)
+        self.client = OnyxClient(
+            config=self.config,
+            username=username,
+            env_password=env_password,
+        )
 
 
 class ConfigCommands(ConfigRequired):
@@ -159,7 +157,7 @@ class ConfigCommands(ConfigRequired):
             print(user)
 
 
-class RegisterCommands(ClientRequired):
+class RegisterCommands(ConfigRequired):
     """
     Commands involving registration.
     """
@@ -185,7 +183,8 @@ class RegisterCommands(ClientRequired):
             password = utils.get_input("password", password=True)
             password2 = utils.get_input("password (again)", password=True)
 
-        registration = self.client.register(
+        registration = OnyxClient.register(
+            self.config,
             first_name=first_name,
             last_name=last_name,
             email=email,
@@ -206,7 +205,7 @@ class RegisterCommands(ClientRequired):
             username = registration.json()["data"]["username"]
 
             if check == "Y":
-                self.client.config.add_user(username)
+                self.config.add_user(username)
                 print(f"User '{username}' has been added to the config.")
             else:
                 print(f"User '{username}' has not been added to the config.")
@@ -225,34 +224,29 @@ class LoginCommands(ClientRequired):
             "logoutall", help="Log out of onyx everywhere."
         )
 
-    def login(self, username, env_password):
+    def login(self):
         """
         Log in as a user.
         """
-        response = self.client.login(
-            username=username,
-            env_password=env_password,
-        )
+        response = self.client.login()
         utils.print_response(response, status_only=True)
 
-    def logout(self, username, env_password):
+    def logout(self):
         """
         Log out the current user.
         """
-        self.client.continue_session(username=username, env_password=env_password)
         response = self.client.logout()
         utils.print_response(response, status_only=True)
 
-    def logoutall(self, username, env_password):
+    def logoutall(self):
         """
         Log out the current user everywhere.
         """
-        self.client.continue_session(username=username, env_password=env_password)
         response = self.client.logoutall()
         utils.print_response(response, status_only=True)
 
 
-class SiteCommands(SessionRequired):
+class SiteCommands(ClientRequired):
     """
     Site specific commands.
     """
@@ -298,7 +292,7 @@ class SiteCommands(SessionRequired):
         utils.print_response(users)
 
 
-class AdminCommands(SessionRequired):
+class AdminCommands(ClientRequired):
     """
     Admin specific commands.
     """
@@ -344,7 +338,7 @@ class AdminCommands(SessionRequired):
         utils.print_response(users)
 
 
-class CreateCommands(SessionRequired):
+class CreateCommands(ClientRequired):
     """
     Commands for creating records.
     """
@@ -394,7 +388,7 @@ class CreateCommands(SessionRequired):
         utils.execute_uploads(creations)
 
 
-class GetCommands(SessionRequired):
+class GetCommands(ClientRequired):
     """
     Commands for getting a record.
     """
@@ -417,7 +411,7 @@ class GetCommands(SessionRequired):
         utils.print_response(response)
 
 
-class FilterCommands(SessionRequired):
+class FilterCommands(ClientRequired):
     """
     Commands for filtering records.
     """
@@ -456,7 +450,7 @@ class FilterCommands(SessionRequired):
             pass
 
 
-class UpdateCommands(SessionRequired):
+class UpdateCommands(ClientRequired):
     """
     Commands for updating records.
     """
@@ -500,7 +494,7 @@ class UpdateCommands(SessionRequired):
         utils.execute_uploads(updates)
 
 
-class SuppressCommands(SessionRequired):
+class SuppressCommands(ClientRequired):
     """
     Commands for suppressing (soft deleting) records.
     """
@@ -542,7 +536,7 @@ class SuppressCommands(SessionRequired):
         utils.execute_uploads(suppressions)
 
 
-class DeleteCommands(SessionRequired):
+class DeleteCommands(ClientRequired):
     """
     Commands for deleting records.
     """
@@ -582,7 +576,7 @@ class DeleteCommands(SessionRequired):
         utils.execute_uploads(deletions)
 
 
-class ProjectInformationCommands(SessionRequired):
+class ProjectInformationCommands(ClientRequired):
     """
     Commands for viewing information regarding a project.
     """
@@ -616,8 +610,12 @@ def run(args):
             elif args.config_command == "users":
                 config_commands.users()
 
+    elif args.command == "register":
+        register_commands = RegisterCommands()
+        register_commands.register()
+
     elif args.command == "site":
-        site_commands = SiteCommands(args.user, args.env_password)
+        site_commands = SiteCommands(args.user, args.envpass)
         if args.site_command == "approve":
             site_commands.approve(args.username)
         elif args.site_command == "waiting":
@@ -626,7 +624,7 @@ def run(args):
             site_commands.users()
 
     elif args.command == "admin":
-        admin_commands = AdminCommands(args.user, args.env_password)
+        admin_commands = AdminCommands(args.user, args.envpass)
         if args.admin_command == "approve":
             admin_commands.approve(args.username)
         elif args.admin_command == "waiting":
@@ -634,21 +632,17 @@ def run(args):
         elif args.admin_command == "allusers":
             admin_commands.allusers()
 
-    elif args.command == "register":
-        register_commands = RegisterCommands()
-        register_commands.register()
-
     elif args.command in ["login", "logout", "logoutall"]:
-        login_commands = LoginCommands()
+        login_commands = LoginCommands(args.user, args.envpass)
         if args.command == "login":
-            login_commands.login(args.user, args.env_password)
+            login_commands.login()
         elif args.command == "logout":
-            login_commands.logout(args.user, args.env_password)
+            login_commands.logout()
         elif args.command == "logoutall":
-            login_commands.logoutall(args.user, args.env_password)
+            login_commands.logoutall()
 
     elif args.command == "create":
-        create_commands = CreateCommands(args.user, args.env_password)
+        create_commands = CreateCommands(args.user, args.envpass)
         if args.field:
             create_commands.create(args.project, args.field, test=args.test)
         elif args.csv:
@@ -668,15 +662,15 @@ def run(args):
             )
 
     elif args.command == "get":
-        get_commands = GetCommands(args.user, args.env_password)
+        get_commands = GetCommands(args.user, args.envpass)
         get_commands.get(args.project, args.cid, scope=args.scope)
 
     elif args.command == "filter":
-        filter_commands = FilterCommands(args.user, args.env_password)
+        filter_commands = FilterCommands(args.user, args.envpass)
         filter_commands.filter(args.project, args.field, scope=args.scope)
 
     elif args.command == "update":
-        update_commands = UpdateCommands(args.user, args.env_password)
+        update_commands = UpdateCommands(args.user, args.envpass)
         if args.cid and args.field:
             update_commands.update(args.project, args.cid, args.field, test=args.test)
         elif args.csv:
@@ -687,7 +681,7 @@ def run(args):
             )
 
     elif args.command == "suppress":
-        suppress_commands = SuppressCommands(args.user, args.env_password)
+        suppress_commands = SuppressCommands(args.user, args.envpass)
         if args.cid:
             suppress_commands.suppress(args.project, args.cid, test=args.test)
         elif args.csv:
@@ -698,7 +692,7 @@ def run(args):
             )
 
     elif args.command == "delete":
-        delete_commands = DeleteCommands(args.user, args.env_password)
+        delete_commands = DeleteCommands(args.user, args.envpass)
         if args.cid:
             delete_commands.delete(args.project, args.cid, test=args.test)
         elif args.csv:
@@ -709,7 +703,7 @@ def run(args):
             )
 
     elif args.command in ["choices"]:
-        project_info_commands = ProjectInformationCommands(args.user, args.env_password)
+        project_info_commands = ProjectInformationCommands(args.user, args.envpass)
         if args.command == "choices":
             project_info_commands.choices(args.project, args.field)
 
@@ -722,8 +716,7 @@ def get_args():
         help="Which user to execute the command as.",
     )
     user_parser.add_argument(
-        "-p",
-        "--env-password",
+        "--envpass",
         action="store_true",
         help="When a password is required, the client will use the env variable with format 'ONYX_<USER>_PASSWORD'.",
     )

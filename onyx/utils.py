@@ -57,7 +57,7 @@ def print_response(response, pretty_print=True, status_only=False):
         indent = None
     status_code = f"<[{response.status_code}] {response.reason}>"
     try:
-        if status_only:
+        if status_only and response.ok:
             formatted_response = str(status_code)
         else:
             formatted_response = (
