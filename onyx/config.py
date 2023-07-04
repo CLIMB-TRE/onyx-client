@@ -37,13 +37,13 @@ class OnyxConfig:
         if dir_path:
             # Check config dir path is a directory
             if not os.path.isdir(dir_path):
-                raise FileNotFoundError(f"'{dir_path}' does not exist")
+                raise FileNotFoundError(f"'{dir_path}' does not exist.")
 
             # Check config file path is a file
             file_path = os.path.join(dir_path, settings.CONFIG_FILE_NAME)
             if not os.path.isfile(file_path):
                 raise FileNotFoundError(
-                    f"Config file does not exist in directory '{dir_path}'"
+                    f"Config file does not exist in directory '{dir_path}'."
                 )
         else:
             # Find the config directory
@@ -52,14 +52,14 @@ class OnyxConfig:
             # Check config dir path is a directory
             if not os.path.isdir(dir_path):
                 raise FileNotFoundError(
-                    f"'{settings.CONFIG_DIR_ENV_VAR}' points to a directory that does not exist"
+                    f"'{settings.CONFIG_DIR_ENV_VAR}' points to a directory that does not exist."
                 )
 
             # Check config file path is a file
             file_path = os.path.join(dir_path, settings.CONFIG_FILE_NAME)
             if not os.path.isfile(file_path):
                 raise FileNotFoundError(
-                    f"Config file does not exist in directory '{dir_path}'"
+                    f"Config file does not exist in directory '{dir_path}'."
                 )
 
         return dir_path, file_path
@@ -70,13 +70,13 @@ class OnyxConfig:
         """
         for field in settings.CONFIG_FIELDS:
             if field not in config:
-                raise KeyError(f"'{field}' key is missing from the config file")
+                raise KeyError(f"'{field}' key is missing from the config file.")
 
         for user, ufields in config["users"].items():
             for field in settings.USER_FIELDS:
                 if field not in ufields:
                     raise KeyError(
-                        f"'{field}' key is missing from user '{user}' in the config file"
+                        f"'{field}' key is missing from user '{user}' in the config file."
                     )
 
     def write_token(self, username, token, expiry):
@@ -146,7 +146,7 @@ class OnyxConfig:
 
         if username not in self.users:
             raise KeyError(
-                f"User '{username}' is not in the config. Add them using the add-user command"
+                f"User '{username}' is not in the config. Add them using the add-user command."
             )
 
         self.default_user = username

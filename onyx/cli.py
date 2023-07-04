@@ -78,7 +78,7 @@ class ConfigCommands(ConfigRequired):
         config_dir = config_dir.replace("~", os.path.expanduser("~"))
 
         if os.path.isfile(config_dir):
-            raise FileExistsError("Provided path to a file, not a directory")
+            raise FileExistsError("Provided path to a file, not a directory.")
 
         if not os.path.isdir(config_dir):
             os.mkdir(config_dir)

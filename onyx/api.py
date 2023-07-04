@@ -94,11 +94,11 @@ class OnyxClient:
             # If no username was provided, use the default user
             if self.config.default_user is None:
                 raise Exception(
-                    "No username was provided and there is no default_user in the config. Either provide a username or set a default_user"
+                    "No username was provided and there is no default_user in the config. Either provide a username or set a default_user."
                 )
             if self.config.default_user not in self.config.users:
                 raise Exception(
-                    f"default_user '{self.config.default_user}' is not in the users list for the config"
+                    f"default_user '{self.config.default_user}' is not in the users list for the config."
                 )
 
             username = self.config.default_user
@@ -109,7 +109,7 @@ class OnyxClient:
             # The provided user must be in the config
             if username not in self.config.users:
                 raise KeyError(
-                    f"User '{username}' is not in the config. Add them using the add-user config command"
+                    f"User '{username}' is not in the config. Add them using the add-user config command."
                 )
 
         # Assign username to the client
@@ -119,10 +119,16 @@ class OnyxClient:
         self.env_password = env_password
 
         # Open the token file for the user and assign the current token, and its expiry, to the client
-        with open(
-            os.path.join(self.config.dir_path, self.config.users[username]["token"])
-        ) as token_file:
-            token_data = json.load(token_file)
+        token_path = os.path.join(
+            self.config.dir_path, self.config.users[username]["token"]
+        )
+        with open(token_path) as token_file:
+            try:
+                token_data = json.load(token_file)
+            except json.decoder.JSONDecodeError as e:
+                raise Exception(
+                    f"Failed to parse the tokens file: {token_path}\nSomething is wrong with your tokens file. \nTo fix this, either re-add the user to the config via the CLI, or correct the file manually."
+                ) from e
             self.token = token_data.get("token")
             self.expiry = token_data.get("expiry")
 
@@ -336,10 +342,10 @@ class OnyxClient:
             endpoint = "create"
 
         if multithreaded and not self.env_password:
-            raise Exception("Multithreaded upload requires env_password = True")
+            raise Exception("Multithreaded upload requires env_password = True.")
 
         if csv_path and csv_file:
-            raise Exception("Cannot provide both csv_path and csv_file")
+            raise Exception("Cannot provide both csv_path and csv_file.")
 
         if csv_path:
             if csv_path == "-":
@@ -348,7 +354,7 @@ class OnyxClient:
                 csv_file = open(csv_path)
         else:
             if not csv_file:
-                raise Exception("Must provide either csv_path or csv_file")
+                raise Exception("Must provide either csv_path or csv_file.")
 
         try:
             if delimiter is None:
@@ -445,7 +451,7 @@ class OnyxClient:
         """
         if query:
             if not isinstance(query, F):
-                raise Exception("Query must be an F object")
+                raise Exception("Query must be an F object.")
             else:
                 query = query.query
 
@@ -507,7 +513,7 @@ class OnyxClient:
             for record in reader:
                 cid = record.pop("cid", None)
                 if cid is None:
-                    raise KeyError("cid column must be provided")
+                    raise KeyError("A 'cid' column must be provided.")
 
                 response = self.request(
                     method="patch",
@@ -558,7 +564,7 @@ class OnyxClient:
             for record in reader:
                 cid = record.get("cid")
                 if cid is None:
-                    raise KeyError("cid column must be provided")
+                    raise KeyError("A 'cid' column must be provided.")
 
                 response = self.request(
                     method="delete",
@@ -608,7 +614,7 @@ class OnyxClient:
             for record in reader:
                 cid = record.get("cid")
                 if cid is None:
-                    raise KeyError("cid column must be provided")
+                    raise KeyError("A 'cid' column must be provided.")
 
                 response = self.request(
                     method="delete",

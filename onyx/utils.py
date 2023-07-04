@@ -30,7 +30,7 @@ def construct_unique_fields_dict(arg_fields):
     if arg_fields is not None:
         for f, v in arg_fields:
             if f in fields:
-                raise KeyError(f"Field '{f}' was provided more than once")
+                raise KeyError(f"Field '{f}' was provided more than once.")
             else:
                 fields[f] = v
     return fields
@@ -122,7 +122,7 @@ def session_required(method):
 
         def wrapped_generator_method(obj, *args, **kwargs):
             if not hasattr(obj, "token"):
-                raise Exception("The client has no token to log in with")
+                raise Exception("The client has no token to log in with.")
             try:
                 # Run the method and yield the output
                 output = yield from method(obj, *args, **kwargs)
@@ -138,7 +138,7 @@ def session_required(method):
 
         def wrapped_method(obj, *args, **kwargs):
             if not hasattr(obj, "token"):
-                raise Exception("The client has no token to log in with")
+                raise Exception("The client has no token to log in with.")
             try:
                 # Run the method and get the output
                 output = method(obj, *args, **kwargs)
