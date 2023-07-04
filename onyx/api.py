@@ -439,7 +439,7 @@ class OnyxClient:
                 _next = None
 
     @utils.session_required
-    def query(self, project, query=None, scope=None):
+    def query(self, project, query=None, exclude=None, scope=None):
         """
         Get records from the database.
         """
@@ -449,7 +449,7 @@ class OnyxClient:
             else:
                 query = query.query
 
-        fields = {"scope": scope}
+        fields = {"exclude": exclude, "scope": scope}
         _next = self.ENDPOINTS["query"](self.config.domain, project)
 
         while _next is not None:
