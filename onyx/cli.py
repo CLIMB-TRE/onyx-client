@@ -676,7 +676,7 @@ def run(args):
 
     elif args.command == "get":
         get_commands = GetCommands(args.user, args.envpass)
-        get_commands.get(args.project, args.cid, scope=args.scope)
+        get_commands.get(args.project, args.cid, exclude=args.exclude, scope=args.scope)
 
     elif args.command == "filter":
         filter_commands = FilterCommands(args.user, args.envpass)
