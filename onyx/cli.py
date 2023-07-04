@@ -444,7 +444,7 @@ class FilterCommands(ClientRequired):
         if scope:
             scope = utils.flatten_list_of_lists(scope)
 
-        results = utils.iterate(
+        results = utils.iterate_records(
             self.client.filter(project, fields, exclude=exclude, scope=scope)
         )
 

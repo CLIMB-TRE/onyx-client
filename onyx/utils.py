@@ -175,7 +175,7 @@ def execute_uploads(uploads):
         print(f"Failures: {failures}")
 
 
-def iterate(responses):
+def iterate_records(responses):
     for response in responses:
         raise_for_status(response)
 
