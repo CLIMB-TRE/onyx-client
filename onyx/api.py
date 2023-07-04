@@ -397,24 +397,27 @@ class OnyxClient:
                 csv_file.close()
 
     @utils.session_required
-    def get(self, project, cid, scope=None):
+    def get(self, project, cid, exclude=None, scope=None):
         """
         Get a record from the database.
         """
         response = self.request(
             method="get",
             url=self.ENDPOINTS["get"](self.config.domain, project, cid),
-            params={"scope": scope},
+            params={"exclude": exclude, "scope": scope},
         )
         return response
 
     @utils.session_required
-    def filter(self, project, fields=None, scope=None):
+    def filter(self, project, fields=None, exclude=None, scope=None):
         """
         Filter records from the database.
         """
         if fields is None:
             fields = {}
+
+        if exclude:
+            fields["exclude"] = exclude
 
         if scope:
             fields["scope"] = scope

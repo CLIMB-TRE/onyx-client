@@ -398,16 +398,22 @@ class GetCommands(ClientRequired):
         get_parser = command.add_parser("get", help="Get a metadata record.")
         get_parser.add_argument("project")
         get_parser.add_argument("cid")
+        get_parser.add_argument(
+            "-e", "--exclude", nargs="+", action="append", metavar="FIELD"
+        )
         get_parser.add_argument("-s", "--scope", nargs="+", action="append")
 
-    def get(self, project, cid, scope=None):
+    def get(self, project, cid, exclude=None, scope=None):
         """
         Get a record from the database.
         """
-        if scope:
-            scope = utils.construct_scope_list(scope)
+        if exclude:
+            exclude = utils.flatten_list_of_lists(exclude)
 
-        response = self.client.get(project, cid, scope=scope)
+        if scope:
+            scope = utils.flatten_list_of_lists(scope)
+
+        response = self.client.get(project, cid, exclude=exclude, scope=scope)
         utils.print_response(response)
 
 
@@ -423,17 +429,24 @@ class FilterCommands(ClientRequired):
         filter_parser.add_argument(
             "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
         )
+        filter_parser.add_argument(
+            "-e", "--exclude", nargs="+", action="append", metavar="FIELD"
+        )
         filter_parser.add_argument("-s", "--scope", nargs="+", action="append")
 
-    def filter(self, project, fields, scope=None):
+    def filter(self, project, fields, exclude=None, scope=None):
         """
         Filter records from the database.
         """
         fields = utils.construct_fields_dict(fields)
+        if exclude:
+            exclude = utils.flatten_list_of_lists(exclude)
         if scope:
-            scope = utils.construct_scope_list(scope)
+            scope = utils.flatten_list_of_lists(scope)
 
-        results = utils.iterate(self.client.filter(project, fields, scope=scope))
+        results = utils.iterate(
+            self.client.filter(project, fields, exclude=exclude, scope=scope)
+        )
 
         try:
             result = next(results, None)
@@ -667,7 +680,9 @@ def run(args):
 
     elif args.command == "filter":
         filter_commands = FilterCommands(args.user, args.envpass)
-        filter_commands.filter(args.project, args.field, scope=args.scope)
+        filter_commands.filter(
+            args.project, args.field, exclude=args.exclude, scope=args.scope
+        )
 
     elif args.command == "update":
         update_commands = UpdateCommands(args.user, args.envpass)

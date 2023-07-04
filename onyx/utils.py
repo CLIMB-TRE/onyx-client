@@ -36,11 +36,11 @@ def construct_unique_fields_dict(arg_fields):
     return fields
 
 
-def construct_scope_list(arg_fields):
+def flatten_list_of_lists(arg_fields):
     """
-    Takes a list of list of scopes: `[[scope, scope, ...], [scope, scope, ...], ...]`
+    Takes a list of lists: `[[val1, val2, ...], [val3, val4, ...], ...]`
 
-    Returns a list of scopes: `[scope, scope, scope, ...]`
+    Returns a single list: `[val1, val2, ..., val3, val4, ...]`
     """
     return [s for scopes in arg_fields for s in scopes]
 
