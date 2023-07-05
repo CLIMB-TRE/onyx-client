@@ -30,17 +30,17 @@ def construct_unique_fields_dict(arg_fields):
     if arg_fields is not None:
         for f, v in arg_fields:
             if f in fields:
-                raise KeyError(f"Field '{f}' was provided more than once")
+                raise KeyError(f"Field '{f}' was provided more than once.")
             else:
                 fields[f] = v
     return fields
 
 
-def construct_scope_list(arg_fields):
+def flatten_list_of_lists(arg_fields):
     """
-    Takes a list of list of scopes: `[[scope, scope, ...], [scope, scope, ...], ...]`
+    Takes a list of lists: `[[val1, val2, ...], [val3, val4, ...], ...]`
 
-    Returns a list of scopes: `[scope, scope, scope, ...]`
+    Returns a single list: `[val1, val2, ..., val3, val4, ...]`
     """
     return [s for scopes in arg_fields for s in scopes]
 
@@ -57,7 +57,7 @@ def print_response(response, pretty_print=True, status_only=False):
         indent = None
     status_code = f"<[{response.status_code}] {response.reason}>"
     try:
-        if status_only:
+        if status_only and response.ok:
             formatted_response = str(status_code)
         else:
             formatted_response = (
@@ -122,7 +122,7 @@ def session_required(method):
 
         def wrapped_generator_method(obj, *args, **kwargs):
             if not hasattr(obj, "token"):
-                raise Exception("The client has no token to log in with")
+                raise Exception("The client has no token to log in with.")
             try:
                 # Run the method and yield the output
                 output = yield from method(obj, *args, **kwargs)
@@ -138,7 +138,7 @@ def session_required(method):
 
         def wrapped_method(obj, *args, **kwargs):
             if not hasattr(obj, "token"):
-                raise Exception("The client has no token to log in with")
+                raise Exception("The client has no token to log in with.")
             try:
                 # Run the method and get the output
                 output = method(obj, *args, **kwargs)
@@ -175,7 +175,7 @@ def execute_uploads(uploads):
         print(f"Failures: {failures}")
 
 
-def iterate(responses):
+def iterate_records(responses):
     for response in responses:
         raise_for_status(response)
 

@@ -6,96 +6,70 @@ import requests
 import concurrent.futures
 from django_query_tools.client import F
 from . import utils, settings
-from .config import Config
+from .config import OnyxConfig
 
 
-class Client:
-    def __init__(self, config):
-        """
-        Initialise the client with a given config.
-        """
-        self.config = config
-        self.endpoints = {
-            # accounts
-            "register": os.path.join(self.config.domain, "accounts/register/"),
-            "login": os.path.join(self.config.domain, "accounts/login/"),
-            "logout": os.path.join(self.config.domain, "accounts/logout/"),
-            "logoutall": os.path.join(self.config.domain, "accounts/logoutall/"),
-            "site_approve": lambda x: os.path.join(
-                self.config.domain, f"accounts/site/approve/{x}/"
-            ),
-            "site_waiting": os.path.join(self.config.domain, "accounts/site/waiting/"),
-            "site_users": os.path.join(self.config.domain, "accounts/site/users/"),
-            "admin_approve": lambda x: os.path.join(
-                self.config.domain, f"accounts/admin/approve/{x}/"
-            ),
-            "admin_waiting": os.path.join(
-                self.config.domain, "accounts/admin/waiting/"
-            ),
-            "admin_users": os.path.join(self.config.domain, "accounts/admin/users/"),
-            # data
-            "create": lambda x: os.path.join(self.config.domain, f"data/create/{x}/"),
-            "testcreate": lambda x: os.path.join(
-                self.config.domain, f"data/testcreate/{x}/"
-            ),
-            "get": lambda x, y: os.path.join(self.config.domain, f"data/get/{x}/{y}/"),
-            "filter": lambda x: os.path.join(self.config.domain, f"data/filter/{x}/"),
-            "query": lambda x: os.path.join(self.config.domain, f"data/query/{x}/"),
-            "update": lambda x, y: os.path.join(
-                self.config.domain, f"data/update/{x}/{y}/"
-            ),
-            "testupdate": lambda x, y: os.path.join(
-                self.config.domain, f"data/testupdate/{x}/{y}/"
-            ),
-            "suppress": lambda x, y: os.path.join(
-                self.config.domain, f"data/suppress/{x}/{y}/"
-            ),
-            "testsuppress": lambda x, y: os.path.join(
-                self.config.domain, f"data/testsuppress/{x}/{y}/"
-            ),
-            "delete": lambda x, y: os.path.join(
-                self.config.domain, f"data/delete/{x}/{y}/"
-            ),
-            "testdelete": lambda x, y: os.path.join(
-                self.config.domain, f"data/testdelete/{x}/{y}/"
-            ),
-            "choices": lambda x, y: os.path.join(
-                self.config.domain, f"data/choices/{x}/{y}/"
-            ),
-        }
+class OnyxClient:
+    ENDPOINTS = {
+        # ACCOUNTS
+        "register": lambda domain: os.path.join(domain, "accounts/register/"),
+        "login": lambda domain: os.path.join(domain, "accounts/login/"),
+        "logout": lambda domain: os.path.join(domain, "accounts/logout/"),
+        "logoutall": lambda domain: os.path.join(domain, "accounts/logoutall/"),
+        "site_approve": lambda domain, username: os.path.join(
+            domain, f"accounts/site/approve/{username}/"
+        ),
+        "site_waiting": lambda domain: os.path.join(domain, "accounts/site/waiting/"),
+        "site_users": lambda domain: os.path.join(domain, "accounts/site/users/"),
+        "admin_approve": lambda domain, username: os.path.join(
+            domain, f"accounts/admin/approve/{username}/"
+        ),
+        "admin_waiting": lambda domain: os.path.join(domain, "accounts/admin/waiting/"),
+        "admin_users": lambda domain: os.path.join(domain, "accounts/admin/users/"),
+        # DATA
+        "create": lambda domain, project: os.path.join(
+            domain, f"data/create/{project}/"
+        ),
+        "testcreate": lambda domain, project: os.path.join(
+            domain, f"data/testcreate/{project}/"
+        ),
+        "get": lambda domain, project, cid: os.path.join(
+            domain, f"data/get/{project}/{cid}/"
+        ),
+        "filter": lambda domain, project: os.path.join(
+            domain, f"data/filter/{project}/"
+        ),
+        "query": lambda domain, project: os.path.join(domain, f"data/query/{project}/"),
+        "update": lambda domain, project, cid: os.path.join(
+            domain, f"data/update/{project}/{cid}/"
+        ),
+        "testupdate": lambda domain, project, cid: os.path.join(
+            domain, f"data/testupdate/{project}/{cid}/"
+        ),
+        "suppress": lambda domain, project, cid: os.path.join(
+            domain, f"data/suppress/{project}/{cid}/"
+        ),
+        "testsuppress": lambda domain, project, cid: os.path.join(
+            domain, f"data/testsuppress/{project}/{cid}/"
+        ),
+        "delete": lambda domain, project, cid: os.path.join(
+            domain, f"data/delete/{project}/{cid}/"
+        ),
+        "testdelete": lambda domain, project, cid: os.path.join(
+            domain, f"data/testdelete/{project}/{cid}/"
+        ),
+        "choices": lambda domain, project, cid: os.path.join(
+            domain, f"data/choices/{project}/{cid}/"
+        ),
+    }
 
-    def request(self, method, **kwargs):
-        """
-        Carry out a request while handling token authorisation.
-        """
-        kwargs.setdefault("headers", {}).update(
-            {"Authorization": f"Token {self.token}"}
-        )
-        method_response = method(**kwargs)
-
-        if method_response.status_code == 401 and self.env_password:
-            login_response = requests.post(
-                self.endpoints["login"],
-                auth=(self.username, self.get_password()),
-            )
-
-            if login_response.ok:
-                self.token = login_response.json()["data"]["token"]
-                self.expiry = login_response.json()["data"]["expiry"]
-                self.config.write_token(self.username, self.token, self.expiry)
-
-                return self.request(method, **kwargs)
-
-            login_response.raise_for_status()
-
-        return method_response
-
-    def register(self, first_name, last_name, email, site, password):
+    @classmethod
+    def register(cls, config, first_name, last_name, email, site, password):
         """
         Create a new user.
         """
         response = requests.post(
-            self.endpoints["register"],
+            cls.ENDPOINTS["register"](config.domain),
             json={
                 "first_name": first_name,
                 "last_name": last_name,
@@ -106,20 +80,28 @@ class Client:
         )
         return response
 
-    def continue_session(self, username=None, env_password=False):
+    def __init__(self, config=None, username=None, env_password=False):
+        """
+        Initialise the client.
+        """
+        if config:
+            self.config = config
+        else:
+            self.config = OnyxConfig()
+
+        # Assign username/env_password flag to the client
         if username is None:
-            # Attempt to use default_user if no username was provided
+            # If no username was provided, use the default user
             if self.config.default_user is None:
                 raise Exception(
-                    "No username was provided and there is no default_user in the config. Either provide a username or set a default_user"
+                    "No username was provided and there is no default_user in the config. Either provide a username or set a default_user."
                 )
-            else:
-                # The default_user must be in the config
-                if self.config.default_user not in self.config.users:
-                    raise Exception(
-                        f"default_user '{self.config.default_user}' is not in the users list for the config"
-                    )
-                username = self.config.default_user
+            if self.config.default_user not in self.config.users:
+                raise Exception(
+                    f"default_user '{self.config.default_user}' is not in the users list for the config."
+                )
+
+            username = self.config.default_user
         else:
             # Username is case-insensitive
             username = username.lower()
@@ -127,7 +109,7 @@ class Client:
             # The provided user must be in the config
             if username not in self.config.users:
                 raise KeyError(
-                    f"User '{username}' is not in the config. Add them using the add-user config command"
+                    f"User '{username}' is not in the config. Add them using the add-user config command."
                 )
 
         # Assign username to the client
@@ -137,14 +119,30 @@ class Client:
         self.env_password = env_password
 
         # Open the token file for the user and assign the current token, and its expiry, to the client
-        with open(
-            os.path.join(self.config.dir_path, self.config.users[username]["token"])
-        ) as token_file:
-            token_data = json.load(token_file)
+        token_path = os.path.join(
+            self.config.dir_path, self.config.users[username]["token"]
+        )
+        with open(token_path) as token_file:
+            try:
+                token_data = json.load(token_file)
+            except json.decoder.JSONDecodeError as e:
+                raise Exception(
+                    f"Failed to parse the tokens file: {token_path}\nSomething is wrong with your tokens file. \nTo fix this, either re-add the user to the config via the CLI, or correct the file manually."
+                ) from e
             self.token = token_data.get("token")
             self.expiry = token_data.get("expiry")
 
-        return username
+        self._request = requests.request
+
+    def __enter__(self):
+        self.session = requests.Session()
+        self._request = self.session.request
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.session.close()
+        del self.session
+        self._request = requests.request
 
     def get_password(self):
         if self.env_password:
@@ -162,27 +160,53 @@ class Client:
             password = utils.get_input("password", password=True)
         return password
 
-    def login(self, username=None, env_password=False):
+    def request(self, method, **kwargs):
+        """
+        Carry out a request while handling token authorisation.
+        """
+        kwargs.setdefault("headers", {}).update(
+            {"Authorization": f"Token {self.token}"}
+        )
+        method_response = self._request(method, **kwargs)
+
+        if method_response.status_code == 401 and self.env_password:
+            login_response = self._request(
+                "post",
+                self.ENDPOINTS["login"](self.config.domain),
+                auth=(self.username, self.get_password()),
+            )
+
+            if login_response.ok:
+                self.token = login_response.json()["data"]["token"]
+                self.expiry = login_response.json()["data"]["expiry"]
+
+                # TODO: There is a potential infinite loop here
+                # In the case where a valid-authed method somehow returns 401
+                return self.request(method, **kwargs)
+
+            login_response.raise_for_status()
+
+        return method_response
+
+    @utils.session_required
+    def login(self):
         """
         Log in as a particular user, get a new token and store the token in the client.
 
         If no user is provided, the `default_user` in the config is used.
         """
-
-        # Assigns username/env_password flag to the client
-        self.continue_session(username, env_password=env_password)
-
         # Get the password
         password = self.get_password()
 
         # Log in
-        response = requests.post(
-            self.endpoints["login"], auth=(self.username, password)
+        response = self._request(
+            "post",
+            auth=(self.username, password),
+            url=self.ENDPOINTS["login"](self.config.domain),
         )
         if response.ok:
             self.token = response.json()["data"]["token"]
             self.expiry = response.json()["data"]["expiry"]
-            self.config.write_token(self.username, self.token, self.expiry)
 
         return response
 
@@ -192,13 +216,12 @@ class Client:
         Log out the user in this client.
         """
         response = self.request(
-            method=requests.post,
-            url=self.endpoints["logout"],
+            method="post",
+            url=self.ENDPOINTS["logout"](self.config.domain),
         )
         if response.ok:
             self.token = None
             self.expiry = None
-            self.config.write_token(self.username, self.token, self.expiry)
 
         return response
 
@@ -208,13 +231,12 @@ class Client:
         Log out the user in all clients.
         """
         response = self.request(
-            method=requests.post,
-            url=self.endpoints["logoutall"],
+            method="post",
+            url=self.ENDPOINTS["logoutall"](self.config.domain),
         )
         if response.ok:
             self.token = None
             self.expiry = None
-            self.config.write_token(self.username, self.token, self.expiry)
 
         return response
 
@@ -224,8 +246,8 @@ class Client:
         Site-approve another user.
         """
         response = self.request(
-            method=requests.patch,
-            url=self.endpoints["site_approve"](username),
+            method="patch",
+            url=self.ENDPOINTS["site_approve"](self.config.domain, username),
         )
         return response
 
@@ -235,8 +257,8 @@ class Client:
         List users waiting for site approval.
         """
         response = self.request(
-            method=requests.get,
-            url=self.endpoints["site_waiting"],
+            method="get",
+            url=self.ENDPOINTS["site_waiting"](self.config.domain),
         )
         return response
 
@@ -246,8 +268,8 @@ class Client:
         Get the current users within the site of the requesting user.
         """
         response = self.request(
-            method=requests.get,
-            url=self.endpoints["site_users"],
+            method="get",
+            url=self.ENDPOINTS["site_users"](self.config.domain),
         )
         return response
 
@@ -257,8 +279,8 @@ class Client:
         Admin-approve another user.
         """
         response = self.request(
-            method=requests.patch,
-            url=self.endpoints["admin_approve"](username),
+            method="patch",
+            url=self.ENDPOINTS["admin_approve"](self.config.domain, username),
         )
         return response
 
@@ -268,8 +290,8 @@ class Client:
         List users waiting for admin approval.
         """
         response = self.request(
-            method=requests.get,
-            url=self.endpoints["admin_waiting"],
+            method="get",
+            url=self.ENDPOINTS["admin_waiting"](self.config.domain),
         )
         return response
 
@@ -279,8 +301,8 @@ class Client:
         List all users.
         """
         response = self.request(
-            method=requests.get,
-            url=self.endpoints["admin_users"],
+            method="get",
+            url=self.ENDPOINTS["admin_users"](self.config.domain),
         )
         return response
 
@@ -295,8 +317,8 @@ class Client:
             endpoint = "create"
 
         response = self.request(
-            method=requests.post,
-            url=self.endpoints[endpoint](project),
+            method="post",
+            url=self.ENDPOINTS[endpoint](self.config.domain, project),
             json=fields,
         )
         return response
@@ -320,10 +342,10 @@ class Client:
             endpoint = "create"
 
         if multithreaded and not self.env_password:
-            raise Exception("Multithreaded upload requires env_password = True")
+            raise Exception("Multithreaded upload requires env_password = True.")
 
         if csv_path and csv_file:
-            raise Exception("Cannot provide both csv_path and csv_file")
+            raise Exception("Cannot provide both csv_path and csv_file.")
 
         if csv_path:
             if csv_path == "-":
@@ -332,7 +354,7 @@ class Client:
                 csv_file = open(csv_path)
         else:
             if not csv_file:
-                raise Exception("Must provide either csv_path or csv_file")
+                raise Exception("Must provide either csv_path or csv_file.")
 
         try:
             if delimiter is None:
@@ -344,8 +366,8 @@ class Client:
 
             if record:
                 response = self.request(
-                    method=requests.post,
-                    url=self.endpoints[endpoint](project),
+                    method="post",
+                    url=self.ENDPOINTS[endpoint](self.config.domain, project),
                     json=record,
                 )
                 yield response
@@ -356,8 +378,10 @@ class Client:
                         futures = [
                             executor.submit(
                                 self.request,
-                                requests.post,
-                                url=self.endpoints[endpoint](project),
+                                "post",
+                                url=self.ENDPOINTS[endpoint](
+                                    self.config.domain, project
+                                ),
                                 json=record,
                             )
                             for record in reader
@@ -368,8 +392,8 @@ class Client:
                 else:
                     for record in reader:
                         response = self.request(
-                            method=requests.post,
-                            url=self.endpoints[endpoint](project),
+                            method="post",
+                            url=self.ENDPOINTS[endpoint](self.config.domain, project),
                             json=record,
                         )
                         yield response
@@ -379,33 +403,36 @@ class Client:
                 csv_file.close()
 
     @utils.session_required
-    def get(self, project, cid, scope=None):
+    def get(self, project, cid, exclude=None, scope=None):
         """
         Get a record from the database.
         """
         response = self.request(
-            method=requests.get,
-            url=self.endpoints["get"](project, cid),
-            params={"scope": scope},
+            method="get",
+            url=self.ENDPOINTS["get"](self.config.domain, project, cid),
+            params={"exclude": exclude, "scope": scope},
         )
         return response
 
     @utils.session_required
-    def filter(self, project, fields=None, scope=None):
+    def filter(self, project, fields=None, exclude=None, scope=None):
         """
         Filter records from the database.
         """
         if fields is None:
             fields = {}
 
+        if exclude:
+            fields["exclude"] = exclude
+
         if scope:
             fields["scope"] = scope
 
-        _next = self.endpoints["filter"](project)
+        _next = self.ENDPOINTS["filter"](self.config.domain, project)
 
         while _next is not None:
             response = self.request(
-                method=requests.get,
+                method="get",
                 url=_next,
                 params=fields,
             )
@@ -418,22 +445,22 @@ class Client:
                 _next = None
 
     @utils.session_required
-    def query(self, project, query=None, scope=None):
+    def query(self, project, query=None, exclude=None, scope=None):
         """
         Get records from the database.
         """
         if query:
             if not isinstance(query, F):
-                raise Exception("Query must be an F object")
+                raise Exception("Query must be an F object.")
             else:
                 query = query.query
 
-        fields = {"scope": scope}
-        _next = self.endpoints["query"](project)
+        fields = {"exclude": exclude, "scope": scope}
+        _next = self.ENDPOINTS["query"](self.config.domain, project)
 
         while _next is not None:
             response = self.request(
-                method=requests.post,
+                method="post",
                 url=_next,
                 json=query,
                 params=fields,
@@ -457,8 +484,8 @@ class Client:
             endpoint = "update"
 
         response = self.request(
-            method=requests.patch,
-            url=self.endpoints[endpoint](project, cid),
+            method="patch",
+            url=self.ENDPOINTS[endpoint](self.config.domain, project, cid),
             json=fields,
         )
         return response
@@ -486,11 +513,11 @@ class Client:
             for record in reader:
                 cid = record.pop("cid", None)
                 if cid is None:
-                    raise KeyError("cid column must be provided")
+                    raise KeyError("A 'cid' column must be provided.")
 
                 response = self.request(
-                    method=requests.patch,
-                    url=self.endpoints[endpoint](project, cid),
+                    method="patch",
+                    url=self.ENDPOINTS[endpoint](self.config.domain, project, cid),
                     json=record,
                 )
                 yield response
@@ -509,8 +536,8 @@ class Client:
             endpoint = "suppress"
 
         response = self.request(
-            method=requests.delete,
-            url=self.endpoints[endpoint](project, cid),
+            method="delete",
+            url=self.ENDPOINTS[endpoint](self.config.domain, project, cid),
         )
         return response
 
@@ -537,11 +564,11 @@ class Client:
             for record in reader:
                 cid = record.get("cid")
                 if cid is None:
-                    raise KeyError("cid column must be provided")
+                    raise KeyError("A 'cid' column must be provided.")
 
                 response = self.request(
-                    method=requests.delete,
-                    url=self.endpoints[endpoint](project, cid),
+                    method="delete",
+                    url=self.ENDPOINTS[endpoint](self.config.domain, project, cid),
                 )
                 yield response
         finally:
@@ -559,8 +586,8 @@ class Client:
             endpoint = "delete"
 
         response = self.request(
-            method=requests.delete,
-            url=self.endpoints[endpoint](project, cid),
+            method="delete",
+            url=self.ENDPOINTS[endpoint](self.config.domain, project, cid),
         )
         return response
 
@@ -587,11 +614,11 @@ class Client:
             for record in reader:
                 cid = record.get("cid")
                 if cid is None:
-                    raise KeyError("cid column must be provided")
+                    raise KeyError("A 'cid' column must be provided.")
 
                 response = self.request(
-                    method=requests.delete,
-                    url=self.endpoints[endpoint](project, cid),
+                    method="delete",
+                    url=self.ENDPOINTS[endpoint](self.config.domain, project, cid),
                 )
                 yield response
         finally:
@@ -604,35 +631,7 @@ class Client:
         View choices for a field.
         """
         response = self.request(
-            method=requests.get,
-            url=self.endpoints["choices"](project, field),
+            method="get",
+            url=self.ENDPOINTS["choices"](self.config.domain, project, field),
         )
         return response
-
-
-class Session:
-    def __init__(self, username=None, env_password=False, login=False, logout=False):
-        self.config = Config()
-        self.client = Client(self.config)
-        self.username = username
-        self.env_password = env_password
-        self.login = login
-        self.logout = logout
-
-    def __enter__(self):
-        if self.login:
-            response = self.client.login(
-                username=self.username,
-                env_password=self.env_password,
-            )
-            response.raise_for_status()
-        else:
-            self.client.continue_session(
-                username=self.username,
-                env_password=self.env_password,
-            )
-        return self.client
-
-    def __exit__(self, type, value, traceback):
-        if self.logout:
-            self.client.logout()

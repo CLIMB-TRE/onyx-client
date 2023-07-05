@@ -4,15 +4,15 @@ import json
 from . import settings
 
 
-class Config:
-    def __init__(self, path=None):
+class OnyxConfig:
+    def __init__(self, dir_path=None):
         """
         Initialise the config.
 
         If a `path` was not provided, looks for the environment variable given by `settings.CONFIG_DIR_ENV_VAR`.
         """
         # Locate the config
-        dir_path, file_path = self.locate_config(dir_path=path)
+        dir_path, file_path = self.locate_config(dir_path=dir_path)
 
         # Load the config
         with open(file_path) as config_file:
@@ -37,13 +37,13 @@ class Config:
         if dir_path:
             # Check config dir path is a directory
             if not os.path.isdir(dir_path):
-                raise FileNotFoundError(f"'{dir_path}' does not exist")
+                raise FileNotFoundError(f"'{dir_path}' does not exist.")
 
             # Check config file path is a file
             file_path = os.path.join(dir_path, settings.CONFIG_FILE_NAME)
             if not os.path.isfile(file_path):
                 raise FileNotFoundError(
-                    f"Config file does not exist in directory '{dir_path}'"
+                    f"Config file does not exist in directory '{dir_path}'."
                 )
         else:
             # Find the config directory
@@ -52,14 +52,14 @@ class Config:
             # Check config dir path is a directory
             if not os.path.isdir(dir_path):
                 raise FileNotFoundError(
-                    f"'{settings.CONFIG_DIR_ENV_VAR}' points to a directory that does not exist"
+                    f"'{settings.CONFIG_DIR_ENV_VAR}' points to a directory that does not exist."
                 )
 
             # Check config file path is a file
             file_path = os.path.join(dir_path, settings.CONFIG_FILE_NAME)
             if not os.path.isfile(file_path):
                 raise FileNotFoundError(
-                    f"Config file does not exist in directory '{dir_path}'"
+                    f"Config file does not exist in directory '{dir_path}'."
                 )
 
         return dir_path, file_path
@@ -70,13 +70,13 @@ class Config:
         """
         for field in settings.CONFIG_FIELDS:
             if field not in config:
-                raise KeyError(f"'{field}' key is missing from the config file")
+                raise KeyError(f"'{field}' key is missing from the config file.")
 
         for user, ufields in config["users"].items():
             for field in settings.USER_FIELDS:
                 if field not in ufields:
                     raise KeyError(
-                        f"'{field}' key is missing from user '{user}' in the config file"
+                        f"'{field}' key is missing from user '{user}' in the config file."
                     )
 
     def write_token(self, username, token, expiry):
@@ -89,13 +89,6 @@ class Config:
         """
         Add user to the config.
         """
-        # Username is case-insensitive
-        username = username.lower()
-
-        token_file_name = username + settings.TOKENS_FILE_POSTFIX
-        token_path = os.path.join(self.dir_path, token_file_name)
-        self.users[username] = {"token": token_file_name}
-
         # Reload the config incase its changed
         # Not perfect but better than just blanket overwriting the file
         dir_path, file_path = self.locate_config(dir_path=self.dir_path)
@@ -109,9 +102,13 @@ class Config:
         # Validate the config structure
         self.validate_config(current_config)
 
-        # Update the config
+        # Update the config with current information
         self.domain = current_config["domain"]
         self.users.update(current_config["users"])
+
+        # Add the new user and their token file name to the config users
+        username = username.lower()  # Username is case-insensitive
+        self.users[username] = {"token": username + settings.TOKENS_FILE_POSTFIX}
 
         # If there is only one user in the config, make them the default_user
         if len(self.users) == 1:
@@ -132,11 +129,13 @@ class Config:
             )
 
         # Create user tokens file
-        with open(token_path, "w") as token:
-            json.dump({"token": None, "expiry": None}, token, indent=4)
+        self.write_token(username, None, None)
 
         # Read-write for OS user only
-        os.chmod(token_path, stat.S_IRUSR | stat.S_IWUSR)
+        os.chmod(
+            os.path.join(self.dir_path, self.users[username]["token"]),
+            stat.S_IRUSR | stat.S_IWUSR,
+        )
 
     def set_default_user(self, username):
         """
@@ -147,7 +146,7 @@ class Config:
 
         if username not in self.users:
             raise KeyError(
-                f"User '{username}' is not in the config. Add them using the add-user command"
+                f"User '{username}' is not in the config. Add them using the add-user command."
             )
 
         self.default_user = username
