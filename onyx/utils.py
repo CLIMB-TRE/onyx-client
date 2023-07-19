@@ -107,49 +107,6 @@ def get_input(field, password=False, type=None, required=True):
     return value
 
 
-def session_required(method):
-    """
-    Decorator that does the following:
-
-    * Checks the client object has session details.
-    * Runs the provided method and returns the output.
-    * Writes user tokens to their tokens file, after running the provided method.
-    """
-
-    # If the method is a generator we have to use 'yield from'
-    # Meddling with forces I don't fully understand here, but it works
-    if inspect.isgeneratorfunction(method):
-
-        def wrapped_generator_method(obj, *args, **kwargs):
-            if not hasattr(obj, "token"):
-                raise Exception("The client has no token to log in with.")
-            try:
-                # Run the method and yield the output
-                output = yield from method(obj, *args, **kwargs)
-            finally:
-                # ONLY when the method has finished yielding do we reach this point
-                # After everything is done, write the user tokens to their tokens file
-                obj.config.write_token(obj.username, obj.token, obj.expiry)
-            return output
-
-        return wrapped_generator_method
-
-    else:
-
-        def wrapped_method(obj, *args, **kwargs):
-            if not hasattr(obj, "token"):
-                raise Exception("The client has no token to log in with.")
-            try:
-                # Run the method and get the output
-                output = method(obj, *args, **kwargs)
-            finally:
-                # After everything is done, write the user tokens to their tokens file
-                obj.config.write_token(obj.username, obj.token, obj.expiry)
-            return output
-
-        return wrapped_method
-
-
 def execute_uploads(uploads):
     attempted = 0
     successes = 0

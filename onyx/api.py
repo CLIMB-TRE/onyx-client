@@ -179,6 +179,7 @@ class OnyxClient:
             if login_response.ok:
                 self.token = login_response.json()["data"]["token"]
                 self.expiry = login_response.json()["data"]["expiry"]
+                self.config.write_token(self.username, self.token, self.expiry)
 
                 # TODO: There is a potential infinite loop here
                 # In the case where a valid-authed method somehow returns 401
@@ -188,7 +189,6 @@ class OnyxClient:
 
         return method_response
 
-    @utils.session_required
     def login(self):
         """
         Log in as a particular user, get a new token and store the token in the client.
@@ -207,10 +207,10 @@ class OnyxClient:
         if response.ok:
             self.token = response.json()["data"]["token"]
             self.expiry = response.json()["data"]["expiry"]
+            self.config.write_token(self.username, self.token, self.expiry)
 
         return response
 
-    @utils.session_required
     def logout(self):
         """
         Log out the user in this client.
@@ -222,10 +222,10 @@ class OnyxClient:
         if response.ok:
             self.token = None
             self.expiry = None
+            self.config.write_token(self.username, self.token, self.expiry)
 
         return response
 
-    @utils.session_required
     def logoutall(self):
         """
         Log out the user in all clients.
@@ -237,10 +237,10 @@ class OnyxClient:
         if response.ok:
             self.token = None
             self.expiry = None
+            self.config.write_token(self.username, self.token, self.expiry)
 
         return response
 
-    @utils.session_required
     def site_approve(self, username):
         """
         Site-approve another user.
@@ -251,7 +251,6 @@ class OnyxClient:
         )
         return response
 
-    @utils.session_required
     def site_list_waiting(self):
         """
         List users waiting for site approval.
@@ -262,7 +261,6 @@ class OnyxClient:
         )
         return response
 
-    @utils.session_required
     def site_list_users(self):
         """
         Get the current users within the site of the requesting user.
@@ -273,7 +271,6 @@ class OnyxClient:
         )
         return response
 
-    @utils.session_required
     def admin_approve(self, username):
         """
         Admin-approve another user.
@@ -284,7 +281,6 @@ class OnyxClient:
         )
         return response
 
-    @utils.session_required
     def admin_list_waiting(self):
         """
         List users waiting for admin approval.
@@ -295,7 +291,6 @@ class OnyxClient:
         )
         return response
 
-    @utils.session_required
     def admin_list_users(self):
         """
         List all users.
@@ -306,7 +301,6 @@ class OnyxClient:
         )
         return response
 
-    @utils.session_required
     def create(self, project, fields, test=False):
         """
         Post a record to the database.
@@ -323,7 +317,6 @@ class OnyxClient:
         )
         return response
 
-    @utils.session_required
     def csv_create(
         self,
         project,
@@ -402,7 +395,6 @@ class OnyxClient:
             if csv_path and csv_file is not sys.stdin:
                 csv_file.close()
 
-    @utils.session_required
     def get(self, project, cid, exclude=None, scope=None):
         """
         Get a record from the database.
@@ -414,7 +406,6 @@ class OnyxClient:
         )
         return response
 
-    @utils.session_required
     def filter(self, project, fields=None, exclude=None, scope=None):
         """
         Filter records from the database.
@@ -444,7 +435,6 @@ class OnyxClient:
             else:
                 _next = None
 
-    @utils.session_required
     def query(self, project, query=None, exclude=None, scope=None):
         """
         Get records from the database.
@@ -473,7 +463,6 @@ class OnyxClient:
             else:
                 _next = None
 
-    @utils.session_required
     def update(self, project, cid, fields, test=False):
         """
         Update a record in the database.
@@ -490,7 +479,6 @@ class OnyxClient:
         )
         return response
 
-    @utils.session_required
     def csv_update(self, project, csv_path, delimiter=None, test=False):
         """
         Use a .csv or .tsv to update records in the database.
@@ -525,7 +513,6 @@ class OnyxClient:
             if csv_file is not sys.stdin:
                 csv_file.close()
 
-    @utils.session_required
     def suppress(self, project, cid, test=False):
         """
         Suppress a record in the database.
@@ -541,7 +528,6 @@ class OnyxClient:
         )
         return response
 
-    @utils.session_required
     def csv_suppress(self, project, csv_path, delimiter=None, test=False):
         """
         Use a .csv or .tsv to suppress records in the database.
@@ -575,7 +561,6 @@ class OnyxClient:
             if csv_file is not sys.stdin:
                 csv_file.close()
 
-    @utils.session_required
     def delete(self, project, cid, test=False):
         """
         Delete a record in the database.
@@ -591,7 +576,6 @@ class OnyxClient:
         )
         return response
 
-    @utils.session_required
     def csv_delete(self, project, csv_path, delimiter=None, test=False):
         """
         Use a .csv or .tsv to delete records in the database.
@@ -625,7 +609,6 @@ class OnyxClient:
             if csv_file is not sys.stdin:
                 csv_file.close()
 
-    @utils.session_required
     def choices(self, project, field):
         """
         View choices for a field.
