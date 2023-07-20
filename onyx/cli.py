@@ -399,21 +399,29 @@ class GetCommands(ClientRequired):
         get_parser.add_argument("project")
         get_parser.add_argument("cid")
         get_parser.add_argument(
+            "-i", "--include", nargs="+", action="append", metavar="FIELD"
+        )
+        get_parser.add_argument(
             "-e", "--exclude", nargs="+", action="append", metavar="FIELD"
         )
         get_parser.add_argument("-s", "--scope", nargs="+", action="append")
 
-    def get(self, project, cid, exclude=None, scope=None):
+    def get(self, project, cid, include=None, exclude=None, scope=None):
         """
         Get a record from the database.
         """
+        if include:
+            include = utils.flatten_list_of_lists(include)
+
         if exclude:
             exclude = utils.flatten_list_of_lists(exclude)
 
         if scope:
             scope = utils.flatten_list_of_lists(scope)
 
-        response = self.client.get(project, cid, exclude=exclude, scope=scope)
+        response = self.client.get(
+            project, cid, include=include, exclude=exclude, scope=scope
+        )
         utils.print_response(response)
 
 
@@ -430,22 +438,32 @@ class FilterCommands(ClientRequired):
             "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
         )
         filter_parser.add_argument(
+            "-i", "--include", nargs="+", action="append", metavar="FIELD"
+        )
+        filter_parser.add_argument(
             "-e", "--exclude", nargs="+", action="append", metavar="FIELD"
         )
         filter_parser.add_argument("-s", "--scope", nargs="+", action="append")
 
-    def filter(self, project, fields, exclude=None, scope=None):
+    def filter(self, project, fields, include=None, exclude=None, scope=None):
         """
         Filter records from the database.
         """
         fields = utils.construct_fields_dict(fields)
+
+        if include:
+            include = utils.flatten_list_of_lists(include)
+
         if exclude:
             exclude = utils.flatten_list_of_lists(exclude)
+
         if scope:
             scope = utils.flatten_list_of_lists(scope)
 
         results = utils.iterate_records(
-            self.client.filter(project, fields, exclude=exclude, scope=scope)
+            self.client.filter(
+                project, fields, include=include, exclude=exclude, scope=scope
+            )
         )
 
         try:
@@ -676,12 +694,22 @@ def run(args):
 
     elif args.command == "get":
         get_commands = GetCommands(args.user, args.envpass)
-        get_commands.get(args.project, args.cid, exclude=args.exclude, scope=args.scope)
+        get_commands.get(
+            args.project,
+            args.cid,
+            include=args.include,
+            exclude=args.exclude,
+            scope=args.scope,
+        )
 
     elif args.command == "filter":
         filter_commands = FilterCommands(args.user, args.envpass)
         filter_commands.filter(
-            args.project, args.field, exclude=args.exclude, scope=args.scope
+            args.project,
+            args.field,
+            include=args.include,
+            exclude=args.exclude,
+            scope=args.scope,
         )
 
     elif args.command == "update":
