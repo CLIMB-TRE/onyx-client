@@ -395,23 +395,26 @@ class OnyxClient:
             if csv_path and csv_file is not sys.stdin:
                 csv_file.close()
 
-    def get(self, project, cid, exclude=None, scope=None):
+    def get(self, project, cid, include=None, exclude=None, scope=None):
         """
         Get a record from the database.
         """
         response = self.request(
             method="get",
             url=self.ENDPOINTS["get"](self.config.domain, project, cid),
-            params={"exclude": exclude, "scope": scope},
+            params={"include": include, "exclude": exclude, "scope": scope},
         )
         return response
 
-    def filter(self, project, fields=None, exclude=None, scope=None):
+    def filter(self, project, fields=None, include=None, exclude=None, scope=None):
         """
         Filter records from the database.
         """
         if fields is None:
             fields = {}
+
+        if include:
+            fields["include"] = include
 
         if exclude:
             fields["exclude"] = exclude
@@ -435,7 +438,7 @@ class OnyxClient:
             else:
                 _next = None
 
-    def query(self, project, query=None, exclude=None, scope=None):
+    def query(self, project, query=None, include=None, exclude=None, scope=None):
         """
         Get records from the database.
         """
@@ -445,7 +448,7 @@ class OnyxClient:
             else:
                 query = query.query
 
-        fields = {"exclude": exclude, "scope": scope}
+        fields = {"include": include, "exclude": exclude, "scope": scope}
         _next = self.ENDPOINTS["query"](self.config.domain, project)
 
         while _next is not None:
