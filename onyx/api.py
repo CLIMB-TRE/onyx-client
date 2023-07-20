@@ -9,6 +9,20 @@ from . import utils, settings
 from .config import OnyxConfig
 
 
+class OnyxResponse(requests.Response):
+    def __init__(self, response):
+        self.__dict__ = response.__dict__
+
+    def record(self):
+        utils.raise_for_status(self)
+        return self.json()["data"]["record"]
+
+    def records(self):
+        utils.raise_for_status(self)
+        for result in self.json()["data"]["records"]:
+            yield result
+
+
 class OnyxClient:
     ENDPOINTS = {
         # ACCOUNTS
@@ -404,7 +418,7 @@ class OnyxClient:
             url=self.ENDPOINTS["get"](self.config.domain, project, cid),
             params={"include": include, "exclude": exclude, "scope": scope},
         )
-        return response
+        return OnyxResponse(response)
 
     def filter(self, project, fields=None, include=None, exclude=None, scope=None):
         """
@@ -413,15 +427,7 @@ class OnyxClient:
         if fields is None:
             fields = {}
 
-        if include:
-            fields["include"] = include
-
-        if exclude:
-            fields["exclude"] = exclude
-
-        if scope:
-            fields["scope"] = scope
-
+        fields = fields | {"include": include, "exclude": exclude, "scope": scope}
         _next = self.ENDPOINTS["filter"](self.config.domain, project)
 
         while _next is not None:
@@ -430,7 +436,7 @@ class OnyxClient:
                 url=_next,
                 params=fields,
             )
-            yield response
+            yield OnyxResponse(response)
 
             fields = None
             if response.ok:
@@ -458,7 +464,7 @@ class OnyxClient:
                 json=query,
                 params=fields,
             )
-            yield response
+            yield OnyxResponse(response)
 
             fields = None
             if response.ok:

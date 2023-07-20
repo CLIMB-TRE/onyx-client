@@ -138,3 +138,8 @@ def iterate_records(responses):
 
         for result in response.json()["data"]["records"]:
             yield result
+
+
+def get_record(response):
+    raise_for_status(response)
+    return response.json()["data"]["record"]
