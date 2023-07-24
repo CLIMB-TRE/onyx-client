@@ -5,22 +5,13 @@ import json
 import requests
 import concurrent.futures
 from django_query_tools.client import F
-from . import utils, settings
+from .utils import get_input
 from .config import OnyxConfig
+from typing import Any, Generator, List, Dict, IO
 
 
-class OnyxResponse(requests.Response):
-    def __init__(self, response):
-        self.__dict__ = response.__dict__
-
-    def record(self):
-        utils.raise_for_status(self)
-        return self.json()["data"]["record"]
-
-    def records(self):
-        utils.raise_for_status(self)
-        for result in self.json()["data"]["records"]:
-            yield result
+PASSWORD_ENV_VAR_PREFIX = "ONYX_"
+PASSWORD_ENV_VAR_POSTFIX = "_PASSWORD"
 
 
 class OnyxClient:
@@ -163,15 +154,15 @@ class OnyxClient:
             # If the password is meant to be an env var, grab it.
             # If its not there, this is unintended so an error is raised
             password_env_var = (
-                settings.PASSWORD_ENV_VAR_PREFIX
+                PASSWORD_ENV_VAR_PREFIX
                 + self.username.upper()
-                + settings.PASSWORD_ENV_VAR_POSTFIX
+                + PASSWORD_ENV_VAR_POSTFIX
             )
             password = os.environ[password_env_var]
         else:
             # Otherwise, prompt for the password
             print("Please enter your password.")
-            password = utils.get_input("password", password=True)
+            password = get_input("password", password=True)
         return password
 
     def request(self, method, **kwargs):
@@ -315,7 +306,12 @@ class OnyxClient:
         )
         return response
 
-    def create(self, project, fields, test=False):
+    def _create(
+        self,
+        project: str,
+        fields: Dict[str, Any],
+        test: bool = False,
+    ) -> requests.Response:
         """
         Post a record to the database.
         """
@@ -331,15 +327,28 @@ class OnyxClient:
         )
         return response
 
-    def csv_create(
+    def create(
         self,
-        project,
-        csv_path=None,
-        csv_file=None,
-        delimiter=None,
-        multithreaded=False,
-        test=False,
-    ):
+        project: str,
+        fields: Dict[str, Any],
+        test: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Post a record to the database.
+        """
+        response = self._create(project, fields, test=test)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    def _csv_create(
+        self,
+        project: str,
+        csv_path: str | None = None,
+        csv_file: IO | None = None,
+        delimiter: str | None = None,
+        multithreaded: bool = False,
+        test: bool = False,
+    ) -> Generator[requests.Response, Any, None]:
         """
         Post a .csv or .tsv containing records to the database.
         """
@@ -409,7 +418,39 @@ class OnyxClient:
             if csv_path and csv_file is not sys.stdin:
                 csv_file.close()
 
-    def get(self, project, cid, include=None, exclude=None, scope=None):
+    def csv_create(
+        self,
+        project: str,
+        csv_path: str | None = None,
+        csv_file: IO | None = None,
+        delimiter: str | None = None,
+        multithreaded: bool = False,
+        test: bool = False,
+    ) -> Generator[Dict[str, Any], Any, None]:
+        """
+        Post a .csv or .tsv containing records to the database.
+        """
+        responses = self._csv_create(
+            project,
+            csv_path=csv_path,
+            csv_file=csv_file,
+            delimiter=delimiter,
+            multithreaded=multithreaded,
+            test=test,
+        )
+        for response in responses:
+            response.raise_for_status()
+            for result in response.json()["data"]:
+                yield result
+
+    def _get(
+        self,
+        project: str,
+        cid: str,
+        include: List[str] | str | None = None,
+        exclude: List[str] | str | None = None,
+        scope: List[str] | str | None = None,
+    ) -> requests.Response:
         """
         Get a record from the database.
         """
@@ -418,9 +459,37 @@ class OnyxClient:
             url=self.ENDPOINTS["get"](self.config.domain, project, cid),
             params={"include": include, "exclude": exclude, "scope": scope},
         )
-        return OnyxResponse(response)
+        return response
 
-    def filter(self, project, fields=None, include=None, exclude=None, scope=None):
+    def get(
+        self,
+        project: str,
+        cid: str,
+        include: List[str] | str | None = None,
+        exclude: List[str] | str | None = None,
+        scope: List[str] | str | None = None,
+    ) -> Dict[str, Any]:
+        """
+        Get a record from the database.
+        """
+        response = self._get(
+            project,
+            cid,
+            include=include,
+            exclude=exclude,
+            scope=scope,
+        )
+        response.raise_for_status()
+        return response.json()["data"]["record"]
+
+    def _filter(
+        self,
+        project: str,
+        fields: Dict[str, Any] | None = None,
+        include: List[str] | str | None = None,
+        exclude: List[str] | str | None = None,
+        scope: List[str] | str | None = None,
+    ) -> Generator[requests.Response, Any, None]:
         """
         Filter records from the database.
         """
@@ -436,7 +505,7 @@ class OnyxClient:
                 url=_next,
                 params=fields,
             )
-            yield OnyxResponse(response)
+            yield response
 
             fields = None
             if response.ok:
@@ -444,7 +513,37 @@ class OnyxClient:
             else:
                 _next = None
 
-    def query(self, project, query=None, include=None, exclude=None, scope=None):
+    def filter(
+        self,
+        project: str,
+        fields: Dict[str, Any] | None = None,
+        include: List[str] | str | None = None,
+        exclude: List[str] | str | None = None,
+        scope: List[str] | str | None = None,
+    ) -> Generator[Dict[str, Any], Any, None]:
+        """
+        Filter records from the database.
+        """
+        responses = self._filter(
+            project,
+            fields=fields,
+            include=include,
+            exclude=exclude,
+            scope=scope,
+        )
+        for response in responses:
+            response.raise_for_status()
+            for result in response.json()["data"]["records"]:
+                yield result
+
+    def _query(
+        self,
+        project: str,
+        query: F | None = None,
+        include: List[str] | str | None = None,
+        exclude: List[str] | str | None = None,
+        scope: List[str] | str | None = None,
+    ) -> Generator[requests.Response, Any, None]:
         """
         Get records from the database.
         """
@@ -452,7 +551,9 @@ class OnyxClient:
             if not isinstance(query, F):
                 raise Exception("Query must be an F object.")
             else:
-                query = query.query
+                query_json = query.query
+        else:
+            query_json = None
 
         fields = {"include": include, "exclude": exclude, "scope": scope}
         _next = self.ENDPOINTS["query"](self.config.domain, project)
@@ -461,10 +562,10 @@ class OnyxClient:
             response = self.request(
                 method="post",
                 url=_next,
-                json=query,
+                json=query_json,
                 params=fields,
             )
-            yield OnyxResponse(response)
+            yield response
 
             fields = None
             if response.ok:
@@ -472,7 +573,36 @@ class OnyxClient:
             else:
                 _next = None
 
-    def update(self, project, cid, fields, test=False):
+    def query(
+        self,
+        project: str,
+        query: F | None = None,
+        include: List[str] | str | None = None,
+        exclude: List[str] | str | None = None,
+        scope: List[str] | str | None = None,
+    ) -> Generator[Dict[str, Any], Any, None]:
+        """
+        Get records from the database.
+        """
+        responses = self._query(
+            project,
+            query=query,
+            include=include,
+            exclude=exclude,
+            scope=scope,
+        )
+        for response in responses:
+            response.raise_for_status()
+            for result in response.json()["data"]["records"]:
+                yield result
+
+    def _update(
+        self,
+        project: str,
+        cid: str,
+        fields: Dict[str, Any] | None = None,
+        test: bool = False,
+    ) -> requests.Response:
         """
         Update a record in the database.
         """
@@ -488,7 +618,27 @@ class OnyxClient:
         )
         return response
 
-    def csv_update(self, project, csv_path, delimiter=None, test=False):
+    def update(
+        self,
+        project: str,
+        cid: str,
+        fields: Dict[str, Any] | None = None,
+        test: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Update a record in the database.
+        """
+        response = self._update(project, cid, fields=fields, test=test)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    def _csv_update(
+        self,
+        project: str,
+        csv_path: str,
+        delimiter: str | None = None,
+        test: bool = False,
+    ) -> Generator[requests.Response, Any, None]:
         """
         Use a .csv or .tsv to update records in the database.
         """
@@ -522,7 +672,33 @@ class OnyxClient:
             if csv_file is not sys.stdin:
                 csv_file.close()
 
-    def suppress(self, project, cid, test=False):
+    def csv_update(
+        self,
+        project: str,
+        csv_path: str,
+        delimiter: str | None = None,
+        test: bool = False,
+    ) -> Generator[Dict[str, Any], Any, None]:
+        """
+        Use a .csv or .tsv to update records in the database.
+        """
+        responses = self._csv_update(
+            project,
+            csv_path,
+            delimiter=delimiter,
+            test=test,
+        )
+        for response in responses:
+            response.raise_for_status()
+            for result in response.json()["data"]:
+                yield result
+
+    def _suppress(
+        self,
+        project: str,
+        cid: str,
+        test: bool = False,
+    ) -> requests.Response:
         """
         Suppress a record in the database.
         """
@@ -537,7 +713,26 @@ class OnyxClient:
         )
         return response
 
-    def csv_suppress(self, project, csv_path, delimiter=None, test=False):
+    def suppress(
+        self,
+        project: str,
+        cid: str,
+        test: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Suppress a record in the database.
+        """
+        response = self._suppress(project, cid, test=test)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    def _csv_suppress(
+        self,
+        project: str,
+        csv_path: str,
+        delimiter: str | None = None,
+        test: bool = False,
+    ) -> Generator[requests.Response, Any, None]:
         """
         Use a .csv or .tsv to suppress records in the database.
         """
@@ -570,7 +765,33 @@ class OnyxClient:
             if csv_file is not sys.stdin:
                 csv_file.close()
 
-    def delete(self, project, cid, test=False):
+    def csv_suppress(
+        self,
+        project: str,
+        csv_path: str,
+        delimiter: str | None = None,
+        test: bool = False,
+    ) -> Generator[Dict[str, Any], Any, None]:
+        """
+        Use a .csv or .tsv to suppress records in the database.
+        """
+        responses = self._csv_suppress(
+            project,
+            csv_path,
+            delimiter=delimiter,
+            test=test,
+        )
+        for response in responses:
+            response.raise_for_status()
+            for result in response.json()["data"]:
+                yield result
+
+    def _delete(
+        self,
+        project: str,
+        cid: str,
+        test: bool = False,
+    ) -> requests.Response:
         """
         Delete a record in the database.
         """
@@ -585,7 +806,26 @@ class OnyxClient:
         )
         return response
 
-    def csv_delete(self, project, csv_path, delimiter=None, test=False):
+    def delete(
+        self,
+        project: str,
+        cid: str,
+        test: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Delete a record in the database.
+        """
+        response = self._suppress(project, cid, test=test)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    def _csv_delete(
+        self,
+        project: str,
+        csv_path: str,
+        delimiter: str | None = None,
+        test: bool = False,
+    ) -> Generator[requests.Response, Any, None]:
         """
         Use a .csv or .tsv to delete records in the database.
         """
@@ -618,7 +858,28 @@ class OnyxClient:
             if csv_file is not sys.stdin:
                 csv_file.close()
 
-    def choices(self, project, field):
+    def csv_delete(
+        self,
+        project: str,
+        csv_path: str,
+        delimiter: str | None = None,
+        test: bool = False,
+    ) -> Generator[Dict[str, Any], Any, None]:
+        """
+        Use a .csv or .tsv to delete records in the database.
+        """
+        responses = self._csv_delete(
+            project,
+            csv_path,
+            delimiter=delimiter,
+            test=test,
+        )
+        for response in responses:
+            response.raise_for_status()
+            for result in response.json()["data"]:
+                yield result
+
+    def _choices(self, project: str, field: str) -> requests.Response:
         """
         View choices for a field.
         """
@@ -627,3 +888,11 @@ class OnyxClient:
             url=self.ENDPOINTS["choices"](self.config.domain, project, field),
         )
         return response
+
+    def choices(self, project: str, field: str) -> List[str]:
+        """
+        View choices for a field.
+        """
+        response = self._choices(project, field)
+        response.raise_for_status()
+        return response.json()["data"]["choices"]
