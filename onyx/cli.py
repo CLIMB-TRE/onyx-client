@@ -5,14 +5,13 @@ import stat
 import json
 import requests
 import argparse
-from . import version, utils, settings
-from .config import OnyxConfig
+from . import version, utils, config
 from .api import OnyxClient
 
 
 class ConfigRequired:
     def __init__(self):
-        self.config = OnyxConfig()
+        self.config = config.OnyxConfig()
 
 
 class ClientRequired(ConfigRequired):
@@ -83,22 +82,22 @@ class ConfigCommands(ConfigRequired):
         if not os.path.isdir(config_dir):
             os.mkdir(config_dir)
 
-        config_file = os.path.join(config_dir, settings.CONFIG_FILE_NAME)
+        config_file_path = os.path.join(config_dir, config.CONFIG_FILE_NAME)
 
-        if os.path.isfile(config_file):
-            print(f"Config file already exists: {os.path.abspath(config_file)}")
+        if os.path.isfile(config_file_path):
+            print(f"Config file already exists: {os.path.abspath(config_file_path)}")
             print("If you wish to overwrite this config, please delete this file.")
             exit()
 
-        with open(config_file, "w") as config:
+        with open(config_file_path, "w") as config_file:
             json.dump(
                 {"domain": domain, "users": {}, "default_user": None},
-                config,
+                config_file,
                 indent=4,
             )
 
         # Read-write for OS user only
-        os.chmod(config_file, stat.S_IRUSR | stat.S_IWUSR)
+        os.chmod(config_file_path, stat.S_IRUSR | stat.S_IWUSR)
 
         print("Config created successfully.")
         print(
@@ -107,11 +106,7 @@ class ConfigCommands(ConfigRequired):
         print("")
         print(f"export ONYX_CLIENT_CONFIG={os.path.abspath(config_dir)}")
         print("")
-        print(
-            "IMPORTANT: DO NOT CHANGE PERMISSIONS OF CONFIG FILE(S)".center(
-                settings.MESSAGE_BAR_WIDTH, "!"
-            )
-        )
+        print("IMPORTANT: DO NOT CHANGE PERMISSIONS OF CONFIG FILE(S)".center(100, "!"))
         warning_message = [
             "The file(s) within your config directory store sensitive information such as tokens.",
             "They have been created with the permissions needed to keep your information safe.",
@@ -119,7 +114,7 @@ class ConfigCommands(ConfigRequired):
         ]
         for line in warning_message:
             print(line)
-        print("".center(settings.MESSAGE_BAR_WIDTH, "!"))
+        print("".center(100, "!"))
 
     def set_default(self, username):
         """

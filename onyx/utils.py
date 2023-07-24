@@ -1,6 +1,5 @@
 import sys
 import json
-import inspect
 import requests
 from getpass import getpass
 
