@@ -69,7 +69,15 @@ class OnyxClient:
     }
 
     @classmethod
-    def register(cls, config, first_name, last_name, email, site, password):
+    def register(
+        cls,
+        config: OnyxConfig,
+        first_name: str,
+        last_name: str,
+        email: str,
+        site: str,
+        password: str,
+    ) -> requests.Response:
         """
         Create a new user.
         """
@@ -85,7 +93,12 @@ class OnyxClient:
         )
         return response
 
-    def __init__(self, config=None, username=None, env_password=False):
+    def __init__(
+        self,
+        config: OnyxConfig | None = None,
+        username: str | None = None,
+        env_password: bool = False,
+    ):
         """
         Initialise the client.
         """
@@ -165,36 +178,35 @@ class OnyxClient:
             password = get_input("password", password=True)
         return password
 
-    def request(self, method, **kwargs):
+    def request(self, method: str, retries: int = 3, **kwargs) -> requests.Response:
         """
         Carry out a request while handling token authorisation.
         """
+        if not retries:
+            raise Exception(
+                "Request retry limit reached. This should not be possible..."
+            )
+
         kwargs.setdefault("headers", {}).update(
             {"Authorization": f"Token {self.token}"}
         )
         method_response = self._request(method, **kwargs)
 
+        # Token has expired.
+        # If an env_password was provided, log in again, obtain a new token, and re-run the method.
         if method_response.status_code == 401 and self.env_password:
-            login_response = self._request(
-                "post",
-                self.ENDPOINTS["login"](self.config.domain),
-                auth=(self.username, self.get_password()),
-            )
-
-            if login_response.ok:
-                self.token = login_response.json()["data"]["token"]
-                self.expiry = login_response.json()["data"]["expiry"]
-                self.config.write_token(self.username, self.token, self.expiry)
-
-                # TODO: There is a potential infinite loop here
-                # In the case where a valid-authed method somehow returns 401
-                return self.request(method, **kwargs)
-
-            login_response.raise_for_status()
+            self.login().raise_for_status()
+            # A retry mechanism has been incorporated as a failsafe.
+            # This is to protect against the case where an onyx endpoint returns a 401 status code,
+            # despite the user being able to successfully log in, leading to an infinite loop of
+            # re-logging in and re-hitting the endpoint.
+            # This scenario should not be possible. But if it happened, it would not be fun at all.
+            # So, better safe than sorry...
+            return self.request(method, retries=retries - 1, **kwargs)
 
         return method_response
 
-    def login(self):
+    def login(self) -> requests.Response:
         """
         Log in as a particular user, get a new token and store the token in the client.
 
@@ -216,7 +228,7 @@ class OnyxClient:
 
         return response
 
-    def logout(self):
+    def logout(self) -> requests.Response:
         """
         Log out the user in this client.
         """
@@ -231,7 +243,7 @@ class OnyxClient:
 
         return response
 
-    def logoutall(self):
+    def logoutall(self) -> requests.Response:
         """
         Log out the user in all clients.
         """
@@ -246,7 +258,7 @@ class OnyxClient:
 
         return response
 
-    def site_approve(self, username):
+    def site_approve(self, username: str) -> requests.Response:
         """
         Site-approve another user.
         """
@@ -256,7 +268,7 @@ class OnyxClient:
         )
         return response
 
-    def site_list_waiting(self):
+    def site_list_waiting(self) -> requests.Response:
         """
         List users waiting for site approval.
         """
@@ -266,7 +278,7 @@ class OnyxClient:
         )
         return response
 
-    def site_list_users(self):
+    def site_list_users(self) -> requests.Response:
         """
         Get the current users within the site of the requesting user.
         """
@@ -276,7 +288,7 @@ class OnyxClient:
         )
         return response
 
-    def admin_approve(self, username):
+    def admin_approve(self, username: str) -> requests.Response:
         """
         Admin-approve another user.
         """
@@ -286,7 +298,7 @@ class OnyxClient:
         )
         return response
 
-    def admin_list_waiting(self):
+    def admin_list_waiting(self) -> requests.Response:
         """
         List users waiting for admin approval.
         """
@@ -296,7 +308,7 @@ class OnyxClient:
         )
         return response
 
-    def admin_list_users(self):
+    def admin_list_users(self) -> requests.Response:
         """
         List all users.
         """
