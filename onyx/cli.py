@@ -367,6 +367,7 @@ def update(client: OnyxClient, args):
         updates = client._csv_update(
             args.project,
             csv_path=args.csv,
+            multithreaded=args.multithreaded,
             test=args.test,
         )
         utils.execute_uploads(updates)
@@ -376,6 +377,7 @@ def update(client: OnyxClient, args):
             args.project,
             csv_path=args.tsv,
             delimiter="\t",
+            multithreaded=args.multithreaded,
             test=args.test,
         )
         utils.execute_uploads(updates)
@@ -394,6 +396,7 @@ def suppress(client: OnyxClient, args):
         suppressions = client._csv_suppress(
             args.project,
             csv_path=args.csv,
+            multithreaded=args.multithreaded,
             test=args.test,
         )
         utils.execute_uploads(suppressions)
@@ -403,6 +406,7 @@ def suppress(client: OnyxClient, args):
             args.project,
             csv_path=args.tsv,
             delimiter="\t",
+            multithreaded=args.multithreaded,
             test=args.test,
         )
         utils.execute_uploads(suppressions)
@@ -421,6 +425,7 @@ def delete(client: OnyxClient, args):
         deletions = client._csv_delete(
             args.project,
             csv_path=args.csv,
+            multithreaded=args.multithreaded,
             test=args.test,
         )
         utils.execute_uploads(deletions)
@@ -430,6 +435,7 @@ def delete(client: OnyxClient, args):
             args.project,
             csv_path=args.tsv,
             delimiter="\t",
+            multithreaded=args.multithreaded,
             test=args.test,
         )
         utils.execute_uploads(deletions)
@@ -560,23 +566,37 @@ def main():
     )
     admin_list_users_parser.set_defaults(func=admin_list_users)
 
-    # CREATE COMMANDS
-    create_parser = command.add_parser("create", help="Upload metadata records.")
-    create_parser.add_argument("project")
-    create_exclusive_parser = create_parser.add_mutually_exclusive_group(required=True)
-    create_exclusive_parser.add_argument(
-        "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
-    )
-    create_exclusive_parser.add_argument(
-        "--csv", help="Upload metadata via a .csv file."
-    )
-    create_exclusive_parser.add_argument(
-        "--tsv", help="Upload metadata via a .tsv file."
-    )
-    create_parser.add_argument(
+    # CRUD PARSER GROUPINGS
+    crud_parser = argparse.ArgumentParser(add_help=False)
+    crud_parser.add_argument(
         "--test", action="store_true", help="Run the command as a test."
     )
-    create_parser.add_argument("--multithreaded", action="store_true")
+    crud_parser.add_argument("--multithreaded", action="store_true")
+
+    cid_action_parser = argparse.ArgumentParser(add_help=False)
+    cid_action_parser.add_argument("project")
+    cid_action_group = cid_action_parser.add_mutually_exclusive_group(required=True)
+    cid_action_group.add_argument("cid", nargs="?", help="optional")
+    cid_action_group.add_argument(
+        "--csv",
+        help="Carry out action on multiple records via a .csv file. CID column required.",
+    )
+    cid_action_group.add_argument(
+        "--tsv",
+        help="Carry out action on multiple records via a .csv file. CID column required.",
+    )
+
+    # CREATE COMMANDS
+    create_parser = command.add_parser(
+        "create", help="Upload metadata records.", parents=[crud_parser]
+    )
+    create_parser.add_argument("project")
+    create_action_group = create_parser.add_mutually_exclusive_group(required=True)
+    create_action_group.add_argument(
+        "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
+    )
+    create_action_group.add_argument("--csv", help="Upload metadata via a .csv file.")
+    create_action_group.add_argument("--tsv", help="Upload metadata via a .tsv file.")
     create_parser.set_defaults(func=create)
 
     # GET COMMANDS
@@ -608,55 +628,29 @@ def main():
     filter_parser.set_defaults(func=filter)
 
     # UPDATE COMMANDS
-    update_parser = command.add_parser("update", help="Update metadata records.")
-    update_parser.add_argument("project")
+    update_parser = command.add_parser(
+        "update",
+        help="Update metadata records.",
+        parents=[crud_parser, cid_action_parser],
+    )
     update_parser.add_argument(
         "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
-    )
-    update_exclusive_parser = update_parser.add_mutually_exclusive_group(required=True)
-    update_exclusive_parser.add_argument("cid", nargs="?", help="optional")
-    update_exclusive_parser.add_argument(
-        "--csv", help="Update metadata via a .csv file."
-    )
-    update_exclusive_parser.add_argument(
-        "--tsv", help="Update metadata via a .tsv file."
-    )
-    update_parser.add_argument(
-        "--test", action="store_true", help="Run the command as a test."
     )
     update_parser.set_defaults(func=update)
 
     # SUPPRESS COMMANDS
-    suppress_parser = command.add_parser("suppress", help="Suppress metadata records.")
-    suppress_parser.add_argument("project")
-    suppress_exclusive_parser = suppress_parser.add_mutually_exclusive_group(
-        required=True
-    )
-    suppress_exclusive_parser.add_argument("cid", nargs="?", help="optional")
-    suppress_exclusive_parser.add_argument(
-        "--csv", help="Suppress metadata via a .csv file."
-    )
-    suppress_exclusive_parser.add_argument(
-        "--tsv", help="Suppress metadata via a .tsv file."
-    )
-    suppress_parser.add_argument(
-        "--test", action="store_true", help="Run the command as a test."
+    suppress_parser = command.add_parser(
+        "suppress",
+        help="Suppress metadata records.",
+        parents=[crud_parser, cid_action_parser],
     )
     suppress_parser.set_defaults(func=suppress)
 
     # DELETE COMMANDS
-    delete_parser = command.add_parser("delete", help="Delete metadata records.")
-    delete_parser.add_argument("project")
-    delete_exclusive_parser = delete_parser.add_mutually_exclusive_group(required=True)
-    delete_exclusive_parser.add_argument("cid", nargs="?", help="optional")
-    delete_exclusive_parser.add_argument(
-        "--csv", help="Delete metadata via a .csv file."
-    )
-    delete_exclusive_parser.add_argument(
-        "--tsv", help="Delete metadata via a .tsv file."
-    )
-    delete_parser.add_argument(
-        "--test", action="store_true", help="Run the command as a test."
+    delete_parser = command.add_parser(
+        "delete",
+        help="Delete metadata records.",
+        parents=[crud_parser, cid_action_parser],
     )
     delete_parser.set_defaults(func=delete)
 
@@ -668,10 +662,15 @@ def main():
 
     args = parser.parse_args()
 
-    if args.command == "create" and args.multithreaded and not (args.csv or args.tsv):
-        parser.error("one of the arguments --csv --tsv is required")
+    if args.command in ["create", "update", "suppress", "delete"]:
+        if args.multithreaded and not (args.csv or args.tsv):
+            parser.error("one of the arguments --csv --tsv is required")
 
-    if args.command == "update" and (args.cid and not args.field):
-        parser.error("the following arguments are required: -f/--field")
+        if args.command == "update":
+            if args.cid and not args.field:
+                parser.error("the following arguments are required: -f/--field")
+
+            elif args.field and not args.cid:
+                parser.error("the following arguments are required: cid")
 
     args.func(args)
