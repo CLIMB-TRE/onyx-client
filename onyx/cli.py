@@ -151,7 +151,7 @@ def register(conf: config.OnyxConfig, args):
         password = utils.get_input("password", password=True)
         password2 = utils.get_input("password (again)", password=True)
 
-    registration = OnyxClient.register(
+    registration = OnyxClient._register(
         conf,
         first_name=first_name,
         last_name=last_name,
@@ -184,7 +184,7 @@ def login(client: OnyxClient, args):
     """
     Log in as a user.
     """
-    response = client.login()
+    response = client._login()
     utils.print_response(response, status_only=True)
 
 
@@ -193,7 +193,7 @@ def logout(client: OnyxClient, args):
     """
     Log out the current user.
     """
-    response = client.logout()
+    response = client._logout()
     utils.print_response(response, status_only=True)
 
 
@@ -202,7 +202,7 @@ def logoutall(client: OnyxClient, args):
     """
     Log out the current user everywhere.
     """
-    response = client.logoutall()
+    response = client._logoutall()
     utils.print_response(response, status_only=True)
 
 
@@ -211,7 +211,7 @@ def site_approve(client: OnyxClient, args):
     """
     Site-approve another user.
     """
-    approval = client.site_approve(args.username)
+    approval = client._site_approve(args.username)
     utils.print_response(approval)
 
 
@@ -220,7 +220,7 @@ def site_list_waiting(client: OnyxClient, args):
     """
     List users waiting for site approval.
     """
-    users = client.site_list_waiting()
+    users = client._site_list_waiting()
     utils.print_response(users)
 
 
@@ -229,7 +229,7 @@ def site_list_users(client: OnyxClient, args):
     """
     List site users.
     """
-    users = client.site_list_users()
+    users = client._site_list_users()
     utils.print_response(users)
 
 
@@ -238,7 +238,7 @@ def admin_approve(client: OnyxClient, args):
     """
     Admin-approve another user.
     """
-    approval = client.admin_approve(args.username)
+    approval = client._admin_approve(args.username)
     utils.print_response(approval)
 
 
@@ -247,7 +247,7 @@ def admin_list_waiting(client: OnyxClient, args):
     """
     List users waiting for admin approval.
     """
-    users = client.admin_list_waiting()
+    users = client._admin_list_waiting()
     utils.print_response(users)
 
 
@@ -256,7 +256,7 @@ def admin_list_users(client: OnyxClient, args):
     """
     List all users.
     """
-    users = client.admin_list_users()
+    users = client._admin_list_users()
     utils.print_response(users)
 
 
@@ -349,8 +349,8 @@ def filter(client: OnyxClient, args):
 
             for result in results:
                 writer.writerow(result)
-    except requests.HTTPError:
-        pass
+    except requests.HTTPError as e:
+        utils.print_response(e.response)
 
 
 @client_required

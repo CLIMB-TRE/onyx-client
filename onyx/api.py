@@ -12,87 +12,57 @@ from typing import Any, Generator, List, Dict, IO
 
 PASSWORD_ENV_VAR_PREFIX = "ONYX_"
 PASSWORD_ENV_VAR_POSTFIX = "_PASSWORD"
+ENDPOINTS = {
+    # ACCOUNTS
+    "register": lambda domain: os.path.join(domain, "accounts/register/"),
+    "login": lambda domain: os.path.join(domain, "accounts/login/"),
+    "logout": lambda domain: os.path.join(domain, "accounts/logout/"),
+    "logoutall": lambda domain: os.path.join(domain, "accounts/logoutall/"),
+    "site_approve": lambda domain, username: os.path.join(
+        domain, f"accounts/site/approve/{username}/"
+    ),
+    "site_waiting": lambda domain: os.path.join(domain, "accounts/site/waiting/"),
+    "site_users": lambda domain: os.path.join(domain, "accounts/site/users/"),
+    "admin_approve": lambda domain, username: os.path.join(
+        domain, f"accounts/admin/approve/{username}/"
+    ),
+    "admin_waiting": lambda domain: os.path.join(domain, "accounts/admin/waiting/"),
+    "admin_users": lambda domain: os.path.join(domain, "accounts/admin/users/"),
+    # DATA
+    "create": lambda domain, project: os.path.join(domain, f"data/create/{project}/"),
+    "testcreate": lambda domain, project: os.path.join(
+        domain, f"data/testcreate/{project}/"
+    ),
+    "get": lambda domain, project, cid: os.path.join(
+        domain, f"data/get/{project}/{cid}/"
+    ),
+    "filter": lambda domain, project: os.path.join(domain, f"data/filter/{project}/"),
+    "query": lambda domain, project: os.path.join(domain, f"data/query/{project}/"),
+    "update": lambda domain, project, cid: os.path.join(
+        domain, f"data/update/{project}/{cid}/"
+    ),
+    "testupdate": lambda domain, project, cid: os.path.join(
+        domain, f"data/testupdate/{project}/{cid}/"
+    ),
+    "suppress": lambda domain, project, cid: os.path.join(
+        domain, f"data/suppress/{project}/{cid}/"
+    ),
+    "testsuppress": lambda domain, project, cid: os.path.join(
+        domain, f"data/testsuppress/{project}/{cid}/"
+    ),
+    "delete": lambda domain, project, cid: os.path.join(
+        domain, f"data/delete/{project}/{cid}/"
+    ),
+    "testdelete": lambda domain, project, cid: os.path.join(
+        domain, f"data/testdelete/{project}/{cid}/"
+    ),
+    "choices": lambda domain, project, cid: os.path.join(
+        domain, f"data/choices/{project}/{cid}/"
+    ),
+}
 
 
 class OnyxClient:
-    ENDPOINTS = {
-        # ACCOUNTS
-        "register": lambda domain: os.path.join(domain, "accounts/register/"),
-        "login": lambda domain: os.path.join(domain, "accounts/login/"),
-        "logout": lambda domain: os.path.join(domain, "accounts/logout/"),
-        "logoutall": lambda domain: os.path.join(domain, "accounts/logoutall/"),
-        "site_approve": lambda domain, username: os.path.join(
-            domain, f"accounts/site/approve/{username}/"
-        ),
-        "site_waiting": lambda domain: os.path.join(domain, "accounts/site/waiting/"),
-        "site_users": lambda domain: os.path.join(domain, "accounts/site/users/"),
-        "admin_approve": lambda domain, username: os.path.join(
-            domain, f"accounts/admin/approve/{username}/"
-        ),
-        "admin_waiting": lambda domain: os.path.join(domain, "accounts/admin/waiting/"),
-        "admin_users": lambda domain: os.path.join(domain, "accounts/admin/users/"),
-        # DATA
-        "create": lambda domain, project: os.path.join(
-            domain, f"data/create/{project}/"
-        ),
-        "testcreate": lambda domain, project: os.path.join(
-            domain, f"data/testcreate/{project}/"
-        ),
-        "get": lambda domain, project, cid: os.path.join(
-            domain, f"data/get/{project}/{cid}/"
-        ),
-        "filter": lambda domain, project: os.path.join(
-            domain, f"data/filter/{project}/"
-        ),
-        "query": lambda domain, project: os.path.join(domain, f"data/query/{project}/"),
-        "update": lambda domain, project, cid: os.path.join(
-            domain, f"data/update/{project}/{cid}/"
-        ),
-        "testupdate": lambda domain, project, cid: os.path.join(
-            domain, f"data/testupdate/{project}/{cid}/"
-        ),
-        "suppress": lambda domain, project, cid: os.path.join(
-            domain, f"data/suppress/{project}/{cid}/"
-        ),
-        "testsuppress": lambda domain, project, cid: os.path.join(
-            domain, f"data/testsuppress/{project}/{cid}/"
-        ),
-        "delete": lambda domain, project, cid: os.path.join(
-            domain, f"data/delete/{project}/{cid}/"
-        ),
-        "testdelete": lambda domain, project, cid: os.path.join(
-            domain, f"data/testdelete/{project}/{cid}/"
-        ),
-        "choices": lambda domain, project, cid: os.path.join(
-            domain, f"data/choices/{project}/{cid}/"
-        ),
-    }
-
-    @classmethod
-    def register(
-        cls,
-        config: OnyxConfig,
-        first_name: str,
-        last_name: str,
-        email: str,
-        site: str,
-        password: str,
-    ) -> requests.Response:
-        """
-        Create a new user.
-        """
-        response = requests.post(
-            cls.ENDPOINTS["register"](config.domain),
-            json={
-                "first_name": first_name,
-                "last_name": last_name,
-                "password": password,
-                "email": email,
-                "site": site,
-            },
-        )
-        return response
-
     def __init__(
         self,
         config: OnyxConfig | None = None,
@@ -150,19 +120,159 @@ class OnyxClient:
             self.token = token_data.get("token")
             self.expiry = token_data.get("expiry")
 
-        self._request = requests.request
+        self._request_handler = requests.request
 
     def __enter__(self):
         self.session = requests.Session()
-        self._request = self.session.request
+        self._request_handler = self.session.request
         return self
 
     def __exit__(self, type, value, traceback):
         self.session.close()
         del self.session
-        self._request = requests.request
+        self._request_handler = requests.request
 
-    def get_password(self):
+    def _csv_upload(
+        self,
+        method: str,
+        endpoint: str,
+        project: str,
+        csv_path: str | None = None,
+        csv_file: IO | None = None,
+        delimiter: str | None = None,
+        multithreaded: bool = False,
+        test: bool = False,
+        cid_required: bool = False,
+    ) -> Generator[requests.Response, Any, None]:
+        if test:
+            endpoint = "test" + endpoint
+
+        if multithreaded and not self.env_password:
+            raise Exception("Multithreaded mode requires env_password = True.")
+
+        if csv_path and csv_file:
+            raise Exception("Cannot provide both csv_path and csv_file.")
+
+        if csv_path:
+            if csv_path == "-":
+                csv_file = sys.stdin
+            else:
+                csv_file = open(csv_path)
+        else:
+            if not csv_file:
+                raise Exception("Must provide either csv_path or csv_file.")
+
+        try:
+            if delimiter is None:
+                reader = csv.DictReader(csv_file)
+            else:
+                reader = csv.DictReader(csv_file, delimiter=delimiter)
+
+            record = next(reader, None)
+
+            if record:
+                if cid_required:
+                    cid = record.pop("cid", None)
+                    if cid is None:
+                        raise KeyError("A 'cid' column must be provided.")
+
+                    response = self._request(
+                        method=method,
+                        url=ENDPOINTS[endpoint](self.config.domain, project, cid),
+                        json=record,
+                    )
+                    yield response
+
+                    if multithreaded:
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            futures = [
+                                executor.submit(
+                                    self._request,
+                                    method,
+                                    url=ENDPOINTS[endpoint](
+                                        self.config.domain, project, record.pop("cid")
+                                    ),
+                                    json=record,
+                                )
+                                for record in reader
+                            ]
+                            for future in concurrent.futures.as_completed(futures):
+                                yield future.result()
+                    else:
+                        for record in reader:
+                            response = self._request(
+                                method=method,
+                                url=ENDPOINTS[endpoint](
+                                    self.config.domain, project, record.pop("cid")
+                                ),
+                                json=record,
+                            )
+                            yield response
+                else:
+                    response = self._request(
+                        method=method,
+                        url=ENDPOINTS[endpoint](self.config.domain, project),
+                        json=record,
+                    )
+                    yield response
+
+                    if multithreaded:
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            futures = [
+                                executor.submit(
+                                    self._request,
+                                    method,
+                                    url=ENDPOINTS[endpoint](
+                                        self.config.domain, project
+                                    ),
+                                    json=record,
+                                )
+                                for record in reader
+                            ]
+                            for future in concurrent.futures.as_completed(futures):
+                                yield future.result()
+                    else:
+                        for record in reader:
+                            response = self._request(
+                                method=method,
+                                url=ENDPOINTS[endpoint](self.config.domain, project),
+                                json=record,
+                            )
+                            yield response
+        finally:
+            # Close the file, only if it was opened within this function
+            if csv_path and csv_file is not sys.stdin:
+                csv_file.close()
+
+    def _request(self, method: str, retries: int = 3, **kwargs) -> requests.Response:
+        """
+        Carry out a request while handling token authorisation.
+        """
+        if not retries:
+            raise Exception(
+                "Request retry limit reached. This should not be possible..."
+            )
+
+        kwargs.setdefault("headers", {}).update(
+            {"Authorization": f"Token {self.token}"}
+        )
+        method_response = self._request_handler(method, **kwargs)
+
+        # Token has expired.
+        # If an env_password was provided, log in again, obtain a new token, and re-run the method.
+        if method_response.status_code == 401 and self.env_password:
+            self._login().raise_for_status()
+            # A retry mechanism has been incorporated as a failsafe.
+            # This is to protect against the case where an onyx endpoint returns a 401 status code,
+            # despite the user being able to successfully log in, leading to an infinite loop of
+            # re-logging in and re-hitting the endpoint.
+            # This scenario should not be possible. But if it happened, it would not be fun at all.
+            # So, better safe than sorry...
+            return self._request(method, retries=retries - 1, **kwargs)
+
+        return method_response
+
+    def _get_password(self):
         if self.env_password:
             # If the password is meant to be an env var, grab it.
             # If its not there, this is unintended so an error is raised
@@ -178,48 +288,62 @@ class OnyxClient:
             password = get_input("password", password=True)
         return password
 
-    def request(self, method: str, retries: int = 3, **kwargs) -> requests.Response:
+    @classmethod
+    def _register(
+        cls,
+        config: OnyxConfig,
+        first_name: str,
+        last_name: str,
+        email: str,
+        site: str,
+        password: str,
+    ) -> requests.Response:
         """
-        Carry out a request while handling token authorisation.
+        Create a new user.
         """
-        if not retries:
-            raise Exception(
-                "Request retry limit reached. This should not be possible..."
-            )
-
-        kwargs.setdefault("headers", {}).update(
-            {"Authorization": f"Token {self.token}"}
+        response = requests.post(
+            ENDPOINTS["register"](config.domain),
+            json={
+                "first_name": first_name,
+                "last_name": last_name,
+                "password": password,
+                "email": email,
+                "site": site,
+            },
         )
-        method_response = self._request(method, **kwargs)
+        return response
 
-        # Token has expired.
-        # If an env_password was provided, log in again, obtain a new token, and re-run the method.
-        if method_response.status_code == 401 and self.env_password:
-            self.login().raise_for_status()
-            # A retry mechanism has been incorporated as a failsafe.
-            # This is to protect against the case where an onyx endpoint returns a 401 status code,
-            # despite the user being able to successfully log in, leading to an infinite loop of
-            # re-logging in and re-hitting the endpoint.
-            # This scenario should not be possible. But if it happened, it would not be fun at all.
-            # So, better safe than sorry...
-            return self.request(method, retries=retries - 1, **kwargs)
+    @classmethod
+    def register(
+        cls,
+        config: OnyxConfig,
+        first_name: str,
+        last_name: str,
+        email: str,
+        site: str,
+        password: str,
+    ) -> Dict[str, Any]:
+        """
+        Create a new user.
+        """
+        response = cls._register(config, first_name, last_name, email, site, password)
+        response.raise_for_status()
+        return response.json()["data"]
 
-        return method_response
-
-    def login(self) -> requests.Response:
+    def _login(self) -> requests.Response:
         """
         Log in as a particular user, get a new token and store the token in the client.
 
         If no user is provided, the `default_user` in the config is used.
         """
         # Get the password
-        password = self.get_password()
+        password = self._get_password()
 
         # Log in
-        response = self._request(
+        response = self._request_handler(
             "post",
             auth=(self.username, password),
-            url=self.ENDPOINTS["login"](self.config.domain),
+            url=ENDPOINTS["login"](self.config.domain),
         )
         if response.ok:
             self.token = response.json()["data"]["token"]
@@ -228,13 +352,23 @@ class OnyxClient:
 
         return response
 
-    def logout(self) -> requests.Response:
+    def login(self) -> Dict[str, Any]:
+        """
+        Log in as a particular user, get a new token and store the token in the client.
+
+        If no user is provided, the `default_user` in the config is used.
+        """
+        response = self._login()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    def _logout(self) -> requests.Response:
         """
         Log out the user in this client.
         """
-        response = self.request(
+        response = self._request(
             method="post",
-            url=self.ENDPOINTS["logout"](self.config.domain),
+            url=ENDPOINTS["logout"](self.config.domain),
         )
         if response.ok:
             self.token = None
@@ -243,13 +377,20 @@ class OnyxClient:
 
         return response
 
-    def logoutall(self) -> requests.Response:
+    def logout(self) -> None:
+        """
+        Log out the user in this client.
+        """
+        response = self._logout()
+        response.raise_for_status()
+
+    def _logoutall(self) -> requests.Response:
         """
         Log out the user in all clients.
         """
-        response = self.request(
+        response = self._request(
             method="post",
-            url=self.ENDPOINTS["logoutall"](self.config.domain),
+            url=ENDPOINTS["logoutall"](self.config.domain),
         )
         if response.ok:
             self.token = None
@@ -258,65 +399,120 @@ class OnyxClient:
 
         return response
 
-    def site_approve(self, username: str) -> requests.Response:
+    def logoutall(self) -> None:
+        """
+        Log out the user in all clients.
+        """
+        response = self._logoutall()
+        response.raise_for_status()
+
+    def _site_approve(self, username: str) -> requests.Response:
         """
         Site-approve another user.
         """
-        response = self.request(
+        response = self._request(
             method="patch",
-            url=self.ENDPOINTS["site_approve"](self.config.domain, username),
+            url=ENDPOINTS["site_approve"](self.config.domain, username),
         )
         return response
 
-    def site_list_waiting(self) -> requests.Response:
+    def site_approve(self, username: str) -> Dict[str, Any]:
+        """
+        Site-approve another user.
+        """
+        response = self._site_approve(username)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    def _site_list_waiting(self) -> requests.Response:
         """
         List users waiting for site approval.
         """
-        response = self.request(
+        response = self._request(
             method="get",
-            url=self.ENDPOINTS["site_waiting"](self.config.domain),
+            url=ENDPOINTS["site_waiting"](self.config.domain),
         )
         return response
 
-    def site_list_users(self) -> requests.Response:
+    def site_list_waiting(self) -> List[Dict[str, Any]]:
+        """
+        List users waiting for site approval.
+        """
+        response = self._site_list_waiting()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    def _site_list_users(self) -> requests.Response:
         """
         Get the current users within the site of the requesting user.
         """
-        response = self.request(
+        response = self._request(
             method="get",
-            url=self.ENDPOINTS["site_users"](self.config.domain),
+            url=ENDPOINTS["site_users"](self.config.domain),
         )
         return response
 
-    def admin_approve(self, username: str) -> requests.Response:
+    def site_list_users(self) -> List[Dict[str, Any]]:
+        """
+        Get the current users within the site of the requesting user.
+        """
+        response = self._site_list_users()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    def _admin_approve(self, username: str) -> requests.Response:
         """
         Admin-approve another user.
         """
-        response = self.request(
+        response = self._request(
             method="patch",
-            url=self.ENDPOINTS["admin_approve"](self.config.domain, username),
+            url=ENDPOINTS["admin_approve"](self.config.domain, username),
         )
         return response
 
-    def admin_list_waiting(self) -> requests.Response:
+    def admin_approve(self, username: str) -> Dict[str, Any]:
+        """
+        Admin-approve another user.
+        """
+        response = self._admin_approve(username)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    def _admin_list_waiting(self) -> requests.Response:
         """
         List users waiting for admin approval.
         """
-        response = self.request(
+        response = self._request(
             method="get",
-            url=self.ENDPOINTS["admin_waiting"](self.config.domain),
+            url=ENDPOINTS["admin_waiting"](self.config.domain),
         )
         return response
 
-    def admin_list_users(self) -> requests.Response:
+    def admin_list_waiting(self) -> List[Dict[str, Any]]:
+        """
+        List users waiting for admin approval.
+        """
+        response = self._admin_list_waiting()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    def _admin_list_users(self) -> requests.Response:
         """
         List all users.
         """
-        response = self.request(
+        response = self._request(
             method="get",
-            url=self.ENDPOINTS["admin_users"](self.config.domain),
+            url=ENDPOINTS["admin_users"](self.config.domain),
         )
         return response
+
+    def admin_list_users(self) -> List[Dict[str, Any]]:
+        """
+        List all users.
+        """
+        response = self._admin_list_users()
+        response.raise_for_status()
+        return response.json()["data"]
 
     def _create(
         self,
@@ -332,9 +528,9 @@ class OnyxClient:
         else:
             endpoint = "create"
 
-        response = self.request(
+        response = self._request(
             method="post",
-            url=self.ENDPOINTS[endpoint](self.config.domain, project),
+            url=ENDPOINTS[endpoint](self.config.domain, project),
             json=fields,
         )
         return response
@@ -364,71 +560,16 @@ class OnyxClient:
         """
         Post a .csv or .tsv containing records to the database.
         """
-        if test:
-            endpoint = "testcreate"
-        else:
-            endpoint = "create"
-
-        if multithreaded and not self.env_password:
-            raise Exception("Multithreaded upload requires env_password = True.")
-
-        if csv_path and csv_file:
-            raise Exception("Cannot provide both csv_path and csv_file.")
-
-        if csv_path:
-            if csv_path == "-":
-                csv_file = sys.stdin
-            else:
-                csv_file = open(csv_path)
-        else:
-            if not csv_file:
-                raise Exception("Must provide either csv_path or csv_file.")
-
-        try:
-            if delimiter is None:
-                reader = csv.DictReader(csv_file)
-            else:
-                reader = csv.DictReader(csv_file, delimiter=delimiter)
-
-            record = next(reader, None)
-
-            if record:
-                response = self.request(
-                    method="post",
-                    url=self.ENDPOINTS[endpoint](self.config.domain, project),
-                    json=record,
-                )
-                yield response
-
-                if multithreaded:
-                    # Bit of an experimental one
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        futures = [
-                            executor.submit(
-                                self.request,
-                                "post",
-                                url=self.ENDPOINTS[endpoint](
-                                    self.config.domain, project
-                                ),
-                                json=record,
-                            )
-                            for record in reader
-                        ]
-                        for future in concurrent.futures.as_completed(futures):
-                            yield future.result()
-
-                else:
-                    for record in reader:
-                        response = self.request(
-                            method="post",
-                            url=self.ENDPOINTS[endpoint](self.config.domain, project),
-                            json=record,
-                        )
-                        yield response
-        finally:
-            # Close the file, only if it was opened within this function
-            if csv_path and csv_file is not sys.stdin:
-                csv_file.close()
+        yield from self._csv_upload(
+            method="post",
+            endpoint="create",
+            project=project,
+            csv_path=csv_path,
+            csv_file=csv_file,
+            delimiter=delimiter,
+            multithreaded=multithreaded,
+            test=test,
+        )
 
     def csv_create(
         self,
@@ -466,9 +607,9 @@ class OnyxClient:
         """
         Get a record from the database.
         """
-        response = self.request(
+        response = self._request(
             method="get",
-            url=self.ENDPOINTS["get"](self.config.domain, project, cid),
+            url=ENDPOINTS["get"](self.config.domain, project, cid),
             params={"include": include, "exclude": exclude, "scope": scope},
         )
         return response
@@ -509,10 +650,10 @@ class OnyxClient:
             fields = {}
 
         fields = fields | {"include": include, "exclude": exclude, "scope": scope}
-        _next = self.ENDPOINTS["filter"](self.config.domain, project)
+        _next = ENDPOINTS["filter"](self.config.domain, project)
 
         while _next is not None:
-            response = self.request(
+            response = self._request(
                 method="get",
                 url=_next,
                 params=fields,
@@ -568,10 +709,10 @@ class OnyxClient:
             query_json = None
 
         fields = {"include": include, "exclude": exclude, "scope": scope}
-        _next = self.ENDPOINTS["query"](self.config.domain, project)
+        _next = ENDPOINTS["query"](self.config.domain, project)
 
         while _next is not None:
-            response = self.request(
+            response = self._request(
                 method="post",
                 url=_next,
                 json=query_json,
@@ -623,9 +764,9 @@ class OnyxClient:
         else:
             endpoint = "update"
 
-        response = self.request(
+        response = self._request(
             method="patch",
-            url=self.ENDPOINTS[endpoint](self.config.domain, project, cid),
+            url=ENDPOINTS[endpoint](self.config.domain, project, cid),
             json=fields,
         )
         return response
@@ -647,42 +788,26 @@ class OnyxClient:
     def _csv_update(
         self,
         project: str,
-        csv_path: str,
+        csv_path: str | None = None,
+        csv_file: IO | None = None,
         delimiter: str | None = None,
+        multithreaded: bool = False,
         test: bool = False,
     ) -> Generator[requests.Response, Any, None]:
         """
         Use a .csv or .tsv to update records in the database.
         """
-        if test:
-            endpoint = "testupdate"
-        else:
-            endpoint = "update"
-
-        if csv_path == "-":
-            csv_file = sys.stdin
-        else:
-            csv_file = open(csv_path)
-        try:
-            if delimiter is None:
-                reader = csv.DictReader(csv_file)
-            else:
-                reader = csv.DictReader(csv_file, delimiter=delimiter)
-
-            for record in reader:
-                cid = record.pop("cid", None)
-                if cid is None:
-                    raise KeyError("A 'cid' column must be provided.")
-
-                response = self.request(
-                    method="patch",
-                    url=self.ENDPOINTS[endpoint](self.config.domain, project, cid),
-                    json=record,
-                )
-                yield response
-        finally:
-            if csv_file is not sys.stdin:
-                csv_file.close()
+        yield from self._csv_upload(
+            method="patch",
+            endpoint="update",
+            project=project,
+            csv_path=csv_path,
+            csv_file=csv_file,
+            delimiter=delimiter,
+            multithreaded=multithreaded,
+            test=test,
+            cid_required=True,
+        )
 
     def csv_update(
         self,
@@ -719,9 +844,9 @@ class OnyxClient:
         else:
             endpoint = "suppress"
 
-        response = self.request(
+        response = self._request(
             method="delete",
-            url=self.ENDPOINTS[endpoint](self.config.domain, project, cid),
+            url=ENDPOINTS[endpoint](self.config.domain, project, cid),
         )
         return response
 
@@ -741,41 +866,26 @@ class OnyxClient:
     def _csv_suppress(
         self,
         project: str,
-        csv_path: str,
+        csv_path: str | None = None,
+        csv_file: IO | None = None,
         delimiter: str | None = None,
+        multithreaded: bool = False,
         test: bool = False,
     ) -> Generator[requests.Response, Any, None]:
         """
         Use a .csv or .tsv to suppress records in the database.
         """
-        if test:
-            endpoint = "testsuppress"
-        else:
-            endpoint = "suppress"
-
-        if csv_path == "-":
-            csv_file = sys.stdin
-        else:
-            csv_file = open(csv_path)
-        try:
-            if delimiter is None:
-                reader = csv.DictReader(csv_file)
-            else:
-                reader = csv.DictReader(csv_file, delimiter=delimiter)
-
-            for record in reader:
-                cid = record.get("cid")
-                if cid is None:
-                    raise KeyError("A 'cid' column must be provided.")
-
-                response = self.request(
-                    method="delete",
-                    url=self.ENDPOINTS[endpoint](self.config.domain, project, cid),
-                )
-                yield response
-        finally:
-            if csv_file is not sys.stdin:
-                csv_file.close()
+        yield from self._csv_upload(
+            method="delete",
+            endpoint="suppress",
+            project=project,
+            csv_path=csv_path,
+            csv_file=csv_file,
+            delimiter=delimiter,
+            multithreaded=multithreaded,
+            test=test,
+            cid_required=True,
+        )
 
     def csv_suppress(
         self,
@@ -812,9 +922,9 @@ class OnyxClient:
         else:
             endpoint = "delete"
 
-        response = self.request(
+        response = self._request(
             method="delete",
-            url=self.ENDPOINTS[endpoint](self.config.domain, project, cid),
+            url=ENDPOINTS[endpoint](self.config.domain, project, cid),
         )
         return response
 
@@ -834,41 +944,26 @@ class OnyxClient:
     def _csv_delete(
         self,
         project: str,
-        csv_path: str,
+        csv_path: str | None = None,
+        csv_file: IO | None = None,
         delimiter: str | None = None,
+        multithreaded: bool = False,
         test: bool = False,
     ) -> Generator[requests.Response, Any, None]:
         """
         Use a .csv or .tsv to delete records in the database.
         """
-        if test:
-            endpoint = "testdelete"
-        else:
-            endpoint = "delete"
-
-        if csv_path == "-":
-            csv_file = sys.stdin
-        else:
-            csv_file = open(csv_path)
-        try:
-            if delimiter is None:
-                reader = csv.DictReader(csv_file)
-            else:
-                reader = csv.DictReader(csv_file, delimiter=delimiter)
-
-            for record in reader:
-                cid = record.get("cid")
-                if cid is None:
-                    raise KeyError("A 'cid' column must be provided.")
-
-                response = self.request(
-                    method="delete",
-                    url=self.ENDPOINTS[endpoint](self.config.domain, project, cid),
-                )
-                yield response
-        finally:
-            if csv_file is not sys.stdin:
-                csv_file.close()
+        yield from self._csv_upload(
+            method="delete",
+            endpoint="delete",
+            project=project,
+            csv_path=csv_path,
+            csv_file=csv_file,
+            delimiter=delimiter,
+            multithreaded=multithreaded,
+            test=test,
+            cid_required=True,
+        )
 
     def csv_delete(
         self,
@@ -895,9 +990,9 @@ class OnyxClient:
         """
         View choices for a field.
         """
-        response = self.request(
+        response = self._request(
             method="get",
-            url=self.ENDPOINTS["choices"](self.config.domain, project, field),
+            url=ENDPOINTS["choices"](self.config.domain, project, field),
         )
         return response
 
