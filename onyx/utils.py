@@ -74,14 +74,6 @@ def print_response(
         print(formatted_response, file=sys.stderr)
 
 
-def raise_for_status(response: requests.Response):
-    try:
-        response.raise_for_status()
-    except requests.HTTPError as e:
-        print_response(response)
-        raise e
-
-
 def get_input(field, password=False, type=None, required=True):
     """
     Get user input/password, ensuring they enter something.
@@ -132,16 +124,3 @@ def execute_uploads(uploads: Generator[requests.Response, Any, None]):
         print(f"Attempted: {attempted}")
         print(f"Successes: {successes}")
         print(f"Failures: {failures}")
-
-
-def iterate_records(responses: Generator[requests.Response, Any, None]):
-    for response in responses:
-        raise_for_status(response)
-
-        for result in response.json()["data"]["records"]:
-            yield result
-
-
-def get_record(response: requests.Response):
-    raise_for_status(response)
-    return response.json()["data"]["record"]
