@@ -1,6 +1,7 @@
 import os
 import stat
 import json
+from typing import Generator, Any, List, Dict, Tuple
 
 
 CONFIG_FILE_NAME = "config.json"  # Name of central config file
@@ -11,7 +12,7 @@ TOKENS_FILE_POSTFIX = "_token.json"
 
 
 class OnyxConfig:
-    def __init__(self, dir_path=None):
+    def __init__(self, dir_path: str | None = None):
         """
         Initialise the config.
 
@@ -34,7 +35,7 @@ class OnyxConfig:
         self.users = config["users"]
         self.default_user = config["default_user"]
 
-    def locate_config(self, dir_path=None):
+    def locate_config(self, dir_path: str | None = None) -> Tuple[str, str]:
         """
         If a `dir_path` was provided, confirm this is a directory containing a config file.
 
@@ -70,7 +71,7 @@ class OnyxConfig:
 
         return dir_path, file_path
 
-    def validate_config(self, config):
+    def validate_config(self, config: Dict[str, Any]) -> None:
         """
         Avoid a million KeyErrors due to problems with the config file.
         """
@@ -85,13 +86,13 @@ class OnyxConfig:
                         f"'{field}' key is missing from user '{user}' in the config file."
                     )
 
-    def write_token(self, username, token, expiry):
+    def write_token(self, username: str, token: str | None, expiry: str | None) -> None:
         with open(
             os.path.join(self.dir_path, self.users[username]["token"]), "w"
         ) as token_file:
             json.dump({"token": token, "expiry": expiry}, token_file, indent=4)
 
-    def add_user(self, username):
+    def add_user(self, username: str) -> None:
         """
         Add user to the config.
         """
@@ -143,7 +144,7 @@ class OnyxConfig:
             stat.S_IRUSR | stat.S_IWUSR,
         )
 
-    def set_default_user(self, username):
+    def set_default_user(self, username: str) -> None:
         """
         Set the default user in the config.
         """
@@ -168,13 +169,13 @@ class OnyxConfig:
                 indent=4,
             )
 
-    def get_default_user(self):
+    def get_default_user(self) -> str:
         """
         Get the default user in the config.
         """
         return self.default_user
 
-    def list_users(self):
+    def list_users(self) -> List[str]:
         """
         Get a list of the users in the config.
         """
