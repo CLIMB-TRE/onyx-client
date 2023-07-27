@@ -65,17 +65,23 @@ ENDPOINTS = {
 class OnyxClient:
     def __init__(
         self,
-        config: OnyxConfig | None = None,
         username: str | None = None,
         env_password: bool = False,
+        directory: str | None = None,
     ):
+        """Initialise the client.
+
+        Parameters
+        ----------
+        username : str, optional
+            User to act as. If not provided, acts as the default user in the config.
+        env_password : bool, optional
+            If set to `True`, gets the user's password from the `ONYX_<username>_PASSWORD` environment variable.
+        directory : str, optional
+            Path to config directory. If not provided, uses directory stored in the `ONYX_CLIENT_CONFIG` environment variable.
         """
-        Initialise the client.
-        """
-        if config:
-            self.config = config
-        else:
-            self.config = OnyxConfig()
+
+        self.config = OnyxConfig(directory=directory)
 
         # Assign username/env_password flag to the client
         if username is None:
@@ -108,7 +114,7 @@ class OnyxClient:
 
         # Open the token file for the user and assign the current token, and its expiry, to the client
         token_path = os.path.join(
-            self.config.dir_path, self.config.users[username]["token"]
+            self.config.directory, self.config.users[username]["token"]
         )
         with open(token_path) as token_file:
             try:

@@ -19,9 +19,7 @@ def config_required(func):
 
 def client_required(func):
     def wrapped_func(args):
-        conf = config.OnyxConfig()
         client = OnyxClient(
-            config=conf,
             username=args.user,
             env_password=args.envpass,
         )
