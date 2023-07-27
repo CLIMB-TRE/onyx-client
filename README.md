@@ -62,7 +62,7 @@ $ onyx register
 ```
 
 ## Upload data
-#### Create a single record from name/value pairs
+#### Create a single record
 ```
 $ onyx create <project> --field <name> <value> --field <name> <value> ...
 ```
@@ -71,7 +71,7 @@ from onyx import OnyxClient
 
 with OnyxClient() as client:
     # Create a single record
-    response = client.create(
+    client.create(
         "project",
         fields={
             "name1": "value1",
@@ -79,9 +79,6 @@ with OnyxClient() as client:
             # ...
         },
     )
-
-    # Print the response
-    print(response)
 ```
 
 #### Create multiple records from a csv/tsv
@@ -89,34 +86,34 @@ with OnyxClient() as client:
 $ onyx create <project> --csv <csv>
 $ onyx create <project> --tsv <tsv>
 ```
+
+##### From a path to a csv/tsv
 ```python
 from onyx import OnyxClient
 
 with OnyxClient() as client:
-    # Create from a csv of records, by providing the path
-    responses = client.csv_create(
+    # Iterating the function triggers the uploads
+    for record in client.csv_create(
         "project",
         csv_path="/path/to/file.csv",
         # delimiter="\t", # For uploading from a tsv
-    )
+    ):
+        pass
+```
 
-    # Iterating through the responses triggers the uploads
-    for response in responses:
-        print(response)
+##### From a file handle for a csv/tsv
+```python
+from onyx import OnyxClient
 
-    # Create from a csv of records, by providing a file handle
-
+with OnyxClient() as client:
     with open("/path/to/file.csv") as csv_file:
-        responses = client.csv_create(
+        # Iterating the function triggers the uploads
+        for record in client.csv_create(
             "project",
             csv_file=csv_file,
             # delimiter="\t", # For uploading from a tsv
-        )
-
-        # Iterating through the responses triggers the uploads
-        for response in responses:
-            print(response)
-
+        ):
+            pass
 ```
 
 ## Retrieve data
@@ -125,13 +122,16 @@ with OnyxClient() as client:
 $ onyx get <project> <cid>
 ```
 ```python
-from onyx import OnyxClient 
+from onyx import OnyxClient
 
 with OnyxClient() as client:
-    response = client.get("project", "cid")
+    # Get the entire record
+    record = client.get("project", "C-1234678")
+    print(record)
 
-    # Print the response
-    print(response)
+    # Get only the cid and published_date of the record
+    record = client.get("project", "C-12345678", include=["cid", "published_date"])
+    print(record)
 ```
 
 #### The `filter` endpoint
@@ -143,20 +143,17 @@ from onyx import OnyxClient
 
 # Retrieve all records matching ALL of the field requirements
 with OnyxClient() as client:
-    responses = client.filter(
+    for record in client.filter(
         "project",
         fields={
-            "name1" : "value1",
-            "name2" : "value2",
-            "name3__startswith" : "value3",
-            "name4__range" : "value4, value5",
+            "name1": "value1",
+            "name2": "value2",
+            "name3__startswith": "value3",
+            "name4__range": "value4, value5",
             # ...
-        }
-    )
-
-    # Print the responses (each contains a batch of records)
-    for response in responses:
-        print(response)
+        },
+    ):
+        print(record)
 ```
 
 #### The `query` endpoint 
@@ -176,18 +173,15 @@ with OnyxClient() as client:
     # Do NOT have a sample_type of 'swab', AND:
     # - Have a collection_month between Feb-Mar 2022
     # - OR have a collection_month between Jun-Sept 2022
-    responses = client.query(
+    for record in client.query(
         "project",
         query=(~F(sample_type="swab"))
         & (
             F(collection_month__range=["2022-02", "2022-03"])
             | F(collection_month__range=["2022-06", "2022-09"])
         ),
-    )
-
-    # Print the responses (each contains a batch of records)
-    for response in responses:
-        print(response)
+    ):
+        print(record)
 ```
 
 #### Supported lookups for `filter` and `query`
@@ -224,7 +218,7 @@ with OnyxClient() as client:
 Most of these lookups (excluding `ne`, which is a custom lookup meaning `not equal`) correspond directly to Django's built-in 'field lookups'. More information on what each lookup means can be found at: https://docs.djangoproject.com/en/4.1/ref/models/querysets/#field-lookups
 
 ## Update data
-#### Update a single record from name/value pairs
+#### Update a single record
 ```
 $ onyx update <project> <cid> --field <name> <value> --field <name> <value> ...
 ```
@@ -232,18 +226,15 @@ $ onyx update <project> <cid> --field <name> <value> --field <name> <value> ...
 from onyx import OnyxClient
 
 with OnyxClient() as client:
-    response = client.update(
+    client.update(
         "project",
-        "cid",
+        "C-12345678",
         fields={
-            "name1" : "value1",
-            "name2" : "value2",
+            "name1": "value1",
+            "name2": "value2",
             # ...
-        }
+        },
     )
-
-    # Print the response
-    print(response)
 ```
 
 #### Update multiple records from a csv/tsv
@@ -251,20 +242,34 @@ with OnyxClient() as client:
 $ onyx update <project> --csv <csv>
 $ onyx update <project> --tsv <tsv>
 ```
+
+##### From a path to a csv/tsv
 ```python
 from onyx import OnyxClient
 
 with OnyxClient() as client:
-    # Update from a csv of records
-    responses = client.csv_update(
+    # Iterating the function triggers the uploads
+    for record in client.csv_update(
         "project",
         csv_path="/path/to/file.csv",
         # delimiter="\t", # For uploading from a tsv
-    )
+    ):
+        pass
+```
 
-    # Iterating through the responses triggers the updates
-    for response in responses:
-        print(response)
+##### From a file handle for a csv/tsv
+```python
+from onyx import OnyxClient
+
+with OnyxClient() as client:
+    with open("/path/to/file.csv") as csv_file:
+        # Iterating the function triggers the uploads
+        for record in client.csv_update(
+            "project",
+            csv_file=csv_file,
+            # delimiter="\t", # For uploading from a tsv
+        ):
+            pass
 ```
 
 ## Suppress data
@@ -276,8 +281,7 @@ $ onyx suppress <project> <cid>
 from onyx import OnyxClient 
 
 with OnyxClient() as client:
-    response = client.suppress("project", "cid")
-    print(response)
+    client.suppress("project", "C-12345678")
 ```
 
 #### Suppress multiple records from a csv/tsv
@@ -285,20 +289,34 @@ with OnyxClient() as client:
 $ onyx suppress <project> --csv <csv>
 $ onyx suppress <project> --tsv <tsv>
 ```
+
+##### From a path to a csv/tsv
 ```python
 from onyx import OnyxClient
 
 with OnyxClient() as client:
-    # Suppress from a csv of records
-    responses = client.csv_suppress(
+    # Iterating the function triggers the uploads
+    for record in client.csv_suppress(
         "project",
         csv_path="/path/to/file.csv",
         # delimiter="\t", # For uploading from a tsv
-    )
+    ):
+        pass
+```
 
-    # Iterating through the responses triggers the suppressions
-    for response in responses:
-        print(response)
+##### From a file handle for a csv/tsv
+```python
+from onyx import OnyxClient
+
+with OnyxClient() as client:
+    with open("/path/to/file.csv") as csv_file:
+        # Iterating the function triggers the uploads
+        for record in client.csv_suppress(
+            "project",
+            csv_file=csv_file,
+            # delimiter="\t", # For uploading from a tsv
+        ):
+            pass
 ```
 
 ## Delete data
@@ -310,8 +328,7 @@ $ onyx delete <project> <cid>
 from onyx import OnyxClient 
 
 with OnyxClient() as client:
-    response = client.delete("project", "cid")
-    print(response)
+    client.delete("project", "C-12345678")
 ```
 
 #### Delete multiple records from a csv/tsv
@@ -319,18 +336,32 @@ with OnyxClient() as client:
 $ onyx delete <project> --csv <csv>
 $ onyx delete <project> --tsv <tsv>
 ```
+
+##### From a path to a csv/tsv
 ```python
 from onyx import OnyxClient
 
 with OnyxClient() as client:
-    # Delete from a csv of records
-    responses = client.csv_delete(
+    # Iterating the function triggers the uploads
+    for record in client.csv_delete(
         "project",
         csv_path="/path/to/file.csv",
         # delimiter="\t", # For uploading from a tsv
-    )
+    ):
+        pass
+```
 
-    # Iterating through the responses triggers the deletions
-    for response in responses:
-        print(response)
+##### From a file handle for a csv/tsv
+```python
+from onyx import OnyxClient
+
+with OnyxClient() as client:
+    with open("/path/to/file.csv") as csv_file:
+        # Iterating the function triggers the uploads
+        for record in client.csv_delete(
+            "project",
+            csv_file=csv_file,
+            # delimiter="\t", # For uploading from a tsv
+        ):
+            pass
 ```

@@ -812,8 +812,10 @@ class OnyxClient:
     def csv_update(
         self,
         project: str,
-        csv_path: str,
+        csv_path: str | None = None,
+        csv_file: IO | None = None,
         delimiter: str | None = None,
+        multithreaded: bool = False,
         test: bool = False,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
@@ -821,8 +823,10 @@ class OnyxClient:
         """
         responses = self._csv_update(
             project,
-            csv_path,
+            csv_path=csv_path,
+            csv_file=csv_file,
             delimiter=delimiter,
+            multithreaded=multithreaded,
             test=test,
         )
         for response in responses:
@@ -890,8 +894,10 @@ class OnyxClient:
     def csv_suppress(
         self,
         project: str,
-        csv_path: str,
+        csv_path: str | None = None,
+        csv_file: IO | None = None,
         delimiter: str | None = None,
+        multithreaded: bool = False,
         test: bool = False,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
@@ -899,8 +905,10 @@ class OnyxClient:
         """
         responses = self._csv_suppress(
             project,
-            csv_path,
+            csv_path=csv_path,
+            csv_file=csv_file,
             delimiter=delimiter,
+            multithreaded=multithreaded,
             test=test,
         )
         for response in responses:
@@ -968,8 +976,10 @@ class OnyxClient:
     def csv_delete(
         self,
         project: str,
-        csv_path: str,
+        csv_path: str | None = None,
+        csv_file: IO | None = None,
         delimiter: str | None = None,
+        multithreaded: bool = False,
         test: bool = False,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
@@ -977,8 +987,10 @@ class OnyxClient:
         """
         responses = self._csv_delete(
             project,
-            csv_path,
+            csv_path=csv_path,
+            csv_file=csv_file,
             delimiter=delimiter,
+            multithreaded=multithreaded,
             test=test,
         )
         for response in responses:
