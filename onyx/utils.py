@@ -1,11 +1,11 @@
 import sys
 import json
-import inspect
 import requests
 from getpass import getpass
+from typing import Generator, Any, List, Dict
 
 
-def construct_fields_dict(arg_fields):
+def construct_fields_dict(arg_fields: List[List[str]]) -> Dict[str, List[str]]:
     """
     Takes a list of field-value pairs: `[[field1, value], [field2, value], ...]`
 
@@ -18,7 +18,7 @@ def construct_fields_dict(arg_fields):
     return fields
 
 
-def construct_unique_fields_dict(arg_fields):
+def construct_unique_fields_dict(arg_fields: List[List[str]]) -> Dict[str, str]:
     """
     Takes a list of field-value pairs: `[[field1, value], [field2, value], ...]`
 
@@ -36,7 +36,7 @@ def construct_unique_fields_dict(arg_fields):
     return fields
 
 
-def flatten_list_of_lists(arg_fields):
+def flatten_list_of_lists(arg_fields: List[List[str]]) -> List[str]:
     """
     Takes a list of lists: `[[val1, val2, ...], [val3, val4, ...], ...]`
 
@@ -45,7 +45,9 @@ def flatten_list_of_lists(arg_fields):
     return [s for scopes in arg_fields for s in scopes]
 
 
-def print_response(response, pretty_print=True, status_only=False):
+def print_response(
+    response: requests.Response, pretty_print: bool = True, status_only: bool = False
+):
     """
     Print the response and make it look lovely.
 
@@ -70,14 +72,6 @@ def print_response(response, pretty_print=True, status_only=False):
         print(formatted_response)
     else:
         print(formatted_response, file=sys.stderr)
-
-
-def raise_for_status(response):
-    try:
-        response.raise_for_status()
-    except requests.HTTPError as e:
-        print_response(response)
-        raise e
 
 
 def get_input(field, password=False, type=None, required=True):
@@ -107,7 +101,7 @@ def get_input(field, password=False, type=None, required=True):
     return value
 
 
-def execute_uploads(uploads):
+def execute_uploads(uploads: Generator[requests.Response, Any, None]):
     attempted = 0
     successes = 0
     failures = 0
@@ -130,11 +124,3 @@ def execute_uploads(uploads):
         print(f"Attempted: {attempted}")
         print(f"Successes: {successes}")
         print(f"Failures: {failures}")
-
-
-def iterate_records(responses):
-    for response in responses:
-        raise_for_status(response)
-
-        for result in response.json()["data"]["records"]:
-            yield result
