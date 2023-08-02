@@ -56,6 +56,7 @@ ENDPOINTS = {
     "testdelete": lambda domain, project, cid: os.path.join(
         domain, f"data/testdelete/{project}/{cid}/"
     ),
+    "fields": lambda domain, project: os.path.join(domain, f"data/fields/{project}/"),
     "choices": lambda domain, project, cid: os.path.join(
         domain, f"data/choices/{project}/{cid}/"
     ),
@@ -1003,6 +1004,24 @@ class OnyxClient:
             response.raise_for_status()
             for result in response.json()["data"]:
                 yield result
+
+    def _fields(self, project: str) -> requests.Response:
+        """
+        View fields for a project.
+        """
+        response = self._request(
+            method="get",
+            url=ENDPOINTS["fields"](self.config.domain, project),
+        )
+        return response
+
+    def fields(self, project: str) -> Dict[str, Any]:
+        """
+        View fields for a project.
+        """
+        response = self._fields(project)
+        response.raise_for_status()
+        return response.json()["data"]["fields"]
 
     def _choices(self, project: str, field: str) -> requests.Response:
         """

@@ -440,6 +440,15 @@ def delete(client: OnyxClient, args):
 
 
 @client_required
+def fields(client: OnyxClient, args):
+    """
+    View fields for a project.
+    """
+    fields = client._fields(args.project)
+    utils.print_response(fields)
+
+
+@client_required
 def choices(client: OnyxClient, args):
     """
     View choices for a field.
@@ -653,6 +662,10 @@ def main():
     delete_parser.set_defaults(func=delete)
 
     # PROJECT COMMANDS
+    fields_parser = command.add_parser("fields", help="View fields for a project.")
+    fields_parser.add_argument("project")
+    fields_parser.set_defaults(func=fields)
+
     choices_parser = command.add_parser("choices", help="View choices for a field.")
     choices_parser.add_argument("project")
     choices_parser.add_argument("field")
