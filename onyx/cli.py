@@ -19,9 +19,7 @@ def config_required(func):
 
 def client_required(func):
     def wrapped_func(args):
-        conf = config.OnyxConfig()
         client = OnyxClient(
-            config=conf,
             username=args.user,
             env_password=args.envpass,
         )
@@ -442,6 +440,15 @@ def delete(client: OnyxClient, args):
 
 
 @client_required
+def fields(client: OnyxClient, args):
+    """
+    View fields for a project.
+    """
+    fields = client._fields(args.project)
+    utils.print_response(fields)
+
+
+@client_required
 def choices(client: OnyxClient, args):
     """
     View choices for a field.
@@ -458,6 +465,7 @@ def main():
         help="Which user to execute the command as.",
     )
     user_parser.add_argument(
+        "-p",
         "--envpass",
         action="store_true",
         help="When a password is required, the client will use the env variable with format 'ONYX_<USER>_PASSWORD'.",
@@ -655,6 +663,10 @@ def main():
     delete_parser.set_defaults(func=delete)
 
     # PROJECT COMMANDS
+    fields_parser = command.add_parser("fields", help="View fields for a project.")
+    fields_parser.add_argument("project")
+    fields_parser.set_defaults(func=fields)
+
     choices_parser = command.add_parser("choices", help="View choices for a field.")
     choices_parser.add_argument("project")
     choices_parser.add_argument("field")

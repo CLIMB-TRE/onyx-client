@@ -1,80 +1,109 @@
 import os
 import stat
 import json
-from typing import Generator, Any, List, Dict, Tuple
+from typing import Any, List, Dict, Tuple
 
 
-CONFIG_FILE_NAME = "config.json"  # Name of central config file
-CONFIG_DIR_ENV_VAR = "ONYX_CLIENT_CONFIG"  # Name of environment variable that stores path to config directory
+# Central config file
+CONFIG_FILE_NAME = "config.json"
+
+# Environment variable that stores config directory path
+ONYX_CLIENT_CONFIG = "ONYX_CLIENT_CONFIG"
+
+# Required config fields
 CONFIG_FIELDS = ["domain", "users", "default_user"]
+
+# Required fields for each user in the config
 USER_FIELDS = ["token"]
+
+# Format of user tokens file: <username>_<postfix>
 TOKENS_FILE_POSTFIX = "_token.json"
 
 
 class OnyxConfig:
-    def __init__(self, dir_path: str | None = None):
-        """
-        Initialise the config.
+    """
+    Class for managing the config directory (and files within) that are used by `OnyxClient`.
+    """
 
-        If a `path` was not provided, looks for the environment variable given by `CONFIG_DIR_ENV_VAR`.
+    def __init__(self, directory: str | None = None) -> None:
+        """Initialise the config.
+
+        Parameters
+        ----------
+        directory : str, optional
+            Path to config directory. If not provided, uses directory stored in the `ONYX_CLIENT_CONFIG` environment variable.
         """
+
         # Locate the config
-        dir_path, file_path = self.locate_config(dir_path=dir_path)
+        directory, file_path = self._locate_config(directory=directory)
 
         # Load the config
         with open(file_path) as config_file:
             config = json.load(config_file)
 
-        # Validate the config structure
-        self.validate_config(config)
+        # Validate the structure of the config
+        self._validate_config(config)
 
         # Set up the config object
-        self.dir_path = dir_path
+        self.directory = directory
         self.file_path = file_path
         self.domain = config["domain"]
         self.users = config["users"]
         self.default_user = config["default_user"]
 
-    def locate_config(self, dir_path: str | None = None) -> Tuple[str, str]:
-        """
-        If a `dir_path` was provided, confirm this is a directory containing a config file.
+    def _locate_config(self, directory: str | None = None) -> Tuple[str, str]:
+        """Locate the config directory, and confirm that it contains a config file.
 
-        Otherwise, use `ONFIG_DIR_ENV_VAR`, and confirm that this is a directory that contains a config file.
+        Parameters
+        ----------
+        directory : str, optional
+            Path to config directory. If not provided, uses directory stored in the `ONYX_CLIENT_CONFIG` environment variable.
+
+        Returns
+        -------
+        tuple
+            Two strings: the config directory path, and the config file path.
         """
-        if dir_path:
+
+        if directory:
             # Check config dir path is a directory
-            if not os.path.isdir(dir_path):
-                raise FileNotFoundError(f"'{dir_path}' does not exist.")
+            if not os.path.isdir(directory):
+                raise FileNotFoundError(f"'{directory}' does not exist.")
 
             # Check config file path is a file
-            file_path = os.path.join(dir_path, CONFIG_FILE_NAME)
+            file_path = os.path.join(directory, CONFIG_FILE_NAME)
             if not os.path.isfile(file_path):
                 raise FileNotFoundError(
-                    f"Config file does not exist in directory '{dir_path}'."
+                    f"Config file does not exist in directory '{directory}'."
                 )
         else:
             # Find the config directory
-            dir_path = os.environ[CONFIG_DIR_ENV_VAR]
+            directory = os.environ[ONYX_CLIENT_CONFIG]
 
             # Check config dir path is a directory
-            if not os.path.isdir(dir_path):
+            if not os.path.isdir(directory):
                 raise FileNotFoundError(
-                    f"'{CONFIG_DIR_ENV_VAR}' points to a directory that does not exist."
+                    f"'{ONYX_CLIENT_CONFIG}' points to a directory that does not exist."
                 )
 
             # Check config file path is a file
-            file_path = os.path.join(dir_path, CONFIG_FILE_NAME)
+            file_path = os.path.join(directory, CONFIG_FILE_NAME)
             if not os.path.isfile(file_path):
                 raise FileNotFoundError(
-                    f"Config file does not exist in directory '{dir_path}'."
+                    f"Config file does not exist in directory '{directory}'."
                 )
 
-        return dir_path, file_path
+        return directory, file_path
 
-    def validate_config(self, config: Dict[str, Any]) -> None:
+    def _validate_config(self, config: Dict[str, Any]) -> None:
+        """Avoid a million KeyErrors due to problems with the config file.
+
+        Parameters
+        ----------
+        config : dict
+            Config file loaded into a python dict.
         """
-        Avoid a million KeyErrors due to problems with the config file.
-        """
+
         for field in CONFIG_FIELDS:
             if field not in config:
                 raise KeyError(f"'{field}' key is missing from the config file.")
@@ -87,19 +116,36 @@ class OnyxConfig:
                     )
 
     def write_token(self, username: str, token: str | None, expiry: str | None) -> None:
+        """Update the tokens file for `username`.
+
+        Parameters
+        ----------
+        username : str
+            User within config who is having tokens updated.
+        token : str
+            The token being written to their tokens file.
+        expiry : str
+            Expiry of the token.
+        """
+
         with open(
-            os.path.join(self.dir_path, self.users[username]["token"]), "w"
+            os.path.join(self.directory, self.users[username]["token"]), "w"
         ) as token_file:
             json.dump({"token": token, "expiry": expiry}, token_file, indent=4)
 
     def add_user(self, username: str) -> None:
+        """Add a new user to the config.
+
+        Parameters
+        ----------
+        username : str
+            Name of the user being added.
         """
-        Add user to the config.
-        """
+
         # Reload the config incase its changed
         # Not perfect but better than just blanket overwriting the file
-        dir_path, file_path = self.locate_config(dir_path=self.dir_path)
-        self.dir_path = dir_path
+        directory, file_path = self._locate_config(directory=self.directory)
+        self.directory = directory
         self.file_path = file_path
 
         # Load the config
@@ -107,7 +153,7 @@ class OnyxConfig:
             current_config = json.load(current_config_file)
 
         # Validate the config structure
-        self.validate_config(current_config)
+        self._validate_config(current_config)
 
         # Update the config with current information
         self.domain = current_config["domain"]
@@ -140,14 +186,19 @@ class OnyxConfig:
 
         # Read-write for OS user only
         os.chmod(
-            os.path.join(self.dir_path, self.users[username]["token"]),
+            os.path.join(self.directory, self.users[username]["token"]),
             stat.S_IRUSR | stat.S_IWUSR,
         )
 
     def set_default_user(self, username: str) -> None:
+        """Set the default user in the config.
+
+        Parameters
+        ----------
+        username : str
+            Name of the user being set as default.
         """
-        Set the default user in the config.
-        """
+
         # Username is case-insensitive
         username = username.lower()
 
@@ -170,13 +221,11 @@ class OnyxConfig:
             )
 
     def get_default_user(self) -> str:
-        """
-        Get the default user in the config.
-        """
+        """Get the default user in the config."""
+
         return self.default_user
 
     def list_users(self) -> List[str]:
-        """
-        Get a list of the users in the config.
-        """
+        """Get a list of the users in the config."""
+
         return [username for username in self.users]
