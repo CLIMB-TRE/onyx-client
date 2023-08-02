@@ -465,6 +465,7 @@ def main():
         help="Which user to execute the command as.",
     )
     user_parser.add_argument(
+        "-p",
         "--envpass",
         action="store_true",
         help="When a password is required, the client will use the env variable with format 'ONYX_<USER>_PASSWORD'.",

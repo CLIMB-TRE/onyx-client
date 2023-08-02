@@ -30,24 +30,25 @@ usage: onyx [-h] [-u USER] [-p] [-v] {command} ...
 positional arguments:
   {command}
     config              Config-specific commands.
-    site                Site-specific commands.
-    admin               Admin-specific commands.
     register            Register a new user.
     login               Log in to onyx.
     logout              Log out of onyx.
     logoutall           Log out of onyx everywhere.
+    site                Site-specific commands.
+    admin               Admin-specific commands.
     create              Upload metadata records.
     get                 Get a metadata record.
     filter              Filter metadata records.
     update              Update metadata records.
     suppress            Suppress metadata records.
     delete              Delete metadata records.
+    fields              View fields for a project.
     choices             View choices for a field.
 
 options:
   -h, --help            show this help message and exit
   -u USER, --user USER  Which user to execute the command as.
-  -p, --env-password    When a password is required, the client will use the env variable with format 'ONYX_<USER>_PASSWORD'.
+  -p, --envpass         When a password is required, the client will use the env variable with format 'ONYX_<USER>_PASSWORD'.
   -v, --version         Client version number.
 ```
 
