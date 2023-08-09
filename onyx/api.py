@@ -96,7 +96,7 @@ class OnyxClient:
                     f"default_user '{self.config.default_user}' is not in the users list for the config."
                 )
 
-            username = self.config.default_user
+            username = str(self.config.default_user)
         else:
             # Username is case-insensitive
             username = username.lower()
@@ -640,7 +640,7 @@ class OnyxClient:
             scope=scope,
         )
         response.raise_for_status()
-        return response.json()["data"]["record"]
+        return response.json()["data"]
 
     def _filter(
         self,
@@ -669,7 +669,7 @@ class OnyxClient:
 
             fields = None
             if response.ok:
-                _next = response.json()["data"]["next"]
+                _next = response.json()["next"]
             else:
                 _next = None
 
@@ -693,7 +693,7 @@ class OnyxClient:
         )
         for response in responses:
             response.raise_for_status()
-            for result in response.json()["data"]["records"]:
+            for result in response.json()["data"]:
                 yield result
 
     def _query(
@@ -729,7 +729,7 @@ class OnyxClient:
 
             fields = None
             if response.ok:
-                _next = response.json()["data"]["next"]
+                _next = response.json()["next"]
             else:
                 _next = None
 
@@ -753,7 +753,7 @@ class OnyxClient:
         )
         for response in responses:
             response.raise_for_status()
-            for result in response.json()["data"]["records"]:
+            for result in response.json()["data"]:
                 yield result
 
     def _update(
@@ -1021,7 +1021,7 @@ class OnyxClient:
         """
         response = self._fields(project)
         response.raise_for_status()
-        return response.json()["data"]["fields"]
+        return response.json()["data"]
 
     def _choices(self, project: str, field: str) -> requests.Response:
         """
@@ -1039,4 +1039,4 @@ class OnyxClient:
         """
         response = self._choices(project, field)
         response.raise_for_status()
-        return response.json()["data"]["choices"]
+        return response.json()["data"]
