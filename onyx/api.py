@@ -10,8 +10,7 @@ from .config import OnyxConfig
 from typing import Any, Generator, List, Dict, IO
 
 
-PASSWORD_ENV_VAR_PREFIX = "ONYX_"
-PASSWORD_ENV_VAR_POSTFIX = "_PASSWORD"
+ONYX_USER_PASSWORD = lambda username: f"ONYX_{username.upper()}_PASSWORD"
 ENDPOINTS = {
     # ACCOUNTS
     "register": lambda domain: os.path.join(domain, "accounts/register/"),
@@ -19,46 +18,41 @@ ENDPOINTS = {
     "logout": lambda domain: os.path.join(domain, "accounts/logout/"),
     "logoutall": lambda domain: os.path.join(domain, "accounts/logoutall/"),
     "site_approve": lambda domain, username: os.path.join(
-        domain, f"accounts/site/approve/{username}/"
+        domain, "accounts/site/approve", username, ""
     ),
     "site_waiting": lambda domain: os.path.join(domain, "accounts/site/waiting/"),
     "site_users": lambda domain: os.path.join(domain, "accounts/site/users/"),
     "admin_approve": lambda domain, username: os.path.join(
-        domain, f"accounts/admin/approve/{username}/"
+        domain, "accounts/admin/approve", username, ""
     ),
     "admin_waiting": lambda domain: os.path.join(domain, "accounts/admin/waiting/"),
     "admin_users": lambda domain: os.path.join(domain, "accounts/admin/users/"),
     # DATA
-    "create": lambda domain, project: os.path.join(domain, f"data/create/{project}/"),
-    "testcreate": lambda domain, project: os.path.join(
-        domain, f"data/testcreate/{project}/"
+    "fields": lambda domain, project: os.path.join(
+        domain, f"projects", project, "fields/"
     ),
+    "choices": lambda domain, project, field: os.path.join(
+        domain, "projects", project, "choices", field, ""
+    ),
+    "create": lambda domain, project: os.path.join(domain, "projects", project, ""),
+    "filter": lambda domain, project: os.path.join(domain, "projects", project, ""),
     "get": lambda domain, project, cid: os.path.join(
-        domain, f"data/get/{project}/{cid}/"
+        domain, "projects", project, cid, ""
     ),
-    "filter": lambda domain, project: os.path.join(domain, f"data/filter/{project}/"),
-    "query": lambda domain, project: os.path.join(domain, f"data/query/{project}/"),
     "update": lambda domain, project, cid: os.path.join(
-        domain, f"data/update/{project}/{cid}/"
-    ),
-    "testupdate": lambda domain, project, cid: os.path.join(
-        domain, f"data/testupdate/{project}/{cid}/"
-    ),
-    "suppress": lambda domain, project, cid: os.path.join(
-        domain, f"data/suppress/{project}/{cid}/"
-    ),
-    "testsuppress": lambda domain, project, cid: os.path.join(
-        domain, f"data/testsuppress/{project}/{cid}/"
+        domain, "projects", project, cid, ""
     ),
     "delete": lambda domain, project, cid: os.path.join(
-        domain, f"data/delete/{project}/{cid}/"
+        domain, "projects", project, cid, ""
     ),
-    "testdelete": lambda domain, project, cid: os.path.join(
-        domain, f"data/testdelete/{project}/{cid}/"
+    "query": lambda domain, project: os.path.join(
+        domain, "projects", project, "query/"
     ),
-    "fields": lambda domain, project: os.path.join(domain, f"data/fields/{project}/"),
-    "choices": lambda domain, project, cid: os.path.join(
-        domain, f"data/choices/{project}/{cid}/"
+    "testcreate": lambda domain, project: os.path.join(
+        domain, "projects", project, "test/"
+    ),
+    "testupdate": lambda domain, project, cid: os.path.join(
+        domain, "projects", project, "test", cid, ""
     ),
 }
 
@@ -283,12 +277,7 @@ class OnyxClient:
         if self.env_password:
             # If the password is meant to be an env var, grab it.
             # If its not there, this is unintended so an error is raised
-            password_env_var = (
-                PASSWORD_ENV_VAR_PREFIX
-                + self.username.upper()
-                + PASSWORD_ENV_VAR_POSTFIX
-            )
-            password = os.environ[password_env_var]
+            password = os.environ[ONYX_USER_PASSWORD(self.username)]
         else:
             # Otherwise, prompt for the password
             print("Please enter your password.")
@@ -841,105 +830,17 @@ class OnyxClient:
             for result in response.json()["data"]:
                 yield result
 
-    def _suppress(
-        self,
-        project: str,
-        cid: str,
-        test: bool = False,
-    ) -> requests.Response:
-        """
-        Suppress a record in the database.
-        """
-        if test:
-            endpoint = "testsuppress"
-        else:
-            endpoint = "suppress"
-
-        response = self._request(
-            method="delete",
-            url=ENDPOINTS[endpoint](self.config.domain, project, cid),
-        )
-        return response
-
-    def suppress(
-        self,
-        project: str,
-        cid: str,
-        test: bool = False,
-    ) -> Dict[str, Any]:
-        """
-        Suppress a record in the database.
-        """
-        response = self._suppress(project, cid, test=test)
-        response.raise_for_status()
-        return response.json()["data"]
-
-    def _csv_suppress(
-        self,
-        project: str,
-        csv_path: str | None = None,
-        csv_file: IO | None = None,
-        delimiter: str | None = None,
-        multithreaded: bool = False,
-        test: bool = False,
-    ) -> Generator[requests.Response, Any, None]:
-        """
-        Use a .csv or .tsv to suppress records in the database.
-        """
-        yield from self._csv_upload(
-            method="delete",
-            endpoint="suppress",
-            project=project,
-            csv_path=csv_path,
-            csv_file=csv_file,
-            delimiter=delimiter,
-            multithreaded=multithreaded,
-            test=test,
-            cid_required=True,
-        )
-
-    def csv_suppress(
-        self,
-        project: str,
-        csv_path: str | None = None,
-        csv_file: IO | None = None,
-        delimiter: str | None = None,
-        multithreaded: bool = False,
-        test: bool = False,
-    ) -> Generator[Dict[str, Any], Any, None]:
-        """
-        Use a .csv or .tsv to suppress records in the database.
-        """
-        responses = self._csv_suppress(
-            project,
-            csv_path=csv_path,
-            csv_file=csv_file,
-            delimiter=delimiter,
-            multithreaded=multithreaded,
-            test=test,
-        )
-        for response in responses:
-            response.raise_for_status()
-            for result in response.json()["data"]:
-                yield result
-
     def _delete(
         self,
         project: str,
         cid: str,
-        test: bool = False,
     ) -> requests.Response:
         """
         Delete a record in the database.
         """
-        if test:
-            endpoint = "testdelete"
-        else:
-            endpoint = "delete"
-
         response = self._request(
             method="delete",
-            url=ENDPOINTS[endpoint](self.config.domain, project, cid),
+            url=ENDPOINTS["delete"](self.config.domain, project, cid),
         )
         return response
 
@@ -947,12 +848,11 @@ class OnyxClient:
         self,
         project: str,
         cid: str,
-        test: bool = False,
     ) -> Dict[str, Any]:
         """
         Delete a record in the database.
         """
-        response = self._suppress(project, cid, test=test)
+        response = self._delete(project, cid)
         response.raise_for_status()
         return response.json()["data"]
 
@@ -963,7 +863,6 @@ class OnyxClient:
         csv_file: IO | None = None,
         delimiter: str | None = None,
         multithreaded: bool = False,
-        test: bool = False,
     ) -> Generator[requests.Response, Any, None]:
         """
         Use a .csv or .tsv to delete records in the database.
@@ -976,7 +875,6 @@ class OnyxClient:
             csv_file=csv_file,
             delimiter=delimiter,
             multithreaded=multithreaded,
-            test=test,
             cid_required=True,
         )
 
@@ -987,7 +885,6 @@ class OnyxClient:
         csv_file: IO | None = None,
         delimiter: str | None = None,
         multithreaded: bool = False,
-        test: bool = False,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
         Use a .csv or .tsv to delete records in the database.
@@ -998,7 +895,6 @@ class OnyxClient:
             csv_file=csv_file,
             delimiter=delimiter,
             multithreaded=multithreaded,
-            test=test,
         )
         for response in responses:
             response.raise_for_status()

@@ -71,7 +71,7 @@ def create_config(args):
         "Please create the following environment variable to store the path to your config:"
     )
     print("")
-    print(f"export ONYX_CLIENT_CONFIG={os.path.abspath(config_dir)}")
+    print(f"export {config.ONYX_CLIENT_CONFIG}={os.path.abspath(config_dir)}")
     print("")
     print("IMPORTANT: DO NOT CHANGE PERMISSIONS OF CONFIG FILE(S)".center(100, "!"))
     warning_message = [
@@ -332,23 +332,31 @@ def filter(client: OnyxClient, args):
     if scope:
         scope = utils.flatten_list_of_lists(scope)
 
-    results = client.filter(
-        args.project, fields, include=include, exclude=exclude, scope=scope
-    )
-
-    try:
-        result = next(results, None)
-        if result:
-            writer = csv.DictWriter(
-                sys.stdout, delimiter="\t", fieldnames=result.keys()
-            )
-            writer.writeheader()
-            writer.writerow(result)
-
-            for result in results:
+    if args.format:
+        results = client.filter(
+            args.project, fields, include=include, exclude=exclude, scope=scope
+        )
+        try:
+            result = next(results, None)
+            if result:
+                writer = csv.DictWriter(
+                    sys.stdout,
+                    delimiter="\t" if args.format == "tsv" else ",",
+                    fieldnames=result.keys(),
+                )
+                writer.writeheader()
                 writer.writerow(result)
-    except requests.HTTPError as e:
-        utils.print_response(e.response)
+
+                for result in results:
+                    writer.writerow(result)
+        except requests.HTTPError as e:
+            utils.print_response(e.response)
+    else:
+        results = client._filter(
+            args.project, fields, include=include, exclude=exclude, scope=scope
+        )
+        for result in results:
+            utils.print_response(result)
 
 
 @client_required
@@ -382,41 +390,12 @@ def update(client: OnyxClient, args):
 
 
 @client_required
-def suppress(client: OnyxClient, args):
-    """
-    Suppress records in the database.
-    """
-    if args.cid:
-        suppression = client._suppress(args.project, args.cid, test=args.test)
-        utils.print_response(suppression)
-
-    elif args.csv:
-        suppressions = client._csv_suppress(
-            args.project,
-            csv_path=args.csv,
-            multithreaded=args.multithreaded,
-            test=args.test,
-        )
-        utils.execute_uploads(suppressions)
-
-    elif args.tsv:
-        suppressions = client._csv_suppress(
-            args.project,
-            csv_path=args.tsv,
-            delimiter="\t",
-            multithreaded=args.multithreaded,
-            test=args.test,
-        )
-        utils.execute_uploads(suppressions)
-
-
-@client_required
 def delete(client: OnyxClient, args):
     """
     Delete records in the database.
     """
     if args.cid:
-        deletion = client._delete(args.project, args.cid, test=args.test)
+        deletion = client._delete(args.project, args.cid)
         utils.print_response(deletion)
 
     elif args.csv:
@@ -424,7 +403,6 @@ def delete(client: OnyxClient, args):
             args.project,
             csv_path=args.csv,
             multithreaded=args.multithreaded,
-            test=args.test,
         )
         utils.execute_uploads(deletions)
 
@@ -434,7 +412,6 @@ def delete(client: OnyxClient, args):
             csv_path=args.tsv,
             delimiter="\t",
             multithreaded=args.multithreaded,
-            test=args.test,
         )
         utils.execute_uploads(deletions)
 
@@ -575,12 +552,12 @@ def main():
     admin_list_users_parser.set_defaults(func=admin_list_users)
 
     # CRUD PARSER GROUPINGS
-    crud_parser = argparse.ArgumentParser(add_help=False)
-    crud_parser.add_argument(
+    test_parser = argparse.ArgumentParser(add_help=False)
+    test_parser.add_argument(
         "--test", action="store_true", help="Run the command as a test."
     )
-    crud_parser.add_argument("--multithreaded", action="store_true")
-
+    multithreaded_parser = argparse.ArgumentParser(add_help=False)
+    multithreaded_parser.add_argument("--multithreaded", action="store_true")
     cid_action_parser = argparse.ArgumentParser(add_help=False)
     cid_action_parser.add_argument("project")
     cid_action_group = cid_action_parser.add_mutually_exclusive_group(required=True)
@@ -591,20 +568,26 @@ def main():
     )
     cid_action_group.add_argument(
         "--tsv",
-        help="Carry out action on multiple records via a .csv file. CID column required.",
+        help="Carry out action on multiple records via a .tsv file. CID column required.",
     )
 
     # CREATE COMMANDS
     create_parser = command.add_parser(
-        "create", help="Upload metadata records.", parents=[crud_parser]
+        "create",
+        help="Create metadata records.",
+        parents=[test_parser, multithreaded_parser],
     )
     create_parser.add_argument("project")
     create_action_group = create_parser.add_mutually_exclusive_group(required=True)
     create_action_group.add_argument(
         "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
     )
-    create_action_group.add_argument("--csv", help="Upload metadata via a .csv file.")
-    create_action_group.add_argument("--tsv", help="Upload metadata via a .tsv file.")
+    create_action_group.add_argument(
+        "--csv", help="Carry out action on multiple records via a .csv file."
+    )
+    create_action_group.add_argument(
+        "--tsv", help="Carry out action on multiple records via a .tsv file."
+    )
     create_parser.set_defaults(func=create)
 
     # GET COMMANDS
@@ -633,32 +616,25 @@ def main():
         "-e", "--exclude", nargs="+", action="append", metavar="FIELD"
     )
     filter_parser.add_argument("-s", "--scope", nargs="+", action="append")
+    filter_parser.add_argument("--format", choices=["tsv", "csv"])
     filter_parser.set_defaults(func=filter)
 
     # UPDATE COMMANDS
     update_parser = command.add_parser(
         "update",
         help="Update metadata records.",
-        parents=[crud_parser, cid_action_parser],
+        parents=[test_parser, multithreaded_parser, cid_action_parser],
     )
     update_parser.add_argument(
         "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
     )
     update_parser.set_defaults(func=update)
 
-    # SUPPRESS COMMANDS
-    suppress_parser = command.add_parser(
-        "suppress",
-        help="Suppress metadata records.",
-        parents=[crud_parser, cid_action_parser],
-    )
-    suppress_parser.set_defaults(func=suppress)
-
     # DELETE COMMANDS
     delete_parser = command.add_parser(
         "delete",
         help="Delete metadata records.",
-        parents=[crud_parser, cid_action_parser],
+        parents=[multithreaded_parser, cid_action_parser],
     )
     delete_parser.set_defaults(func=delete)
 
@@ -674,7 +650,7 @@ def main():
 
     args = parser.parse_args()
 
-    if args.command in ["create", "update", "suppress", "delete"]:
+    if args.command in ["create", "update", "delete"]:
         if args.multithreaded and not (args.csv or args.tsv):
             parser.error("one of the arguments --csv --tsv is required")
 

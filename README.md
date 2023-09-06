@@ -40,7 +40,6 @@ positional arguments:
     get                 Get a metadata record.
     filter              Filter metadata records.
     update              Update metadata records.
-    suppress            Suppress metadata records.
     delete              Delete metadata records.
     fields              View fields for a project.
     choices             View choices for a field.
@@ -266,53 +265,6 @@ with OnyxClient() as client:
     with open("/path/to/file.csv") as csv_file:
         # Iterating the function triggers the uploads
         for record in client.csv_update(
-            "project",
-            csv_file=csv_file,
-            # delimiter="\t", # For uploading from a tsv
-        ):
-            pass
-```
-
-## Suppress data
-#### Suppress a single record
-```
-$ onyx suppress <project> <cid>
-```
-```python
-from onyx import OnyxClient 
-
-with OnyxClient() as client:
-    client.suppress("project", "C-12345678")
-```
-
-#### Suppress multiple records from a csv/tsv
-```
-$ onyx suppress <project> --csv <csv>
-$ onyx suppress <project> --tsv <tsv>
-```
-
-##### From a path to a csv/tsv
-```python
-from onyx import OnyxClient
-
-with OnyxClient() as client:
-    # Iterating the function triggers the uploads
-    for record in client.csv_suppress(
-        "project",
-        csv_path="/path/to/file.csv",
-        # delimiter="\t", # For uploading from a tsv
-    ):
-        pass
-```
-
-##### From a file handle for a csv/tsv
-```python
-from onyx import OnyxClient
-
-with OnyxClient() as client:
-    with open("/path/to/file.csv") as csv_file:
-        # Iterating the function triggers the uploads
-        for record in client.csv_suppress(
             "project",
             csv_file=csv_file,
             # delimiter="\t", # For uploading from a tsv
