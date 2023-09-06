@@ -7,8 +7,8 @@ from typing import Any, List, Dict, Tuple
 # Central config file
 CONFIG_FILE_NAME = "config.json"
 
-# Environment variable that stores config directory path
-ONYX_CLIENT_CONFIG = "ONYX_CLIENT_CONFIG"
+# Environment variables
+ONYX_CLIENT_CONFIG = "ONYX_CLIENT_CONFIG"  # Config directory path
 
 # Required config fields
 CONFIG_FIELDS = ["domain", "users", "default_user"]
@@ -16,8 +16,8 @@ CONFIG_FIELDS = ["domain", "users", "default_user"]
 # Required fields for each user in the config
 USER_FIELDS = ["token"]
 
-# Format of user tokens file: <username>_<postfix>
-TOKENS_FILE_POSTFIX = "_token.json"
+# User tokens file name
+USER_TOKENS_FILE = lambda username: f"{username.lower()}_token.json"
 
 
 class OnyxConfig:
@@ -47,7 +47,7 @@ class OnyxConfig:
         # Set up the config object
         self.directory = directory
         self.file_path = file_path
-        self.domain = config["domain"]
+        self.domain = config["domain"]  # TODO: Environment variable for the domain
         self.users = config["users"]
         self.default_user = config["default_user"]
 
@@ -161,7 +161,7 @@ class OnyxConfig:
 
         # Add the new user and their token file name to the config users
         username = username.lower()  # Username is case-insensitive
-        self.users[username] = {"token": username + TOKENS_FILE_POSTFIX}
+        self.users[username] = {"token": USER_TOKENS_FILE(username)}
 
         # If there is only one user in the config, make them the default_user
         if len(self.users) == 1:
