@@ -10,6 +10,10 @@ from .config import OnyxConfig
 from typing import Any, Generator, List, Dict, IO
 
 
+# TODO: Use 'Optional' in typing because | symbol requires python 3.10+ ?
+# TODO: Add scope argument to fields function
+
+
 ONYX_USER_PASSWORD = lambda username: f"ONYX_{username.upper()}_PASSWORD"
 ENDPOINTS = {
     # ACCOUNTS
@@ -140,6 +144,7 @@ class OnyxClient:
         project: str,
         csv_path: str | None = None,
         csv_file: IO | None = None,
+        fields: Dict[str, Any] | None = None,
         delimiter: str | None = None,
         multithreaded: bool = False,
         test: bool = False,
@@ -163,6 +168,8 @@ class OnyxClient:
             if not csv_file:
                 raise Exception("Must provide either csv_path or csv_file.")
 
+        overwrite = lambda x, ow: x | ow if ow else x
+
         try:
             if delimiter is None:
                 reader = csv.DictReader(csv_file)
@@ -180,7 +187,7 @@ class OnyxClient:
                     response = self._request(
                         method=method,
                         url=ENDPOINTS[endpoint](self.config.domain, project, cid),
-                        json=record,
+                        json=overwrite(record, fields),
                     )
                     yield response
 
@@ -193,7 +200,7 @@ class OnyxClient:
                                     url=ENDPOINTS[endpoint](
                                         self.config.domain, project, record.pop("cid")
                                     ),
-                                    json=record,
+                                    json=overwrite(record, fields),
                                 )
                                 for record in reader
                             ]
@@ -206,14 +213,14 @@ class OnyxClient:
                                 url=ENDPOINTS[endpoint](
                                     self.config.domain, project, record.pop("cid")
                                 ),
-                                json=record,
+                                json=overwrite(record, fields),
                             )
                             yield response
                 else:
                     response = self._request(
                         method=method,
                         url=ENDPOINTS[endpoint](self.config.domain, project),
-                        json=record,
+                        json=overwrite(record, fields),
                     )
                     yield response
 
@@ -226,7 +233,7 @@ class OnyxClient:
                                     url=ENDPOINTS[endpoint](
                                         self.config.domain, project
                                     ),
-                                    json=record,
+                                    json=overwrite(record, fields),
                                 )
                                 for record in reader
                             ]
@@ -237,7 +244,7 @@ class OnyxClient:
                             response = self._request(
                                 method=method,
                                 url=ENDPOINTS[endpoint](self.config.domain, project),
-                                json=record,
+                                json=overwrite(record, fields),
                             )
                             yield response
         finally:
@@ -549,6 +556,7 @@ class OnyxClient:
         project: str,
         csv_path: str | None = None,
         csv_file: IO | None = None,
+        fields: Dict[str, Any] | None = None,
         delimiter: str | None = None,
         multithreaded: bool = False,
         test: bool = False,
@@ -562,6 +570,7 @@ class OnyxClient:
             project=project,
             csv_path=csv_path,
             csv_file=csv_file,
+            fields=fields,
             delimiter=delimiter,
             multithreaded=multithreaded,
             test=test,
@@ -572,6 +581,7 @@ class OnyxClient:
         project: str,
         csv_path: str | None = None,
         csv_file: IO | None = None,
+        fields: Dict[str, Any] | None = None,
         delimiter: str | None = None,
         multithreaded: bool = False,
         test: bool = False,
@@ -583,6 +593,7 @@ class OnyxClient:
             project,
             csv_path=csv_path,
             csv_file=csv_file,
+            fields=fields,
             delimiter=delimiter,
             multithreaded=multithreaded,
             test=test,
@@ -786,6 +797,7 @@ class OnyxClient:
         project: str,
         csv_path: str | None = None,
         csv_file: IO | None = None,
+        fields: Dict[str, Any] | None = None,
         delimiter: str | None = None,
         multithreaded: bool = False,
         test: bool = False,
@@ -799,6 +811,7 @@ class OnyxClient:
             project=project,
             csv_path=csv_path,
             csv_file=csv_file,
+            fields=fields,
             delimiter=delimiter,
             multithreaded=multithreaded,
             test=test,
@@ -810,6 +823,7 @@ class OnyxClient:
         project: str,
         csv_path: str | None = None,
         csv_file: IO | None = None,
+        fields: Dict[str, Any] | None = None,
         delimiter: str | None = None,
         multithreaded: bool = False,
         test: bool = False,
@@ -821,6 +835,7 @@ class OnyxClient:
             project,
             csv_path=csv_path,
             csv_file=csv_file,
+            fields=fields,
             delimiter=delimiter,
             multithreaded=multithreaded,
             test=test,
