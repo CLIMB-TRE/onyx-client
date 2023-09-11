@@ -9,6 +9,9 @@ from . import version, utils, config
 from .api import OnyxClient
 
 
+# TODO: Add scope argument to fields function
+
+
 def config_required(func):
     def wrapped_func(args):
         conf = config.OnyxConfig()
@@ -263,15 +266,13 @@ def create(client: OnyxClient, args):
     """
     Post new records to the database.
     """
-    if args.field:
-        fields = utils.construct_unique_fields_dict(args.field)
-        creation = client._create(args.project, fields, test=args.test)
-        utils.print_response(creation)
+    fields = utils.construct_unique_fields_dict(args.field)
 
-    elif args.csv:
+    if args.csv:
         creations = client._csv_create(
             args.project,
             csv_path=args.csv,
+            fields=fields,
             multithreaded=args.multithreaded,
             test=args.test,
         )
@@ -281,11 +282,16 @@ def create(client: OnyxClient, args):
         creations = client._csv_create(
             args.project,
             csv_path=args.tsv,
+            fields=fields,
             delimiter="\t",
             multithreaded=args.multithreaded,
             test=args.test,
         )
         utils.execute_uploads(creations)
+
+    else:
+        creation = client._create(args.project, fields=fields, test=args.test)
+        utils.print_response(creation)
 
 
 @client_required
@@ -364,15 +370,13 @@ def update(client: OnyxClient, args):
     """
     Update records in the database.
     """
-    if args.cid and args.field:
-        fields = utils.construct_unique_fields_dict(args.field)
-        update = client._update(args.project, args.cid, fields, test=args.test)
-        utils.print_response(update)
+    fields = utils.construct_unique_fields_dict(args.field)
 
-    elif args.csv:
+    if args.csv:
         updates = client._csv_update(
             args.project,
             csv_path=args.csv,
+            fields=fields,
             multithreaded=args.multithreaded,
             test=args.test,
         )
@@ -382,11 +386,16 @@ def update(client: OnyxClient, args):
         updates = client._csv_update(
             args.project,
             csv_path=args.tsv,
+            fields=fields,
             delimiter="\t",
             multithreaded=args.multithreaded,
             test=args.test,
         )
         utils.execute_uploads(updates)
+
+    else:
+        update = client._update(args.project, args.cid, fields=fields, test=args.test)
+        utils.print_response(update)
 
 
 @client_required
@@ -394,11 +403,7 @@ def delete(client: OnyxClient, args):
     """
     Delete records in the database.
     """
-    if args.cid:
-        deletion = client._delete(args.project, args.cid)
-        utils.print_response(deletion)
-
-    elif args.csv:
+    if args.csv:
         deletions = client._csv_delete(
             args.project,
             csv_path=args.csv,
@@ -414,6 +419,10 @@ def delete(client: OnyxClient, args):
             multithreaded=args.multithreaded,
         )
         utils.execute_uploads(deletions)
+
+    else:
+        deletion = client._delete(args.project, args.cid)
+        utils.print_response(deletion)
 
 
 @client_required
@@ -578,10 +587,10 @@ def main():
         parents=[test_parser, multithreaded_parser],
     )
     create_parser.add_argument("project")
-    create_action_group = create_parser.add_mutually_exclusive_group(required=True)
-    create_action_group.add_argument(
+    create_parser.add_argument(
         "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
     )
+    create_action_group = create_parser.add_mutually_exclusive_group()
     create_action_group.add_argument(
         "--csv", help="Carry out action on multiple records via a .csv file."
     )
@@ -657,8 +666,5 @@ def main():
         if args.command == "update":
             if args.cid and not args.field:
                 parser.error("the following arguments are required: -f/--field")
-
-            elif args.field and not args.cid:
-                parser.error("the following arguments are required: cid")
 
     args.func(args)
