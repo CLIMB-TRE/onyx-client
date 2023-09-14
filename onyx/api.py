@@ -11,7 +11,6 @@ from typing import Any, Generator, List, Dict, IO
 
 
 # TODO: Use 'Optional' in typing because | symbol requires python 3.10+ ?
-# TODO: Add scope argument to fields function
 
 
 ONYX_USER_PASSWORD = lambda username: f"ONYX_{username.upper()}_PASSWORD"
@@ -916,21 +915,30 @@ class OnyxClient:
             for result in response.json()["data"]:
                 yield result
 
-    def _fields(self, project: str) -> requests.Response:
+    def _fields(
+        self,
+        project: str,
+        scope: List[str] | str | None = None,
+    ) -> requests.Response:
         """
         View fields for a project.
         """
         response = self._request(
             method="get",
             url=ENDPOINTS["fields"](self.config.domain, project),
+            params={"scope": scope},
         )
         return response
 
-    def fields(self, project: str) -> Dict[str, Any]:
+    def fields(
+        self,
+        project: str,
+        scope: List[str] | str | None = None,
+    ) -> Dict[str, Any]:
         """
         View fields for a project.
         """
-        response = self._fields(project)
+        response = self._fields(project, scope=scope)
         response.raise_for_status()
         return response.json()["data"]
 
