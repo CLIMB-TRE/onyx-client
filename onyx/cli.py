@@ -9,9 +9,6 @@ from . import version, utils, config
 from .api import OnyxClient
 
 
-# TODO: Add scope argument to fields function
-
-
 def config_required(func):
     def wrapped_func(args):
         conf = config.OnyxConfig()
@@ -430,7 +427,12 @@ def fields(client: OnyxClient, args):
     """
     View fields for a project.
     """
-    fields = client._fields(args.project)
+    scope = args.scope
+
+    if scope:
+        scope = utils.flatten_list_of_lists(scope)
+
+    fields = client._fields(args.project, scope=scope)
     utils.print_response(fields)
 
 
@@ -650,6 +652,7 @@ def main():
     # PROJECT COMMANDS
     fields_parser = command.add_parser("fields", help="View fields for a project.")
     fields_parser.add_argument("project")
+    fields_parser.add_argument("-s", "--scope", nargs="+", action="append")
     fields_parser.set_defaults(func=fields)
 
     choices_parser = command.add_parser("choices", help="View choices for a field.")
