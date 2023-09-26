@@ -256,6 +256,7 @@ class OnyxClient:
         """
         Carry out a request while handling token authorisation.
         """
+
         if not retries:
             raise Exception(
                 "Request retry limit reached. This should not be possible..."
@@ -304,6 +305,7 @@ class OnyxClient:
         """
         Create a new user.
         """
+
         response = requests.post(
             ENDPOINTS["register"](config.domain),
             json={
@@ -329,6 +331,7 @@ class OnyxClient:
         """
         Create a new user.
         """
+
         response = cls._register(config, first_name, last_name, email, site, password)
         response.raise_for_status()
         return response.json()["data"]
@@ -339,6 +342,7 @@ class OnyxClient:
 
         If no user is provided, the `default_user` in the config is used.
         """
+
         # Get the password
         password = self._get_password()
 
@@ -361,6 +365,7 @@ class OnyxClient:
 
         If no user is provided, the `default_user` in the config is used.
         """
+
         response = self._login()
         response.raise_for_status()
         return response.json()["data"]
@@ -369,6 +374,7 @@ class OnyxClient:
         """
         Log out the user in this client.
         """
+
         response = self._request(
             method="post",
             url=ENDPOINTS["logout"](self.config.domain),
@@ -384,6 +390,7 @@ class OnyxClient:
         """
         Log out the user in this client.
         """
+
         response = self._logout()
         response.raise_for_status()
 
@@ -391,6 +398,7 @@ class OnyxClient:
         """
         Log out the user in all clients.
         """
+
         response = self._request(
             method="post",
             url=ENDPOINTS["logoutall"](self.config.domain),
@@ -406,6 +414,7 @@ class OnyxClient:
         """
         Log out the user in all clients.
         """
+
         response = self._logoutall()
         response.raise_for_status()
 
@@ -413,6 +422,7 @@ class OnyxClient:
         """
         Site-approve another user.
         """
+
         response = self._request(
             method="patch",
             url=ENDPOINTS["site_approve"](self.config.domain, username),
@@ -423,6 +433,7 @@ class OnyxClient:
         """
         Site-approve another user.
         """
+
         response = self._site_approve(username)
         response.raise_for_status()
         return response.json()["data"]
@@ -431,6 +442,7 @@ class OnyxClient:
         """
         List users waiting for site approval.
         """
+
         response = self._request(
             method="get",
             url=ENDPOINTS["site_waiting"](self.config.domain),
@@ -441,6 +453,7 @@ class OnyxClient:
         """
         List users waiting for site approval.
         """
+
         response = self._site_list_waiting()
         response.raise_for_status()
         return response.json()["data"]
@@ -449,6 +462,7 @@ class OnyxClient:
         """
         Get the current users within the site of the requesting user.
         """
+
         response = self._request(
             method="get",
             url=ENDPOINTS["site_users"](self.config.domain),
@@ -459,6 +473,7 @@ class OnyxClient:
         """
         Get the current users within the site of the requesting user.
         """
+
         response = self._site_list_users()
         response.raise_for_status()
         return response.json()["data"]
@@ -467,6 +482,7 @@ class OnyxClient:
         """
         Admin-approve another user.
         """
+
         response = self._request(
             method="patch",
             url=ENDPOINTS["admin_approve"](self.config.domain, username),
@@ -477,6 +493,7 @@ class OnyxClient:
         """
         Admin-approve another user.
         """
+
         response = self._admin_approve(username)
         response.raise_for_status()
         return response.json()["data"]
@@ -485,6 +502,7 @@ class OnyxClient:
         """
         List users waiting for admin approval.
         """
+
         response = self._request(
             method="get",
             url=ENDPOINTS["admin_waiting"](self.config.domain),
@@ -495,6 +513,7 @@ class OnyxClient:
         """
         List users waiting for admin approval.
         """
+
         response = self._admin_list_waiting()
         response.raise_for_status()
         return response.json()["data"]
@@ -503,6 +522,7 @@ class OnyxClient:
         """
         List all users.
         """
+
         response = self._request(
             method="get",
             url=ENDPOINTS["admin_users"](self.config.domain),
@@ -513,6 +533,7 @@ class OnyxClient:
         """
         List all users.
         """
+
         response = self._admin_list_users()
         response.raise_for_status()
         return response.json()["data"]
@@ -526,6 +547,7 @@ class OnyxClient:
         """
         Post a record to the database.
         """
+
         if test:
             endpoint = "testcreate"
         else:
@@ -547,6 +569,7 @@ class OnyxClient:
         """
         Post a record to the database.
         """
+
         response = self._create(project, fields, test=test)
         response.raise_for_status()
         return response.json()["data"]
@@ -564,6 +587,7 @@ class OnyxClient:
         """
         Post a .csv or .tsv containing records to the database.
         """
+
         yield from self._csv_upload(
             method="post",
             endpoint="create",
@@ -589,6 +613,7 @@ class OnyxClient:
         """
         Post a .csv or .tsv containing records to the database.
         """
+
         responses = self._csv_create(
             project,
             csv_path=csv_path,
@@ -614,6 +639,7 @@ class OnyxClient:
         """
         Get a record from the database.
         """
+
         response = self._request(
             method="get",
             url=ENDPOINTS["get"](self.config.domain, project, cid),
@@ -632,6 +658,7 @@ class OnyxClient:
         """
         Get a record from the database.
         """
+
         response = self._get(
             project,
             cid,
@@ -653,6 +680,7 @@ class OnyxClient:
         """
         Filter records from the database.
         """
+
         if fields is None:
             fields = {}
 
@@ -684,6 +712,7 @@ class OnyxClient:
         """
         Filter records from the database.
         """
+
         responses = self._filter(
             project,
             fields=fields,
@@ -707,6 +736,7 @@ class OnyxClient:
         """
         Get records from the database.
         """
+
         if query:
             if not isinstance(query, F):
                 raise Exception("Query must be an F object.")
@@ -744,6 +774,7 @@ class OnyxClient:
         """
         Get records from the database.
         """
+
         responses = self._query(
             project,
             query=query,
@@ -766,6 +797,7 @@ class OnyxClient:
         """
         Update a record in the database.
         """
+
         if test:
             endpoint = "testupdate"
         else:
@@ -788,6 +820,7 @@ class OnyxClient:
         """
         Update a record in the database.
         """
+
         response = self._update(project, cid, fields=fields, test=test)
         response.raise_for_status()
         return response.json()["data"]
@@ -805,6 +838,7 @@ class OnyxClient:
         """
         Use a .csv or .tsv to update records in the database.
         """
+
         yield from self._csv_upload(
             method="patch",
             endpoint="update",
@@ -831,6 +865,7 @@ class OnyxClient:
         """
         Use a .csv or .tsv to update records in the database.
         """
+
         responses = self._csv_update(
             project,
             csv_path=csv_path,
@@ -853,6 +888,7 @@ class OnyxClient:
         """
         Delete a record in the database.
         """
+
         response = self._request(
             method="delete",
             url=ENDPOINTS["delete"](self.config.domain, project, cid),
@@ -867,6 +903,7 @@ class OnyxClient:
         """
         Delete a record in the database.
         """
+
         response = self._delete(project, cid)
         response.raise_for_status()
         return response.json()["data"]
@@ -882,6 +919,7 @@ class OnyxClient:
         """
         Use a .csv or .tsv to delete records in the database.
         """
+
         yield from self._csv_upload(
             method="delete",
             endpoint="delete",
@@ -904,6 +942,7 @@ class OnyxClient:
         """
         Use a .csv or .tsv to delete records in the database.
         """
+
         responses = self._csv_delete(
             project,
             csv_path=csv_path,
@@ -920,6 +959,7 @@ class OnyxClient:
         """
         View available projects.
         """
+
         response = self._request(
             method="get",
             url=ENDPOINTS["projects"](self.config.domain),
@@ -930,6 +970,7 @@ class OnyxClient:
         """
         View available projects.
         """
+
         response = self._projects()
         response.raise_for_status()
         return response.json()["data"]
@@ -942,6 +983,7 @@ class OnyxClient:
         """
         View fields for a project.
         """
+
         response = self._request(
             method="get",
             url=ENDPOINTS["fields"](self.config.domain, project),
@@ -957,6 +999,7 @@ class OnyxClient:
         """
         View fields for a project.
         """
+
         response = self._fields(project, scope=scope)
         response.raise_for_status()
         return response.json()["data"]
@@ -965,6 +1008,7 @@ class OnyxClient:
         """
         View choices for a field.
         """
+
         response = self._request(
             method="get",
             url=ENDPOINTS["choices"](self.config.domain, project, field),
@@ -975,6 +1019,7 @@ class OnyxClient:
         """
         View choices for a field.
         """
+
         response = self._choices(project, field)
         response.raise_for_status()
         return response.json()["data"]
