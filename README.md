@@ -36,13 +36,14 @@ positional arguments:
     logoutall           Log out of onyx everywhere.
     site                Site-specific commands.
     admin               Admin-specific commands.
-    create              Upload metadata records.
-    get                 Get a metadata record.
-    filter              Filter metadata records.
-    update              Update metadata records.
-    delete              Delete metadata records.
+    projects            View available projects.
     fields              View fields for a project.
     choices             View choices for a field.
+    create              Create records in a project.
+    get                 Get a record from a project.
+    filter              Filter records from a project.
+    update              Update records in a project.
+    delete              Delete records in a project.
 
 options:
   -h, --help            show this help message and exit
@@ -59,6 +60,17 @@ $ onyx config create --domain https://onyx.domain.name --config-dir /path/to/con
 ## Register a user
 ```
 $ onyx register
+```
+
+## View projects
+#### View available projects
+```
+$ onyx projects
+```
+
+#### View fields within a project
+```
+$ onyx fields <project>
 ```
 
 ## Upload data

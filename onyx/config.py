@@ -221,11 +221,15 @@ class OnyxConfig:
             )
 
     def get_default_user(self) -> str:
-        """Get the default user in the config."""
+        """
+        Get the default user in the config.
+        """
 
         return self.default_user
 
     def list_users(self) -> List[str]:
-        """Get a list of the users in the config."""
+        """
+        Get a list of the users in the config.
+        """
 
         return [username for username in self.users]

@@ -11,6 +11,7 @@ def construct_fields_dict(arg_fields: List[List[str]]) -> Dict[str, List[str]]:
 
     Returns a fields dict: `{field1 : [value, value, ...], field2 : [value, value, ...]}`
     """
+
     fields = {}
     if arg_fields is not None:
         for f, v in arg_fields:
@@ -26,6 +27,7 @@ def construct_unique_fields_dict(arg_fields: List[List[str]]) -> Dict[str, str]:
 
     Raises a `KeyError` for any duplicate fields.
     """
+
     fields = {}
     if arg_fields is not None:
         for f, v in arg_fields:
@@ -42,6 +44,7 @@ def flatten_list_of_lists(arg_fields: List[List[str]]) -> List[str]:
 
     Returns a single list: `[val1, val2, ..., val3, val4, ...]`
     """
+
     return [s for scopes in arg_fields for s in scopes]
 
 
@@ -53,6 +56,7 @@ def print_response(
 
     Responses with `response.ok == False` are written to `sys.stderr`.
     """
+
     if pretty_print:
         indent = 4
     else:
@@ -78,6 +82,7 @@ def get_input(field, password=False, type=None, required=True):
     """
     Get user input/password, ensuring they enter something.
     """
+
     if type is None:
         type = str
     if password:
