@@ -32,6 +32,7 @@ def create_config(args):
     """
     Generate the config directory and config file.
     """
+
     domain = args.domain
     config_dir = args.config_dir
 
@@ -89,6 +90,7 @@ def set_default_user(conf: config.OnyxConfig, args):
     """
     Set the default user in the config.
     """
+
     username = args.username
 
     if username is None:
@@ -103,6 +105,7 @@ def get_default_user(conf: config.OnyxConfig, args):
     """
     Get the default user in the config.
     """
+
     default_user = conf.get_default_user()
     print(default_user)
 
@@ -112,6 +115,7 @@ def add_user(conf: config.OnyxConfig, args):
     """
     Add user to the config.
     """
+
     username = args.username
 
     if username is None:
@@ -126,6 +130,7 @@ def list_users(conf: config.OnyxConfig, args):
     """
     List all users in the config.
     """
+
     users = conf.list_users()
     for user in users:
         print(user)
@@ -136,6 +141,7 @@ def register(conf: config.OnyxConfig, args):
     """
     Create a new user.
     """
+
     first_name = utils.get_input("first name")
     last_name = utils.get_input("last name")
     email = utils.get_input("email address")
@@ -182,6 +188,7 @@ def login(client: OnyxClient, args):
     """
     Log in as a user.
     """
+
     response = client._login()
     utils.print_response(response, status_only=True)
 
@@ -191,6 +198,7 @@ def logout(client: OnyxClient, args):
     """
     Log out the current user.
     """
+
     response = client._logout()
     utils.print_response(response, status_only=True)
 
@@ -200,6 +208,7 @@ def logoutall(client: OnyxClient, args):
     """
     Log out the current user everywhere.
     """
+
     response = client._logoutall()
     utils.print_response(response, status_only=True)
 
@@ -209,6 +218,7 @@ def site_approve(client: OnyxClient, args):
     """
     Site-approve another user.
     """
+
     approval = client._site_approve(args.username)
     utils.print_response(approval)
 
@@ -218,6 +228,7 @@ def site_list_waiting(client: OnyxClient, args):
     """
     List users waiting for site approval.
     """
+
     users = client._site_list_waiting()
     utils.print_response(users)
 
@@ -227,6 +238,7 @@ def site_list_users(client: OnyxClient, args):
     """
     List site users.
     """
+
     users = client._site_list_users()
     utils.print_response(users)
 
@@ -236,6 +248,7 @@ def admin_approve(client: OnyxClient, args):
     """
     Admin-approve another user.
     """
+
     approval = client._admin_approve(args.username)
     utils.print_response(approval)
 
@@ -245,6 +258,7 @@ def admin_list_waiting(client: OnyxClient, args):
     """
     List users waiting for admin approval.
     """
+
     users = client._admin_list_waiting()
     utils.print_response(users)
 
@@ -254,6 +268,7 @@ def admin_list_users(client: OnyxClient, args):
     """
     List all users.
     """
+
     users = client._admin_list_users()
     utils.print_response(users)
 
@@ -263,6 +278,7 @@ def create(client: OnyxClient, args):
     """
     Post new records to the database.
     """
+
     fields = utils.construct_unique_fields_dict(args.field)
 
     if args.csv:
@@ -296,6 +312,7 @@ def get(client: OnyxClient, args):
     """
     Get a record from the database.
     """
+
     include = args.include
     exclude = args.exclude
     scope = args.scope
@@ -367,6 +384,7 @@ def update(client: OnyxClient, args):
     """
     Update records in the database.
     """
+
     fields = utils.construct_unique_fields_dict(args.field)
 
     if args.csv:
@@ -400,6 +418,7 @@ def delete(client: OnyxClient, args):
     """
     Delete records in the database.
     """
+
     if args.csv:
         deletions = client._csv_delete(
             args.project,
@@ -423,10 +442,21 @@ def delete(client: OnyxClient, args):
 
 
 @client_required
+def projects(client: OnyxClient, args):
+    """
+    View available projects.
+    """
+
+    projects = client._projects()
+    utils.print_response(projects)
+
+
+@client_required
 def fields(client: OnyxClient, args):
     """
     View fields for a project.
     """
+
     scope = args.scope
 
     if scope:
@@ -441,6 +471,7 @@ def choices(client: OnyxClient, args):
     """
     View choices for a field.
     """
+
     choices = client._choices(args.project, args.field)
     utils.print_response(choices)
 
@@ -562,6 +593,20 @@ def main():
     )
     admin_list_users_parser.set_defaults(func=admin_list_users)
 
+    # PROJECT COMMANDS
+    projects_parser = command.add_parser("projects", help="View available projects.")
+    projects_parser.set_defaults(func=projects)
+
+    fields_parser = command.add_parser("fields", help="View fields for a project.")
+    fields_parser.add_argument("project")
+    fields_parser.add_argument("-s", "--scope", nargs="+", action="append")
+    fields_parser.set_defaults(func=fields)
+
+    choices_parser = command.add_parser("choices", help="View choices for a field.")
+    choices_parser.add_argument("project")
+    choices_parser.add_argument("field")
+    choices_parser.set_defaults(func=choices)
+
     # CRUD PARSER GROUPINGS
     test_parser = argparse.ArgumentParser(add_help=False)
     test_parser.add_argument(
@@ -585,7 +630,7 @@ def main():
     # CREATE COMMANDS
     create_parser = command.add_parser(
         "create",
-        help="Create metadata records.",
+        help="Create records in a project.",
         parents=[test_parser, multithreaded_parser],
     )
     create_parser.add_argument("project")
@@ -602,7 +647,7 @@ def main():
     create_parser.set_defaults(func=create)
 
     # GET COMMANDS
-    get_parser = command.add_parser("get", help="Get a metadata record.")
+    get_parser = command.add_parser("get", help="Get a record from a project.")
     get_parser.add_argument("project")
     get_parser.add_argument("cid")
     get_parser.add_argument(
@@ -615,7 +660,7 @@ def main():
     get_parser.set_defaults(func=get)
 
     # FILTER COMMANDS
-    filter_parser = command.add_parser("filter", help="Filter metadata records.")
+    filter_parser = command.add_parser("filter", help="Filter records from a project.")
     filter_parser.add_argument("project")
     filter_parser.add_argument(
         "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
@@ -633,7 +678,7 @@ def main():
     # UPDATE COMMANDS
     update_parser = command.add_parser(
         "update",
-        help="Update metadata records.",
+        help="Update records in a project.",
         parents=[test_parser, multithreaded_parser, cid_action_parser],
     )
     update_parser.add_argument(
@@ -644,21 +689,10 @@ def main():
     # DELETE COMMANDS
     delete_parser = command.add_parser(
         "delete",
-        help="Delete metadata records.",
+        help="Delete records in a project.",
         parents=[multithreaded_parser, cid_action_parser],
     )
     delete_parser.set_defaults(func=delete)
-
-    # PROJECT COMMANDS
-    fields_parser = command.add_parser("fields", help="View fields for a project.")
-    fields_parser.add_argument("project")
-    fields_parser.add_argument("-s", "--scope", nargs="+", action="append")
-    fields_parser.set_defaults(func=fields)
-
-    choices_parser = command.add_parser("choices", help="View choices for a field.")
-    choices_parser.add_argument("project")
-    choices_parser.add_argument("field")
-    choices_parser.set_defaults(func=choices)
 
     args = parser.parse_args()
 

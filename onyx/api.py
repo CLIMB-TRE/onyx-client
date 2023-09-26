@@ -31,6 +31,7 @@ ENDPOINTS = {
     "admin_waiting": lambda domain: os.path.join(domain, "accounts/admin/waiting/"),
     "admin_users": lambda domain: os.path.join(domain, "accounts/admin/users/"),
     # DATA
+    "projects": lambda domain: os.path.join(domain, "projects/"),
     "fields": lambda domain, project: os.path.join(
         domain, f"projects", project, "fields/"
     ),
@@ -914,6 +915,24 @@ class OnyxClient:
             response.raise_for_status()
             for result in response.json()["data"]:
                 yield result
+
+    def _projects(self) -> requests.Response:
+        """
+        View available projects.
+        """
+        response = self._request(
+            method="get",
+            url=ENDPOINTS["projects"](self.config.domain),
+        )
+        return response
+
+    def projects(self) -> Dict[str, List[str]]:
+        """
+        View available projects.
+        """
+        response = self._projects()
+        response.raise_for_status()
+        return response.json()["data"]
 
     def _fields(
         self,
