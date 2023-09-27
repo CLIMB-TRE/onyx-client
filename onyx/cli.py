@@ -190,7 +190,10 @@ def login(client: OnyxClient, args):
     """
 
     response = client._login()
-    utils.print_response(response, status_only=True)
+    if response.ok:
+        print("Logged in successfully.")
+    else:
+        utils.print_response(response)
 
 
 @client_required
@@ -200,7 +203,10 @@ def logout(client: OnyxClient, args):
     """
 
     response = client._logout()
-    utils.print_response(response, status_only=True)
+    if response.ok:
+        print("Logged out successfully.")
+    else:
+        utils.print_response(response)
 
 
 @client_required
@@ -210,7 +216,10 @@ def logoutall(client: OnyxClient, args):
     """
 
     response = client._logoutall()
-    utils.print_response(response, status_only=True)
+    if response.ok:
+        print("Logged out everywhere successfully.")
+    else:
+        utils.print_response(response)
 
 
 @client_required
