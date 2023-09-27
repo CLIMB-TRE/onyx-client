@@ -48,9 +48,7 @@ def flatten_list_of_lists(arg_fields: List[List[str]]) -> List[str]:
     return [s for scopes in arg_fields for s in scopes]
 
 
-def print_response(
-    response: requests.Response, pretty_print: bool = True, status_only: bool = False
-):
+def print_response(response: requests.Response, pretty_print: bool = True):
     """
     Print the response and make it look lovely.
 
@@ -61,16 +59,11 @@ def print_response(
         indent = 4
     else:
         indent = None
-    status_code = f"<[{response.status_code}] {response.reason}>"
+
     try:
-        if status_only and response.ok:
-            formatted_response = str(status_code)
-        else:
-            formatted_response = (
-                f"{status_code}\n{json.dumps(response.json(), indent=indent)}"
-            )
+        formatted_response = json.dumps(response.json(), indent=indent)
     except json.decoder.JSONDecodeError:
-        formatted_response = f"{status_code}\n{response.text}"
+        formatted_response = response.text
 
     if response.ok:
         print(formatted_response)
