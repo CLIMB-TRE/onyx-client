@@ -366,18 +366,22 @@ def filter(client: OnyxClient, args):
             args.project, fields, include=include, exclude=exclude, scope=scope
         )
         try:
-            result = next(results, None)
-            if result:
-                writer = csv.DictWriter(
-                    sys.stdout,
-                    delimiter="\t" if args.format == "tsv" else ",",
-                    fieldnames=result.keys(),
-                )
-                writer.writeheader()
-                writer.writerow(result)
-
-                for result in results:
+            if args.format == "json":
+                data = [result for result in results]
+                print(json.dumps(data))
+            else:
+                result = next(results, None)
+                if result:
+                    writer = csv.DictWriter(
+                        sys.stdout,
+                        delimiter="\t" if args.format == "tsv" else ",",
+                        fieldnames=result.keys(),
+                    )
+                    writer.writeheader()
                     writer.writerow(result)
+
+                    for result in results:
+                        writer.writerow(result)
         except requests.HTTPError as e:
             utils.print_response(e.response)
     else:
@@ -681,7 +685,7 @@ def main():
         "-e", "--exclude", nargs="+", action="append", metavar="FIELD"
     )
     filter_parser.add_argument("-s", "--scope", nargs="+", action="append")
-    filter_parser.add_argument("--format", choices=["tsv", "csv"])
+    filter_parser.add_argument("--format", choices=["tsv", "csv", "json"])
     filter_parser.set_defaults(func=filter)
 
     # UPDATE COMMANDS
