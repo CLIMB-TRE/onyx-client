@@ -1,7 +1,7 @@
 import os
 import stat
 import json
-from typing import Any, List, Dict, Tuple
+from typing import Any, List, Dict, Tuple, Optional, Union
 
 
 # Central config file
@@ -25,7 +25,7 @@ class OnyxConfig:
     Class for managing the config directory (and files within) that are used by `OnyxClient`.
     """
 
-    def __init__(self, directory: str | None = None) -> None:
+    def __init__(self, directory: Optional[str] = None) -> None:
         """Initialise the config.
 
         Parameters
@@ -51,7 +51,7 @@ class OnyxConfig:
         self.users = config["users"]
         self.default_user = config["default_user"]
 
-    def _locate_config(self, directory: str | None = None) -> Tuple[str, str]:
+    def _locate_config(self, directory: Optional[str] = None) -> Tuple[str, str]:
         """Locate the config directory, and confirm that it contains a config file.
 
         Parameters
@@ -115,16 +115,18 @@ class OnyxConfig:
                         f"'{field}' key is missing from user '{user}' in the config file."
                     )
 
-    def write_token(self, username: str, token: str | None, expiry: str | None) -> None:
+    def write_token(
+        self, username: str, token: Union[str, None], expiry: Union[str, None]
+    ) -> None:
         """Update the tokens file for `username`.
 
         Parameters
         ----------
         username : str
             User within config who is having tokens updated.
-        token : str
+        token : str, optional
             The token being written to their tokens file.
-        expiry : str
+        expiry : str, optional
             Expiry of the token.
         """
 
