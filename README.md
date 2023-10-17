@@ -1,23 +1,16 @@
 # `onyx-client`
 
 ## Setup
-Clone the repository:
+
+#### Build from source
+
+Download and install the client into a Python virtual environment:
 
 ```
 $ git clone https://github.com/CLIMB-COVID/onyx-client.git
 $ cd onyx-client/
-```
-
-Create and activate the conda environment:
-
-```
-$ conda env create -f environment.yml
-$ conda activate onyx-client
-```
-
-Install the client into the environment:
-
-```
+$ python -m venv env
+$ source env/bin/activate
 $ pip install .
 ```
 
