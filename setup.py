@@ -3,7 +3,7 @@ import setuptools
 exec(open("onyx/version.py").read())
 
 setuptools.setup(
-    name="onyx",
+    name="climb-onyx-client",
     author="Thomas Brier",
     version=__version__,  # type: ignore
     packages=setuptools.find_packages(),
