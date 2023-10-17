@@ -2,6 +2,12 @@
 
 ## Setup
 
+#### Install via pip
+
+```
+$ pip install climb-onyx-client
+```
+
 #### Build from source
 
 Download and install the client into a Python virtual environment:
