@@ -7,10 +7,7 @@ import concurrent.futures
 from django_query_tools.client import F
 from .utils import get_input
 from .config import OnyxConfig
-from typing import Any, Generator, List, Dict, IO
-
-
-# TODO: Use 'Optional' in typing because | symbol requires python 3.10+ ?
+from typing import Any, Generator, List, Dict, IO, Optional, Union
 
 
 ONYX_USER_PASSWORD = lambda username: f"ONYX_{username.upper()}_PASSWORD"
@@ -64,9 +61,9 @@ ENDPOINTS = {
 class OnyxClient:
     def __init__(
         self,
-        username: str | None = None,
+        username: Optional[str] = None,
         env_password: bool = False,
-        directory: str | None = None,
+        directory: Optional[str] = None,
     ):
         """Initialise the client.
 
@@ -142,10 +139,10 @@ class OnyxClient:
         method: str,
         endpoint: str,
         project: str,
-        csv_path: str | None = None,
-        csv_file: IO | None = None,
-        fields: Dict[str, Any] | None = None,
-        delimiter: str | None = None,
+        csv_path: Optional[str] = None,
+        csv_file: Optional[IO] = None,
+        fields: Optional[Dict[str, Any]] = None,
+        delimiter: Optional[str] = None,
         multithreaded: bool = False,
         test: bool = False,
         cid_required: bool = False,
@@ -577,10 +574,10 @@ class OnyxClient:
     def _csv_create(
         self,
         project: str,
-        csv_path: str | None = None,
-        csv_file: IO | None = None,
-        fields: Dict[str, Any] | None = None,
-        delimiter: str | None = None,
+        csv_path: Optional[str] = None,
+        csv_file: Optional[IO] = None,
+        fields: Optional[Dict[str, Any]] = None,
+        delimiter: Optional[str] = None,
         multithreaded: bool = False,
         test: bool = False,
     ) -> Generator[requests.Response, Any, None]:
@@ -603,10 +600,10 @@ class OnyxClient:
     def csv_create(
         self,
         project: str,
-        csv_path: str | None = None,
-        csv_file: IO | None = None,
-        fields: Dict[str, Any] | None = None,
-        delimiter: str | None = None,
+        csv_path: Optional[str] = None,
+        csv_file: Optional[IO] = None,
+        fields: Optional[Dict[str, Any]] = None,
+        delimiter: Optional[str] = None,
         multithreaded: bool = False,
         test: bool = False,
     ) -> Generator[Dict[str, Any], Any, None]:
@@ -632,9 +629,9 @@ class OnyxClient:
         self,
         project: str,
         cid: str,
-        include: List[str] | str | None = None,
-        exclude: List[str] | str | None = None,
-        scope: List[str] | str | None = None,
+        include: Union[List[str], str, None] = None,
+        exclude: Union[List[str], str, None] = None,
+        scope: Union[List[str], str, None] = None,
     ) -> requests.Response:
         """
         Get a record from the database.
@@ -651,9 +648,9 @@ class OnyxClient:
         self,
         project: str,
         cid: str,
-        include: List[str] | str | None = None,
-        exclude: List[str] | str | None = None,
-        scope: List[str] | str | None = None,
+        include: Union[List[str], str, None] = None,
+        exclude: Union[List[str], str, None] = None,
+        scope: Union[List[str], str, None] = None,
     ) -> Dict[str, Any]:
         """
         Get a record from the database.
@@ -672,10 +669,10 @@ class OnyxClient:
     def _filter(
         self,
         project: str,
-        fields: Dict[str, Any] | None = None,
-        include: List[str] | str | None = None,
-        exclude: List[str] | str | None = None,
-        scope: List[str] | str | None = None,
+        fields: Optional[Dict[str, Any]] = None,
+        include: Union[List[str], str, None] = None,
+        exclude: Union[List[str], str, None] = None,
+        scope: Union[List[str], str, None] = None,
     ) -> Generator[requests.Response, Any, None]:
         """
         Filter records from the database.
@@ -704,10 +701,10 @@ class OnyxClient:
     def filter(
         self,
         project: str,
-        fields: Dict[str, Any] | None = None,
-        include: List[str] | str | None = None,
-        exclude: List[str] | str | None = None,
-        scope: List[str] | str | None = None,
+        fields: Optional[Dict[str, Any]] = None,
+        include: Union[List[str], str, None] = None,
+        exclude: Union[List[str], str, None] = None,
+        scope: Union[List[str], str, None] = None,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
         Filter records from the database.
@@ -728,10 +725,10 @@ class OnyxClient:
     def _query(
         self,
         project: str,
-        query: F | None = None,
-        include: List[str] | str | None = None,
-        exclude: List[str] | str | None = None,
-        scope: List[str] | str | None = None,
+        query: Optional[F] = None,
+        include: Union[List[str], str, None] = None,
+        exclude: Union[List[str], str, None] = None,
+        scope: Union[List[str], str, None] = None,
     ) -> Generator[requests.Response, Any, None]:
         """
         Get records from the database.
@@ -766,10 +763,10 @@ class OnyxClient:
     def query(
         self,
         project: str,
-        query: F | None = None,
-        include: List[str] | str | None = None,
-        exclude: List[str] | str | None = None,
-        scope: List[str] | str | None = None,
+        query: Optional[F] = None,
+        include: Union[List[str], str, None] = None,
+        exclude: Union[List[str], str, None] = None,
+        scope: Union[List[str], str, None] = None,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
         Get records from the database.
@@ -791,7 +788,7 @@ class OnyxClient:
         self,
         project: str,
         cid: str,
-        fields: Dict[str, Any] | None = None,
+        fields: Optional[Dict[str, Any]] = None,
         test: bool = False,
     ) -> requests.Response:
         """
@@ -814,7 +811,7 @@ class OnyxClient:
         self,
         project: str,
         cid: str,
-        fields: Dict[str, Any] | None = None,
+        fields: Optional[Dict[str, Any]] = None,
         test: bool = False,
     ) -> Dict[str, Any]:
         """
@@ -828,10 +825,10 @@ class OnyxClient:
     def _csv_update(
         self,
         project: str,
-        csv_path: str | None = None,
-        csv_file: IO | None = None,
-        fields: Dict[str, Any] | None = None,
-        delimiter: str | None = None,
+        csv_path: Optional[str] = None,
+        csv_file: Optional[IO] = None,
+        fields: Optional[Dict[str, Any]] = None,
+        delimiter: Optional[str] = None,
         multithreaded: bool = False,
         test: bool = False,
     ) -> Generator[requests.Response, Any, None]:
@@ -855,10 +852,10 @@ class OnyxClient:
     def csv_update(
         self,
         project: str,
-        csv_path: str | None = None,
-        csv_file: IO | None = None,
-        fields: Dict[str, Any] | None = None,
-        delimiter: str | None = None,
+        csv_path: Optional[str] = None,
+        csv_file: Optional[IO] = None,
+        fields: Optional[Dict[str, Any]] = None,
+        delimiter: Optional[str] = None,
         multithreaded: bool = False,
         test: bool = False,
     ) -> Generator[Dict[str, Any], Any, None]:
@@ -911,9 +908,9 @@ class OnyxClient:
     def _csv_delete(
         self,
         project: str,
-        csv_path: str | None = None,
-        csv_file: IO | None = None,
-        delimiter: str | None = None,
+        csv_path: Optional[str] = None,
+        csv_file: Optional[IO] = None,
+        delimiter: Optional[str] = None,
         multithreaded: bool = False,
     ) -> Generator[requests.Response, Any, None]:
         """
@@ -934,9 +931,9 @@ class OnyxClient:
     def csv_delete(
         self,
         project: str,
-        csv_path: str | None = None,
-        csv_file: IO | None = None,
-        delimiter: str | None = None,
+        csv_path: Optional[str] = None,
+        csv_file: Optional[IO] = None,
+        delimiter: Optional[str] = None,
         multithreaded: bool = False,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
@@ -978,7 +975,7 @@ class OnyxClient:
     def _fields(
         self,
         project: str,
-        scope: List[str] | str | None = None,
+        scope: Union[List[str], str, None] = None,
     ) -> requests.Response:
         """
         View fields for a project.
@@ -994,7 +991,7 @@ class OnyxClient:
     def fields(
         self,
         project: str,
-        scope: List[str] | str | None = None,
+        scope: Union[List[str], str, None] = None,
     ) -> Dict[str, Any]:
         """
         View fields for a project.
