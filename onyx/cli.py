@@ -1,147 +1,37 @@
 import os
 import sys
 import csv
-import stat
 import json
 import requests
 import argparse
-from . import version, utils, config
+from . import version, utils
+from .config import OnyxConfig
 from .api import OnyxClient
-
-
-def config_required(func):
-    def wrapped_func(args):
-        conf = config.OnyxConfig()
-        return func(conf, args)
-
-    return wrapped_func
 
 
 def client_required(func):
     def wrapped_func(args):
-        client = OnyxClient(
-            username=args.user,
-            env_password=args.envpass,
+        config = OnyxConfig(
+            config_path=args.config,
+            domain=args.domain,
+            token=args.token,
         )
+        client = OnyxClient(config)
         return func(client, args)
 
     return wrapped_func
 
 
-def create_config(args):
-    """
-    Generate the config directory and config file.
-    """
-
-    domain = args.domain
-    config_dir = args.config_dir
-
-    if domain is None:
-        domain = utils.get_input("domain")
-
-    if config_dir is None:
-        config_dir = utils.get_input("config directory")
-
-    config_dir = config_dir.replace("~", os.path.expanduser("~"))
-
-    if os.path.isfile(config_dir):
-        raise FileExistsError("Provided path to a file, not a directory.")
-
-    if not os.path.isdir(config_dir):
-        os.mkdir(config_dir)
-
-    config_file_path = os.path.join(config_dir, config.CONFIG_FILE_NAME)
-
-    if os.path.isfile(config_file_path):
-        print(f"Config file already exists: {os.path.abspath(config_file_path)}")
-        print("If you wish to overwrite this config, please delete this file.")
-        exit()
-
-    with open(config_file_path, "w") as config_file:
-        json.dump(
-            {"domain": domain, "users": {}, "default_user": None},
-            config_file,
-            indent=4,
-        )
-
-    # Read-write for OS user only
-    os.chmod(config_file_path, stat.S_IRUSR | stat.S_IWUSR)
-
-    print("Config created successfully.")
-    print(
-        "Please create the following environment variable to store the path to your config:"
-    )
-    print("")
-    print(f"export {config.ONYX_CLIENT_CONFIG}={os.path.abspath(config_dir)}")
-    print("")
-    print("IMPORTANT: DO NOT CHANGE PERMISSIONS OF CONFIG FILE(S)".center(100, "!"))
-    warning_message = [
-        "The file(s) within your config directory store sensitive information such as tokens.",
-        "They have been created with the permissions needed to keep your information safe.",
-        "DO NOT CHANGE THESE PERMISSIONS. Doing so may allow other users to read your tokens!",
-    ]
-    for line in warning_message:
-        print(line)
-    print("".center(100, "!"))
-
-
-@config_required
-def set_default_user(conf: config.OnyxConfig, args):
-    """
-    Set the default user in the config.
-    """
-
-    username = args.username
-
-    if username is None:
-        username = utils.get_input("username")
-
-    conf.set_default_user(username)
-    print(f"User '{username}' has been set as the default user.")
-
-
-@config_required
-def get_default_user(conf: config.OnyxConfig, args):
-    """
-    Get the default user in the config.
-    """
-
-    default_user = conf.get_default_user()
-    print(default_user)
-
-
-@config_required
-def add_user(conf: config.OnyxConfig, args):
-    """
-    Add user to the config.
-    """
-
-    username = args.username
-
-    if username is None:
-        username = utils.get_input("username")
-
-    conf.add_user(username)
-    print(f"User '{username}' has been added to the config.")
-
-
-@config_required
-def config_users(conf: config.OnyxConfig, args):
-    """
-    List all users in the config.
-    """
-
-    users = conf.list_users()
-    for user in users:
-        print(user)
-
-
-@config_required
-def register(conf: config.OnyxConfig, args):
+def register(args):
     """
     Create a new user.
     """
 
+    config = OnyxConfig(
+        config_path=args.config,
+        domain=args.domain,
+        token=args.token,
+    )
     first_name = utils.get_input("first name")
     last_name = utils.get_input("last name")
     email = utils.get_input("email address")
@@ -156,7 +46,7 @@ def register(conf: config.OnyxConfig, args):
         password2 = utils.get_input("password (again)", password=True)
 
     registration = OnyxClient._register(
-        conf,
+        config,
         first_name=first_name,
         last_name=last_name,
         email=email,
@@ -168,30 +58,24 @@ def register(conf: config.OnyxConfig, args):
 
     if registration.ok:
         print("Account created successfully.")
-        check = ""
-        while check not in ["Y", "N"]:
-            check = input(
-                "Would you like to add this account to the config? [y/n]: "
-            ).upper()
-
-        username = registration.json()["data"]["username"]
-
-        if check == "Y":
-            conf.add_user(username)
-            print(f"User '{username}' has been added to the config.")
-        else:
-            print(f"User '{username}' has not been added to the config.")
 
 
-@client_required
-def login(client: OnyxClient, args):
+def login(args):
     """
     Log in as a user.
     """
 
+    config = OnyxConfig(
+        config_path=args.config,
+        domain=args.domain,
+        username=args.user,
+        password=args.password,
+        token=args.token,
+    )
+    client = OnyxClient(config)
     response = client._login()
     if response.ok:
-        print("Logged in successfully.")
+        print(f"Logged in successfully as '{client.config.username}'.")
     else:
         utils.print_response(response)
 
@@ -470,19 +354,25 @@ def choices(client: OnyxClient, args):
 
 
 def main():
-    user_parser = argparse.ArgumentParser(add_help=False)
-    user_parser.add_argument(
-        "-u",
-        "--user",
-        help="Which user to execute the command as.",
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-c",
+        "--config",
+        help="The config file to use.",
+        default=os.getenv("ONYX_CLIENT_CONFIG"),
     )
-    user_parser.add_argument(
-        "-p",
-        "--envpass",
-        action="store_true",
-        help="When a password is required, the client will use the env variable with format 'ONYX_<USER>_PASSWORD'.",
+    parser.add_argument(
+        "-d",
+        "--domain",
+        help="The domain name to target.",
+        default=os.getenv("ONYX_CLIENT_DOMAIN"),
     )
-    parser = argparse.ArgumentParser(parents=[user_parser])
+    parser.add_argument(
+        "-t",
+        "--token",
+        help="Token to authenticate with.",
+        default=os.getenv("ONYX_CLIENT_TOKEN"),
+    )
     parser.add_argument(
         "-v",
         "--version",
@@ -492,48 +382,22 @@ def main():
     )
     command = parser.add_subparsers(dest="command", metavar="{command}", required=True)
 
-    # CONFIG COMMANDS
-    config_parser = command.add_parser("config", help="Config-specific commands.")
-    config_commands_parser = config_parser.add_subparsers(
-        dest="config_command", metavar="{config-command}", required=True
-    )
-    create_config_parser = config_commands_parser.add_parser(
-        "create", help="Create a config."
-    )
-    create_config_parser.add_argument("--domain", help="Onyx domain name.")
-    create_config_parser.add_argument(
-        "--config-dir",
-        help="Path to the config directory.",
-    )
-    create_config_parser.set_defaults(func=create_config)
-    set_default_user_parser = config_commands_parser.add_parser(
-        "setdefault", help="Set the default user."
-    )
-    set_default_user_parser.add_argument(
-        "username", nargs="?", help="User to be set as the default."
-    )
-    set_default_user_parser.set_defaults(func=set_default_user)
-    get_default_user_parser = config_commands_parser.add_parser(
-        "getdefault", help="Get the default user."
-    )
-    get_default_user_parser.set_defaults(func=get_default_user)
-    add_user_parser = config_commands_parser.add_parser(
-        "adduser",
-        help="Add a pre-existing user to the config.",
-    )
-    add_user_parser.add_argument(
-        "username", nargs="?", help="User to be added to the config."
-    )
-    add_user_parser.set_defaults(func=add_user)
-    config_users_parser = config_commands_parser.add_parser(
-        "users", help="List all users in the config."
-    )
-    config_users_parser.set_defaults(func=config_users)
-
     # ACCOUNTS COMMANDS
     register_parser = command.add_parser("register", help="Register a new user.")
     register_parser.set_defaults(func=register)
     login_parser = command.add_parser("login", help="Log in to onyx.")
+    login_parser.add_argument(
+        "-u",
+        "--user",
+        help="The user to log in as.",
+        default=os.getenv("ONYX_CLIENT_USERNAME"),
+    )
+    login_parser.add_argument(
+        "-p",
+        "--password",
+        help="The user's password.",
+        default=os.getenv("ONYX_CLIENT_PASSWORD"),
+    )
     login_parser.set_defaults(func=login)
     logout_parser = command.add_parser("logout", help="Log out of onyx.")
     logout_parser.set_defaults(func=logout)

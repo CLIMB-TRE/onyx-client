@@ -1,133 +1,77 @@
 import os
 import sys
 import csv
-import json
 import requests
 import concurrent.futures
+from typing import Any, Generator, List, Dict, IO, Optional, Union
 from django_query_tools.client import F
 from .utils import get_input
 from .config import OnyxConfig
-from typing import Any, Generator, List, Dict, IO, Optional, Union
-
-
-ONYX_USER_PASSWORD = lambda username: f"ONYX_{username.upper()}_PASSWORD"
-ENDPOINTS = {
-    # ACCOUNTS
-    "register": lambda domain: os.path.join(domain, "accounts/register/"),
-    "login": lambda domain: os.path.join(domain, "accounts/login/"),
-    "logout": lambda domain: os.path.join(domain, "accounts/logout/"),
-    "logoutall": lambda domain: os.path.join(domain, "accounts/logoutall/"),
-    "waiting": lambda domain: os.path.join(domain, "accounts/waiting/"),
-    "approve": lambda domain, username: os.path.join(
-        domain, "accounts/approve", username, ""
-    ),
-    "siteusers": lambda domain: os.path.join(domain, "accounts/site/"),
-    "allusers": lambda domain: os.path.join(domain, "accounts/all/"),
-    # DATA
-    "projects": lambda domain: os.path.join(domain, "projects/"),
-    "fields": lambda domain, project: os.path.join(
-        domain, f"projects", project, "fields/"
-    ),
-    "choices": lambda domain, project, field: os.path.join(
-        domain, "projects", project, "choices", field, ""
-    ),
-    "create": lambda domain, project: os.path.join(domain, "projects", project, ""),
-    "filter": lambda domain, project: os.path.join(domain, "projects", project, ""),
-    "get": lambda domain, project, cid: os.path.join(
-        domain, "projects", project, cid, ""
-    ),
-    "update": lambda domain, project, cid: os.path.join(
-        domain, "projects", project, cid, ""
-    ),
-    "delete": lambda domain, project, cid: os.path.join(
-        domain, "projects", project, cid, ""
-    ),
-    "query": lambda domain, project: os.path.join(
-        domain, "projects", project, "query/"
-    ),
-    "testcreate": lambda domain, project: os.path.join(
-        domain, "projects", project, "test/"
-    ),
-    "testupdate": lambda domain, project, cid: os.path.join(
-        domain, "projects", project, "test", cid, ""
-    ),
-}
 
 
 class OnyxClient:
-    def __init__(
-        self,
-        username: Optional[str] = None,
-        env_password: bool = False,
-        directory: Optional[str] = None,
-    ):
+    __slots__ = "config", "_request_handler", "_session"
+    ENDPOINTS = {
+        "register": lambda domain: os.path.join(domain, "accounts/register/"),
+        "login": lambda domain: os.path.join(domain, "accounts/login/"),
+        "logout": lambda domain: os.path.join(domain, "accounts/logout/"),
+        "logoutall": lambda domain: os.path.join(domain, "accounts/logoutall/"),
+        "waiting": lambda domain: os.path.join(domain, "accounts/waiting/"),
+        "approve": lambda domain, username: os.path.join(
+            domain, "accounts/approve", username, ""
+        ),
+        "siteusers": lambda domain: os.path.join(domain, "accounts/site/"),
+        "allusers": lambda domain: os.path.join(domain, "accounts/all/"),
+        "projects": lambda domain: os.path.join(domain, "projects/"),
+        "fields": lambda domain, project: os.path.join(
+            domain, f"projects", project, "fields/"
+        ),
+        "choices": lambda domain, project, field: os.path.join(
+            domain, "projects", project, "choices", field, ""
+        ),
+        "create": lambda domain, project: os.path.join(domain, "projects", project, ""),
+        "filter": lambda domain, project: os.path.join(domain, "projects", project, ""),
+        "get": lambda domain, project, cid: os.path.join(
+            domain, "projects", project, cid, ""
+        ),
+        "update": lambda domain, project, cid: os.path.join(
+            domain, "projects", project, cid, ""
+        ),
+        "delete": lambda domain, project, cid: os.path.join(
+            domain, "projects", project, cid, ""
+        ),
+        "query": lambda domain, project: os.path.join(
+            domain, "projects", project, "query/"
+        ),
+        "testcreate": lambda domain, project: os.path.join(
+            domain, "projects", project, "test/"
+        ),
+        "testupdate": lambda domain, project, cid: os.path.join(
+            domain, "projects", project, "test", cid, ""
+        ),
+    }
+
+    def __init__(self, config: OnyxConfig):
         """Initialise the client.
 
         Parameters
         ----------
-        username : str, optional
-            User to act as. If not provided, acts as the default user in the config.
-        env_password : bool, optional
-            If set to `True`, gets the user's password from the `ONYX_<username>_PASSWORD` environment variable.
-        directory : str, optional
-            Path to config directory. If not provided, uses directory stored in the `ONYX_CLIENT_CONFIG` environment variable.
+        config : OnyxConfig
+            Config object containing user credentials.
         """
 
-        self.config = OnyxConfig(directory=directory)
-
-        # Assign username/env_password flag to the client
-        if username is None:
-            # If no username was provided, use the default user
-            if self.config.default_user is None:
-                raise Exception(
-                    "No username was provided and there is no default_user in the config. Either provide a username or set a default_user."
-                )
-            if self.config.default_user not in self.config.users:
-                raise Exception(
-                    f"default_user '{self.config.default_user}' is not in the users list for the config."
-                )
-
-            username = str(self.config.default_user)
-        else:
-            # Username is case-insensitive
-            username = username.lower()
-
-            # The provided user must be in the config
-            if username not in self.config.users:
-                raise KeyError(
-                    f"User '{username}' is not in the config. Add them using the add-user config command."
-                )
-
-        # Assign username to the client
-        self.username = username
-
-        # Assign flag indicating whether to look for user's password to the client
-        self.env_password = env_password
-
-        # Open the token file for the user and assign the current token, and its expiry, to the client
-        token_path = os.path.join(
-            self.config.directory, self.config.users[username]["token"]
-        )
-        with open(token_path) as token_file:
-            try:
-                token_data = json.load(token_file)
-            except json.decoder.JSONDecodeError as e:
-                raise Exception(
-                    f"Failed to parse the tokens file: {token_path}\nSomething is wrong with your tokens file. \nTo fix this, either re-add the user to the config via the CLI, or correct the file manually."
-                ) from e
-            self.token = token_data.get("token")
-            self.expiry = token_data.get("expiry")
-
+        self.config = config
+        self._session = None
         self._request_handler = requests.request
 
     def __enter__(self):
-        self.session = requests.Session()
-        self._request_handler = self.session.request
+        self._session = requests.Session()
+        self._request_handler = self._session.request
         return self
 
     def __exit__(self, type, value, traceback):
-        self.session.close()
-        del self.session
+        if self._session:
+            self._session.close()
         self._request_handler = requests.request
 
     def _csv_upload(
@@ -146,8 +90,8 @@ class OnyxClient:
         if test:
             endpoint = "test" + endpoint
 
-        if multithreaded and not self.env_password:
-            raise Exception("Multithreaded mode requires env_password = True.")
+        if multithreaded and not self.config.password:
+            raise Exception("Multithreaded mode requires a password.")
 
         if csv_path and csv_file:
             raise Exception("Cannot provide both csv_path and csv_file.")
@@ -179,7 +123,9 @@ class OnyxClient:
 
                     response = self._request(
                         method=method,
-                        url=ENDPOINTS[endpoint](self.config.domain, project, cid),
+                        url=OnyxClient.ENDPOINTS[endpoint](
+                            self.config.domain, project, cid
+                        ),
                         json=overwrite(record, fields),
                     )
                     yield response
@@ -190,7 +136,7 @@ class OnyxClient:
                                 executor.submit(
                                     self._request,
                                     method,
-                                    url=ENDPOINTS[endpoint](
+                                    url=OnyxClient.ENDPOINTS[endpoint](
                                         self.config.domain, project, record.pop("cid")
                                     ),
                                     json=overwrite(record, fields),
@@ -203,7 +149,7 @@ class OnyxClient:
                         for record in reader:
                             response = self._request(
                                 method=method,
-                                url=ENDPOINTS[endpoint](
+                                url=OnyxClient.ENDPOINTS[endpoint](
                                     self.config.domain, project, record.pop("cid")
                                 ),
                                 json=overwrite(record, fields),
@@ -212,7 +158,7 @@ class OnyxClient:
                 else:
                     response = self._request(
                         method=method,
-                        url=ENDPOINTS[endpoint](self.config.domain, project),
+                        url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project),
                         json=overwrite(record, fields),
                     )
                     yield response
@@ -223,7 +169,7 @@ class OnyxClient:
                                 executor.submit(
                                     self._request,
                                     method,
-                                    url=ENDPOINTS[endpoint](
+                                    url=OnyxClient.ENDPOINTS[endpoint](
                                         self.config.domain, project
                                     ),
                                     json=overwrite(record, fields),
@@ -236,7 +182,9 @@ class OnyxClient:
                         for record in reader:
                             response = self._request(
                                 method=method,
-                                url=ENDPOINTS[endpoint](self.config.domain, project),
+                                url=OnyxClient.ENDPOINTS[endpoint](
+                                    self.config.domain, project
+                                ),
                                 json=overwrite(record, fields),
                             )
                             yield response
@@ -256,13 +204,13 @@ class OnyxClient:
             )
 
         kwargs.setdefault("headers", {}).update(
-            {"Authorization": f"Token {self.token}"}
+            {"Authorization": f"Token {self.config.token}"}
         )
         method_response = self._request_handler(method, **kwargs)
 
         # Token has expired.
-        # If an env_password was provided, log in again, obtain a new token, and re-run the method.
-        if method_response.status_code == 401 and self.env_password:
+        # If a password was provided, log in again, obtain a new token, and re-run the method.
+        if method_response.status_code == 401 and self.config.password:
             self._login().raise_for_status()
             # A retry mechanism has been incorporated as a failsafe.
             # This is to protect against the case where an onyx endpoint returns a 401 status code,
@@ -273,17 +221,6 @@ class OnyxClient:
             return self._request(method, retries=retries - 1, **kwargs)
 
         return method_response
-
-    def _get_password(self):
-        if self.env_password:
-            # If the password is meant to be an env var, grab it.
-            # If its not there, this is unintended so an error is raised
-            password = os.environ[ONYX_USER_PASSWORD(self.username)]
-        else:
-            # Otherwise, prompt for the password
-            print("Please enter your password.")
-            password = get_input("password", password=True)
-        return password
 
     @classmethod
     def _register(
@@ -300,7 +237,7 @@ class OnyxClient:
         """
 
         response = requests.post(
-            ENDPOINTS["register"](config.domain),
+            OnyxClient.ENDPOINTS["register"](config.domain),
             json={
                 "first_name": first_name,
                 "last_name": last_name,
@@ -325,7 +262,14 @@ class OnyxClient:
         Create a new user.
         """
 
-        response = cls._register(config, first_name, last_name, email, site, password)
+        response = cls._register(
+            config,
+            first_name,
+            last_name,
+            email,
+            site,
+            password,
+        )
         response.raise_for_status()
         return response.json()["data"]
 
@@ -336,19 +280,30 @@ class OnyxClient:
         If no user is provided, the `default_user` in the config is used.
         """
 
-        # Get the password
-        password = self._get_password()
+        # Get the username and password
+        if self.config.username:
+            username = self.config.username
+        else:
+            # Otherwise, prompt for the username
+            print("Please enter your username.")
+            username = get_input("username")
+
+        if self.config.password:
+            password = self.config.password
+        else:
+            # Otherwise, prompt for the password
+            print("Please enter your password.")
+            password = get_input("password", password=True)
 
         # Log in
         response = self._request_handler(
             "post",
-            auth=(self.username, password),
-            url=ENDPOINTS["login"](self.config.domain),
+            auth=(username, password),
+            url=OnyxClient.ENDPOINTS["login"](self.config.domain),
         )
         if response.ok:
-            self.token = response.json()["data"]["token"]
-            self.expiry = response.json()["data"]["expiry"]
-            self.config.write_token(self.username, self.token, self.expiry)
+            self.config.token = response.json()["data"]["token"]
+            self.config.write_token(self.config.token)
 
         return response
 
@@ -370,12 +325,11 @@ class OnyxClient:
 
         response = self._request(
             method="post",
-            url=ENDPOINTS["logout"](self.config.domain),
+            url=OnyxClient.ENDPOINTS["logout"](self.config.domain),
         )
         if response.ok:
-            self.token = None
-            self.expiry = None
-            self.config.write_token(self.username, self.token, self.expiry)
+            self.config.token = None
+            self.config.write_token(self.config.token)
 
         return response
 
@@ -394,12 +348,11 @@ class OnyxClient:
 
         response = self._request(
             method="post",
-            url=ENDPOINTS["logoutall"](self.config.domain),
+            url=OnyxClient.ENDPOINTS["logoutall"](self.config.domain),
         )
         if response.ok:
-            self.token = None
-            self.expiry = None
-            self.config.write_token(self.username, self.token, self.expiry)
+            self.config.token = None
+            self.config.write_token(self.config.token)
 
         return response
 
@@ -418,7 +371,7 @@ class OnyxClient:
 
         response = self._request(
             method="patch",
-            url=ENDPOINTS["approve"](self.config.domain, username),
+            url=OnyxClient.ENDPOINTS["approve"](self.config.domain, username),
         )
         return response
 
@@ -438,7 +391,7 @@ class OnyxClient:
 
         response = self._request(
             method="get",
-            url=ENDPOINTS["waiting"](self.config.domain),
+            url=OnyxClient.ENDPOINTS["waiting"](self.config.domain),
         )
         return response
 
@@ -458,7 +411,7 @@ class OnyxClient:
 
         response = self._request(
             method="get",
-            url=ENDPOINTS["siteusers"](self.config.domain),
+            url=OnyxClient.ENDPOINTS["siteusers"](self.config.domain),
         )
         return response
 
@@ -478,7 +431,7 @@ class OnyxClient:
 
         response = self._request(
             method="get",
-            url=ENDPOINTS["allusers"](self.config.domain),
+            url=OnyxClient.ENDPOINTS["allusers"](self.config.domain),
         )
         return response
 
@@ -508,7 +461,7 @@ class OnyxClient:
 
         response = self._request(
             method="post",
-            url=ENDPOINTS[endpoint](self.config.domain, project),
+            url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project),
             json=fields,
         )
         return response
@@ -595,7 +548,7 @@ class OnyxClient:
 
         response = self._request(
             method="get",
-            url=ENDPOINTS["get"](self.config.domain, project, cid),
+            url=OnyxClient.ENDPOINTS["get"](self.config.domain, project, cid),
             params={"include": include, "exclude": exclude, "scope": scope},
         )
         return response
@@ -638,7 +591,7 @@ class OnyxClient:
             fields = {}
 
         fields = fields | {"include": include, "exclude": exclude, "scope": scope}
-        _next = ENDPOINTS["filter"](self.config.domain, project)
+        _next = OnyxClient.ENDPOINTS["filter"](self.config.domain, project)
 
         while _next is not None:
             response = self._request(
@@ -699,7 +652,7 @@ class OnyxClient:
             query_json = None
 
         fields = {"include": include, "exclude": exclude, "scope": scope}
-        _next = ENDPOINTS["query"](self.config.domain, project)
+        _next = OnyxClient.ENDPOINTS["query"](self.config.domain, project)
 
         while _next is not None:
             response = self._request(
@@ -758,7 +711,7 @@ class OnyxClient:
 
         response = self._request(
             method="patch",
-            url=ENDPOINTS[endpoint](self.config.domain, project, cid),
+            url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project, cid),
             json=fields,
         )
         return response
@@ -844,7 +797,7 @@ class OnyxClient:
 
         response = self._request(
             method="delete",
-            url=ENDPOINTS["delete"](self.config.domain, project, cid),
+            url=OnyxClient.ENDPOINTS["delete"](self.config.domain, project, cid),
         )
         return response
 
@@ -915,7 +868,7 @@ class OnyxClient:
 
         response = self._request(
             method="get",
-            url=ENDPOINTS["projects"](self.config.domain),
+            url=OnyxClient.ENDPOINTS["projects"](self.config.domain),
         )
         return response
 
@@ -939,7 +892,7 @@ class OnyxClient:
 
         response = self._request(
             method="get",
-            url=ENDPOINTS["fields"](self.config.domain, project),
+            url=OnyxClient.ENDPOINTS["fields"](self.config.domain, project),
             params={"scope": scope},
         )
         return response
@@ -964,7 +917,7 @@ class OnyxClient:
 
         response = self._request(
             method="get",
-            url=ENDPOINTS["choices"](self.config.domain, project, field),
+            url=OnyxClient.ENDPOINTS["choices"](self.config.domain, project, field),
         )
         return response
 

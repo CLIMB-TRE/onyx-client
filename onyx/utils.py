@@ -71,31 +71,23 @@ def print_response(response: requests.Response, pretty_print: bool = True):
         print(formatted_response, file=sys.stderr)
 
 
-def get_input(field, password=False, type=None, required=True):
+def get_input(field, password=False, required=True) -> str:
     """
     Get user input/password, ensuring they enter something.
     """
 
-    if type is None:
-        type = str
     if password:
         # User input is not displayed to the terminal with getpass
         input_func = getpass
     else:
         input_func = input
-    try:
-        # Take user input, strip it and convert to required type
-        value = type(input_func(f"{field[0].upper()}{field[1:].lower()}: ").strip())
-    except ValueError:
-        value = ""
+
+    # Take user input, strip it and convert to required type
+    value = input_func(f"{field[0].upper()}{field[1:].lower()}: ").strip()
+
     if required:
         while not value:
-            try:
-                value = type(
-                    input_func(f"Please enter a valid {field.lower()}: ").strip()
-                )
-            except ValueError:
-                value = ""
+            value = input_func(f"Please enter a valid {field.lower()}: ").strip()
     return value
 
 
