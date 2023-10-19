@@ -17,16 +17,12 @@ ENDPOINTS = {
     "login": lambda domain: os.path.join(domain, "accounts/login/"),
     "logout": lambda domain: os.path.join(domain, "accounts/logout/"),
     "logoutall": lambda domain: os.path.join(domain, "accounts/logoutall/"),
-    "site_approve": lambda domain, username: os.path.join(
-        domain, "accounts/site/approve", username, ""
+    "waiting": lambda domain: os.path.join(domain, "accounts/waiting/"),
+    "approve": lambda domain, username: os.path.join(
+        domain, "accounts/approve", username, ""
     ),
-    "site_waiting": lambda domain: os.path.join(domain, "accounts/site/waiting/"),
-    "site_users": lambda domain: os.path.join(domain, "accounts/site/users/"),
-    "admin_approve": lambda domain, username: os.path.join(
-        domain, "accounts/admin/approve", username, ""
-    ),
-    "admin_waiting": lambda domain: os.path.join(domain, "accounts/admin/waiting/"),
-    "admin_users": lambda domain: os.path.join(domain, "accounts/admin/users/"),
+    "siteusers": lambda domain: os.path.join(domain, "accounts/site/"),
+    "allusers": lambda domain: os.path.join(domain, "accounts/all/"),
     # DATA
     "projects": lambda domain: os.path.join(domain, "projects/"),
     "fields": lambda domain, project: os.path.join(
@@ -415,123 +411,83 @@ class OnyxClient:
         response = self._logoutall()
         response.raise_for_status()
 
-    def _site_approve(self, username: str) -> requests.Response:
+    def _approve(self, username: str) -> requests.Response:
         """
-        Site-approve another user.
-        """
-
-        response = self._request(
-            method="patch",
-            url=ENDPOINTS["site_approve"](self.config.domain, username),
-        )
-        return response
-
-    def site_approve(self, username: str) -> Dict[str, Any]:
-        """
-        Site-approve another user.
-        """
-
-        response = self._site_approve(username)
-        response.raise_for_status()
-        return response.json()["data"]
-
-    def _site_list_waiting(self) -> requests.Response:
-        """
-        List users waiting for site approval.
-        """
-
-        response = self._request(
-            method="get",
-            url=ENDPOINTS["site_waiting"](self.config.domain),
-        )
-        return response
-
-    def site_list_waiting(self) -> List[Dict[str, Any]]:
-        """
-        List users waiting for site approval.
-        """
-
-        response = self._site_list_waiting()
-        response.raise_for_status()
-        return response.json()["data"]
-
-    def _site_list_users(self) -> requests.Response:
-        """
-        Get the current users within the site of the requesting user.
-        """
-
-        response = self._request(
-            method="get",
-            url=ENDPOINTS["site_users"](self.config.domain),
-        )
-        return response
-
-    def site_list_users(self) -> List[Dict[str, Any]]:
-        """
-        Get the current users within the site of the requesting user.
-        """
-
-        response = self._site_list_users()
-        response.raise_for_status()
-        return response.json()["data"]
-
-    def _admin_approve(self, username: str) -> requests.Response:
-        """
-        Admin-approve another user.
+        Approve a user.
         """
 
         response = self._request(
             method="patch",
-            url=ENDPOINTS["admin_approve"](self.config.domain, username),
+            url=ENDPOINTS["approve"](self.config.domain, username),
         )
         return response
 
-    def admin_approve(self, username: str) -> Dict[str, Any]:
+    def approve(self, username: str) -> Dict[str, Any]:
         """
-        Admin-approve another user.
+        Approve another user.
         """
 
-        response = self._admin_approve(username)
+        response = self._approve(username)
         response.raise_for_status()
         return response.json()["data"]
 
-    def _admin_list_waiting(self) -> requests.Response:
+    def _waiting(self) -> requests.Response:
         """
-        List users waiting for admin approval.
+        Get users waiting for approval.
         """
 
         response = self._request(
             method="get",
-            url=ENDPOINTS["admin_waiting"](self.config.domain),
+            url=ENDPOINTS["waiting"](self.config.domain),
         )
         return response
 
-    def admin_list_waiting(self) -> List[Dict[str, Any]]:
+    def waiting(self) -> List[Dict[str, Any]]:
         """
-        List users waiting for admin approval.
+        Get users waiting for approval.
         """
 
-        response = self._admin_list_waiting()
+        response = self._waiting()
         response.raise_for_status()
         return response.json()["data"]
 
-    def _admin_list_users(self) -> requests.Response:
+    def _site_users(self) -> requests.Response:
         """
-        List all users.
+        Get the users within the site of the requesting user.
         """
 
         response = self._request(
             method="get",
-            url=ENDPOINTS["admin_users"](self.config.domain),
+            url=ENDPOINTS["siteusers"](self.config.domain),
         )
         return response
 
-    def admin_list_users(self) -> List[Dict[str, Any]]:
+    def site_users(self) -> List[Dict[str, Any]]:
         """
-        List all users.
+        Get the users within the site of the requesting user.
         """
 
-        response = self._admin_list_users()
+        response = self._site_users()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    def _all_users(self) -> requests.Response:
+        """
+        Get all users.
+        """
+
+        response = self._request(
+            method="get",
+            url=ENDPOINTS["allusers"](self.config.domain),
+        )
+        return response
+
+    def all_users(self) -> List[Dict[str, Any]]:
+        """
+        Get all users.
+        """
+
+        response = self._all_users()
         response.raise_for_status()
         return response.json()["data"]
 

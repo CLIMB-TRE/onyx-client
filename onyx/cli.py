@@ -126,7 +126,7 @@ def add_user(conf: config.OnyxConfig, args):
 
 
 @config_required
-def list_users(conf: config.OnyxConfig, args):
+def config_users(conf: config.OnyxConfig, args):
     """
     List all users in the config.
     """
@@ -223,62 +223,42 @@ def logoutall(client: OnyxClient, args):
 
 
 @client_required
-def site_approve(client: OnyxClient, args):
+def approve(client: OnyxClient, args):
     """
-    Site-approve another user.
+    Approve a user.
     """
 
-    approval = client._site_approve(args.username)
+    approval = client._approve(args.username)
     utils.print_response(approval)
 
 
 @client_required
-def site_list_waiting(client: OnyxClient, args):
+def waiting(client: OnyxClient, args):
     """
     List users waiting for site approval.
     """
 
-    users = client._site_list_waiting()
+    users = client._waiting()
     utils.print_response(users)
 
 
 @client_required
-def site_list_users(client: OnyxClient, args):
+def site_users(client: OnyxClient, args):
     """
     List site users.
     """
 
-    users = client._site_list_users()
+    users = client._site_users()
     utils.print_response(users)
 
 
 @client_required
-def admin_approve(client: OnyxClient, args):
-    """
-    Admin-approve another user.
-    """
-
-    approval = client._admin_approve(args.username)
-    utils.print_response(approval)
-
-
-@client_required
-def admin_list_waiting(client: OnyxClient, args):
-    """
-    List users waiting for admin approval.
-    """
-
-    users = client._admin_list_waiting()
-    utils.print_response(users)
-
-
-@client_required
-def admin_list_users(client: OnyxClient, args):
+def all_users(client: OnyxClient, args):
     """
     List all users.
     """
 
-    users = client._admin_list_users()
+    users = client._all_users()
     utils.print_response(users)
 
 
@@ -545,16 +525,14 @@ def main():
         "username", nargs="?", help="User to be added to the config."
     )
     add_user_parser.set_defaults(func=add_user)
-    list_users_parser = config_commands_parser.add_parser(
+    config_users_parser = config_commands_parser.add_parser(
         "users", help="List all users in the config."
     )
-    list_users_parser.set_defaults(func=list_users)
+    config_users_parser.set_defaults(func=config_users)
 
-    # REGISTER COMMANDS
+    # ACCOUNTS COMMANDS
     register_parser = command.add_parser("register", help="Register a new user.")
     register_parser.set_defaults(func=register)
-
-    # LOGIN COMMANDS
     login_parser = command.add_parser("login", help="Log in to onyx.")
     login_parser.set_defaults(func=login)
     logout_parser = command.add_parser("logout", help="Log out of onyx.")
@@ -563,48 +541,27 @@ def main():
         "logoutall", help="Log out of onyx everywhere."
     )
     logoutall_parser.set_defaults(func=logoutall)
-
-    # SITE COMMANDS
-    site_parser = command.add_parser("site", help="Site-specific commands.")
-    site_commands_parser = site_parser.add_subparsers(
-        dest="site_command", metavar="{site-command}", required=True
-    )
-    site_approve_parser = site_commands_parser.add_parser(
-        "approve", help="Site-approve another user."
-    )
-    site_approve_parser.add_argument("username", help="User to be site-approved.")
-    site_approve_parser.set_defaults(func=site_approve)
-    site_list_waiting_parser = site_commands_parser.add_parser(
+    waiting_parser = command.add_parser(
         "waiting",
-        help="List users waiting for site approval.",
+        help="List users waiting for approval.",
     )
-    site_list_waiting_parser.set_defaults(func=site_list_waiting)
-    site_list_users_parser = site_commands_parser.add_parser(
-        "users",
+    waiting_parser.set_defaults(func=waiting)
+    approve_parser = command.add_parser(
+        "approve",
+        help="Approve a user.",
+    )
+    approve_parser.add_argument("username", help="User to be approved.")
+    approve_parser.set_defaults(func=approve)
+    site_users_parser = command.add_parser(
+        "siteusers",
         help="List site users.",
     )
-    site_list_users_parser.set_defaults(func=site_list_users)
-
-    # ADMIN COMMANDS
-    admin_parser = command.add_parser("admin", help="Admin-specific commands.")
-    admin_commands_parser = admin_parser.add_subparsers(
-        dest="admin_command", metavar="{admin-command}", required=True
+    site_users_parser.set_defaults(func=site_users)
+    all_users_parser = command.add_parser(
+        "allusers",
+        help="List all users.",
     )
-    admin_approve_parser = admin_commands_parser.add_parser(
-        "approve",
-        help="Admin-approve another user.",
-    )
-    admin_approve_parser.add_argument("username", help="User to be admin-approved.")
-    admin_approve_parser.set_defaults(func=admin_approve)
-    admin_list_waiting_parser = admin_commands_parser.add_parser(
-        "waiting",
-        help="List users waiting for admin approval.",
-    )
-    admin_list_waiting_parser.set_defaults(func=admin_list_waiting)
-    admin_list_users_parser = admin_commands_parser.add_parser(
-        "allusers", help="List all users."
-    )
-    admin_list_users_parser.set_defaults(func=admin_list_users)
+    all_users_parser.set_defaults(func=all_users)
 
     # PROJECT COMMANDS
     projects_parser = command.add_parser("projects", help="View available projects.")
