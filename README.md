@@ -23,37 +23,43 @@ $ pip install .
 Check it works:
 
 ```
-$ onyx -h
-usage: onyx [-h] [-u USER] [-p] [-v] {command} ...
-
-positional arguments:
-  {command}
-    config              Config-specific commands.
-    register            Register a new user.
-    login               Log in to onyx.
-    logout              Log out of onyx.
-    logoutall           Log out of onyx everywhere.
-    site                Site-specific commands.
-    admin               Admin-specific commands.
-    projects            View available projects.
-    fields              View fields for a project.
-    choices             View choices for a field.
-    create              Create records in a project.
-    get                 Get a record from a project.
-    filter              Filter records from a project.
-    update              Update records in a project.
-    delete              Delete records in a project.
-
-options:
-  -h, --help            show this help message and exit
-  -u USER, --user USER  Which user to execute the command as.
-  -p, --envpass         When a password is required, the client will use the env variable with format 'ONYX_<USER>_PASSWORD'.
-  -v, --version         Client version number.
+$ onyx
+ Usage: onyx [OPTIONS] COMMAND [ARGS]...                                                                                          
+                                                                                                                                  
+ Welcome to Onyx.                                                                                                                 
+                                                                                                                                  
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --config                    TEXT                             [env var: ONYX_CLIENT_CONFIG] [default: ~/.onyx]                  │
+│ --domain                    TEXT                             [env var: ONYX_CLIENT_DOMAIN] [default: None]                     │
+│ --token                     TEXT                             [env var: ONYX_CLIENT_TOKEN] [default: None]                      │
+│ --version                                                    Show the client version number and exit.                          │
+│ --install-completion        [bash|zsh|fish|powershell|pwsh]  Install completion for the specified shell. [default: None]       │
+│ --show-completion           [bash|zsh|fish|powershell|pwsh]  Show completion for the specified shell, to copy it or customize  │
+│                                                              the installation.                                                 │
+│                                                              [default: None]                                                   │
+│ --help                                                       Show this message and exit.                                       │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ init                           Create a config file.                                                                           │
+│ register                       Register a new user.                                                                            │
+│ login                          Log in to Onyx.                                                                                 │
+│ logout                         Log out of Onyx.                                                                                │
+│ logoutall                      Log out of Onyx everywhere.                                                                     │
+│ waiting                        List users waiting for approval.                                                                │
+│ approve                        Approve a user.                                                                                 │
+│ siteusers                      List site users.                                                                                │
+│ allusers                       List all users.                                                                                 │
+│ projects                       View available projects.                                                                        │
+│ fields                         View fields for a project.                                                                      │
+│ choices                        View choices for a field.                                                                       │
+│ get                            Get a record from a project.                                                                    │
+│ filter                         Filter records from a project.                                                                  │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 ## Create a config
 ```
-$ onyx config create --domain https://onyx.domain.name --config-dir /path/to/config/
+$ onyx init
 ```
 
 ## Register a user

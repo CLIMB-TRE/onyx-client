@@ -5,7 +5,6 @@ import requests
 import concurrent.futures
 from typing import Any, Generator, List, Dict, IO, Optional, Union
 from django_query_tools.client import F
-from .utils import get_input
 from .config import OnyxConfig
 
 
@@ -280,25 +279,13 @@ class OnyxClient:
         If no user is provided, the `default_user` in the config is used.
         """
 
-        # Get the username and password
-        if self.config.username:
-            username = self.config.username
-        else:
-            # Otherwise, prompt for the username
-            print("Please enter your username.")
-            username = get_input("username")
+        # TODO: Handle properly
+        assert self.config.username
+        assert self.config.password
 
-        if self.config.password:
-            password = self.config.password
-        else:
-            # Otherwise, prompt for the password
-            print("Please enter your password.")
-            password = get_input("password", password=True)
-
-        # Log in
         response = self._request_handler(
             "post",
-            auth=(username, password),
+            auth=(self.config.username, self.config.password),
             url=OnyxClient.ENDPOINTS["login"](self.config.domain),
         )
         if response.ok:
