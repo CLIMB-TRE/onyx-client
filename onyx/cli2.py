@@ -438,11 +438,11 @@ class OnyxCLI:
 
 def version_callback(value: bool):
     if value:
-        typer.echo(f"Onyx Client Version: {__version__}")
+        typer.echo(__version__)
         raise typer.Exit()
 
 
-@app.callback()
+@app.callback(name="onyx", help=f"Client Version: {__version__}")
 def common(
     context: typer.Context,
     config: Optional[str] = typer.Option(
@@ -468,10 +468,6 @@ def common(
         help="Show the client version number and exit.",
     ),
 ):
-    """
-    Welcome to Onyx.
-    """
-
     conf = OnyxConfig(
         config_path=config,
         domain=domain,
