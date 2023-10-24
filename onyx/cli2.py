@@ -173,6 +173,24 @@ def logoutall(
 
 
 @app.command()
+def profile(
+    context: typer.Context,
+):
+    """
+    View the logged-in user's information.
+    """
+
+    assert isinstance(context.obj.config, OnyxConfig)
+    assert isinstance(context.obj.client, OnyxClient)
+
+    user = context.obj.client._profile()
+    if user.ok:
+        print_response(user)
+    else:
+        show_error(user)
+
+
+@app.command()
 def waiting(
     context: typer.Context,
 ):

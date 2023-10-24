@@ -15,6 +15,7 @@ class OnyxClient:
         "login": lambda domain: os.path.join(domain, "accounts/login/"),
         "logout": lambda domain: os.path.join(domain, "accounts/logout/"),
         "logoutall": lambda domain: os.path.join(domain, "accounts/logoutall/"),
+        "profile": lambda domain: os.path.join(domain, "accounts/profile/"),
         "waiting": lambda domain: os.path.join(domain, "accounts/waiting/"),
         "approve": lambda domain, username: os.path.join(
             domain, "accounts/approve", username, ""
@@ -350,6 +351,26 @@ class OnyxClient:
 
         response = self._logoutall()
         response.raise_for_status()
+
+    def _profile(self) -> requests.Response:
+        """
+        View the logged-in user's information.
+        """
+
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["profile"](self.config.domain),
+        )
+        return response
+
+    def profile(self) -> Dict[str, str]:
+        """
+        View the logged-in user's information.
+        """
+
+        response = self._profile()
+        response.raise_for_status()
+        return response.json()["data"]
 
     def _approve(self, username: str) -> requests.Response:
         """

@@ -20,11 +20,12 @@ $ onyx [OPTIONS] COMMAND [ARGS]...
 
 **Commands**:
 
-* `init`: Create a `config` file.
+* `init`: Create a config file.
 * `register`: Register a new user.
 * `login`: Log in to Onyx.
 * `logout`: Log out of Onyx.
 * `logoutall`: Log out of Onyx everywhere.
+* `profile`: View the logged-in user's information.
 * `waiting`: List users waiting for approval.
 * `approve`: Approve a user.
 * `siteusers`: List site users.
@@ -37,7 +38,7 @@ $ onyx [OPTIONS] COMMAND [ARGS]...
 
 ## `onyx init`
 
-Create a `config` file.
+Create a config file.
 
 **Usage**:
 
@@ -101,6 +102,20 @@ Log out of Onyx everywhere.
 
 ```console
 $ onyx logoutall [OPTIONS]
+```
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+## `onyx profile`
+
+View the logged-in user's information.
+
+**Usage**:
+
+```console
+$ onyx profile [OPTIONS]
 ```
 
 **Options**:
