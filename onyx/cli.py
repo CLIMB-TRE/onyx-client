@@ -12,7 +12,6 @@ from .api import OnyxClient
 def client_required(func):
     def wrapped_func(args):
         config = OnyxConfig(
-            config_path=args.config,
             domain=args.domain,
             token=args.token,
         )
@@ -28,7 +27,6 @@ def register(args):
     """
 
     config = OnyxConfig(
-        config_path=args.config,
         domain=args.domain,
         token=args.token,
     )
@@ -66,16 +64,14 @@ def login(args):
     """
 
     config = OnyxConfig(
-        config_path=args.config,
         domain=args.domain,
-        username=args.user,
-        password=args.password,
+        credentials=(args.user, args.password),
         token=args.token,
     )
     client = OnyxClient(config)
     response = client._login()
     if response.ok:
-        print(f"Logged in successfully as '{client.config.username}'.")
+        print(f"Logged in successfully.")
     else:
         utils.print_response(response)
 
