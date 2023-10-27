@@ -8,7 +8,14 @@ from django_query_tools.client import F
 from .config import OnyxConfig
 
 
+# TODO: OnyxClientBase for underscored methods?
+
+
 class OnyxClient:
+    """
+    Class for querying and manipulating metadata within Onyx.
+    """
+
     __slots__ = "config", "_request_handler", "_session"
     ENDPOINTS = {
         "register": lambda domain: os.path.join(domain, "accounts/register/"),
@@ -74,6 +81,35 @@ class OnyxClient:
             self._session.close()
         self._request_handler = requests.request
 
+    def _request(self, method: str, retries: int = 3, **kwargs) -> requests.Response:
+        """
+        Carry out a request while handling token authorisation.
+        """
+
+        if not retries:
+            raise Exception(
+                "Request retry limit reached. This should not be possible..."
+            )
+
+        kwargs.setdefault("headers", {}).update(
+            {"Authorization": f"Token {self.config.token}"}
+        )
+        method_response = self._request_handler(method, **kwargs)
+
+        # Token has expired or was invalid.
+        # If credentials were provided, log in again, obtain a new token, and re-run the method.
+        if method_response.status_code == 401 and self.config.credentials:
+            self._login().raise_for_status()
+            # A retry mechanism has been incorporated as a failsafe.
+            # This is to protect against the case where an onyx endpoint returns a 401 status code,
+            # despite the user being able to successfully log in, leading to an infinite loop of
+            # re-logging in and re-hitting the endpoint.
+            # This scenario should not be possible. But if it happened, it would not be fun at all.
+            # So, better safe than sorry...
+            return self._request(method, retries=retries - 1, **kwargs)
+
+        return method_response
+
     def _csv_upload(
         self,
         method: str,
@@ -90,8 +126,8 @@ class OnyxClient:
         if test:
             endpoint = "test" + endpoint
 
-        if multithreaded and not self.config.password:
-            raise Exception("Multithreaded mode requires a password.")
+        if multithreaded and not self.config.credentials:
+            raise Exception("Multithreaded mode requires login credentials.")
 
         if csv_path and csv_file:
             raise Exception("Cannot provide both csv_path and csv_file.")
@@ -193,35 +229,6 @@ class OnyxClient:
             if csv_path and csv_file is not sys.stdin:
                 csv_file.close()
 
-    def _request(self, method: str, retries: int = 3, **kwargs) -> requests.Response:
-        """
-        Carry out a request while handling token authorisation.
-        """
-
-        if not retries:
-            raise Exception(
-                "Request retry limit reached. This should not be possible..."
-            )
-
-        kwargs.setdefault("headers", {}).update(
-            {"Authorization": f"Token {self.config.token}"}
-        )
-        method_response = self._request_handler(method, **kwargs)
-
-        # Token has expired.
-        # If a password was provided, log in again, obtain a new token, and re-run the method.
-        if method_response.status_code == 401 and self.config.password:
-            self._login().raise_for_status()
-            # A retry mechanism has been incorporated as a failsafe.
-            # This is to protect against the case where an onyx endpoint returns a 401 status code,
-            # despite the user being able to successfully log in, leading to an infinite loop of
-            # re-logging in and re-hitting the endpoint.
-            # This scenario should not be possible. But if it happened, it would not be fun at all.
-            # So, better safe than sorry...
-            return self._request(method, retries=retries - 1, **kwargs)
-
-        return method_response
-
     @classmethod
     def _register(
         cls,
@@ -280,18 +287,13 @@ class OnyxClient:
         If no user is provided, the `default_user` in the config is used.
         """
 
-        # TODO: Handle properly
-        assert self.config.username
-        assert self.config.password
-
         response = self._request_handler(
             "post",
-            auth=(self.config.username, self.config.password),
+            auth=self.config.credentials,
             url=OnyxClient.ENDPOINTS["login"](self.config.domain),
         )
         if response.ok:
             self.config.token = response.json()["data"]["token"]
-            self.config.write_token(self.config.token)
 
         return response
 
@@ -317,7 +319,6 @@ class OnyxClient:
         )
         if response.ok:
             self.config.token = None
-            self.config.write_token(self.config.token)
 
         return response
 
@@ -340,7 +341,6 @@ class OnyxClient:
         )
         if response.ok:
             self.config.token = None
-            self.config.write_token(self.config.token)
 
         return response
 
@@ -880,7 +880,7 @@ class OnyxClient:
         )
         return response
 
-    def projects(self) -> Dict[str, List[str]]:
+    def projects(self) -> List[Dict[str, str]]:
         """
         View available projects.
         """
