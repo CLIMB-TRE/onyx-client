@@ -1,19 +1,22 @@
 import os
 import csv
 import sys
-import stat
 import enum
 import json
+import dataclasses
+from typing import Optional, List, Dict, Tuple, Any
+import requests
 import click
 import typer
 from typer.core import TyperGroup
-import requests
-import dataclasses
-from typing import Optional, List
+from rich.console import Console
+from rich.table import Table
 from .version import __version__
-from .utils import print_response
-from .config import OnyxConfig
+from .config import OnyxConfig, OnyxEnv
 from .api import OnyxClient
+
+
+console = Console()
 
 
 class DefinedOrderGroup(TyperGroup):
@@ -25,58 +28,128 @@ app = typer.Typer(
     cls=DefinedOrderGroup,
     no_args_is_help=True,
     pretty_exceptions_show_locals=False,
+    add_completion=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 
-def show_error(response):
+def raise_error(response: requests.Response):
     try:
-        detail = response.json().get("messages", {}).get("detail")
+        messages = response.json()["messages"]
+        detail = messages.get("detail")
+
         if detail:
-            raise click.exceptions.ClickException(detail)
+            formatted_response = detail
+        else:
+            formatted_response = json.dumps(messages, indent=4)
 
     except json.decoder.JSONDecodeError:
-        pass
-    print_response(response)
+        formatted_response = response.text
+
+    raise click.exceptions.ClickException(formatted_response)
 
 
-@app.command()
-def init(context: typer.Context):
-    """
-    Create a config file.
-    """
+def create_table(
+    data: List[Dict[str, Any]],
+    map: Dict[str, str],
+    styles: Optional[Dict[str, Dict[str, str]]] = None,
+) -> Table:
+    table = Table(
+        show_lines=True,
+    )
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    for column in map.keys():
+        table.add_column(column)
 
-    if not context.obj.config.domain:
-        context.obj.config.domain = typer.prompt("Please enter a domain")
-
-    with open(context.obj.config.config_path, "w") as config_file:
-        json.dump(
-            {
-                "domain": context.obj.config.domain,
-                "token": context.obj.config.token,
-            },
-            config_file,
-            indent=4,
+    for row in data:
+        table.add_row(
+            *(
+                row[key]
+                if (not styles) or (key not in styles) or (row[key] not in styles[key])
+                else f"[{styles[key][row[key]]}]{row[key]}[/]"
+                for key in map.values()
+            )
         )
 
-    # Read-write for OS user only
-    os.chmod(context.obj.config.config_path, stat.S_IRUSR | stat.S_IWUSR)
-
-    typer.echo("Config created successfully.")
+    return table
 
 
-@app.command()
+@dataclasses.dataclass
+class OnyxAPIOptions:
+    domain: Optional[str]
+    token: Optional[str]
+
+
+@dataclasses.dataclass
+class OnyxAPI:
+    config: OnyxConfig
+    client: OnyxClient
+
+
+def setup_onyx_api(
+    options: OnyxAPIOptions, credentials: Optional[Tuple[str, str]] = None
+) -> OnyxAPI:
+    domain = options.domain
+    token = options.token
+
+    try:
+        if domain and (token or credentials):
+            config = OnyxConfig(
+                domain=domain,
+                credentials=credentials,
+                token=token,
+            )
+        else:
+            missing = []
+            if not domain:
+                missing.append(f"'{OnyxEnv.DOMAIN.value}'")
+
+            if not token:
+                missing.append(f"'{OnyxEnv.TOKEN.value}'")
+
+            raise Exception(
+                f"The following environment variables are required: {', '.join(missing)}"
+            )
+
+        client = OnyxClient(config)
+
+    except Exception as e:
+        raise click.exceptions.ClickException(e.args[0])
+
+    return OnyxAPI(config, client)
+
+
+class HelpText(enum.Enum):
+    FIELD = "Filter the data by providing criteria that fields must match. Uses a `name=value` syntax."
+    INCLUDE = "Set which fields to include in the output."
+    EXCLUDE = "Set which fields to exclude from the output."
+    SCOPE = "Access additional fields beyond the 'base' group of fields."
+    FORMAT = "Set the file format of the returned data."
+
+
+class Formats(enum.Enum):
+    JSON = "json"
+    CSV = "csv"
+    TSV = "tsv"
+
+
+class Messages(enum.Enum):
+    SUCCESS = "[bold green][SUCCESS][/]"
+    NOTE = "[bold cyan][NOTE][/]"
+
+
+BASIC_CLI = os.getenv(OnyxEnv.DISPLAY.value, "").upper() != "ADVANCED"
+
+
+@app.command(hidden=BASIC_CLI)
 def register(context: typer.Context):
     """
-    Register a new user.
+    Create a new user.
     """
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    api = setup_onyx_api(context.obj)
 
-    # Get required information to create an account
+    # Get required information to create a user
     first_name = typer.prompt("Please enter your first name")
     last_name = typer.prompt("Please enter your last name")
     email = typer.prompt("Please enter your email address")
@@ -85,91 +158,98 @@ def register(context: typer.Context):
         "Please enter your password", hide_input=True, confirmation_prompt=True
     )
 
-    # Register the account
+    # Register the user
     try:
         registration = OnyxClient.register(
-            context.obj.config,
+            api.config,
             first_name=first_name,
             last_name=last_name,
             email=email,
             site=site,
             password=password,
         )
-        typer.echo(f"Successfully created the account '{registration['username']}'.")
+        console.print(
+            f"{Messages.SUCCESS.value} Created user: '{registration['username']}'"
+        )
     except requests.HTTPError as e:
-        show_error(e.response)
+        raise_error(e.response)
 
 
-@app.command()
+@app.command(hidden=BASIC_CLI)
 def login(
     context: typer.Context,
     username: Optional[str] = typer.Option(
-        default=None,
-        envvar="ONYX_CLIENT_USERNAME",
+        None,
+        "-u",
+        "--username",
+        envvar=OnyxEnv.USERNAME.value,
+        help="Name of the user logging in.",
     ),
     password: Optional[str] = typer.Option(
-        default=None,
-        envvar="ONYX_CLIENT_PASSWORD",
+        None,
+        "-p",
+        "--password",
+        envvar=OnyxEnv.PASSWORD.value,
+        help="Password of the user logging in.",
     ),
 ):
     """
-    Log in to Onyx.
+    Log in.
     """
-
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
 
     # Get the username and password
     if not username:
         username = typer.prompt("Please enter your username")
-    context.obj.config.username = username
 
     if not password:
         password = typer.prompt("Please enter your password", hide_input=True)
-    context.obj.config.password = password
+
+    api = setup_onyx_api(context.obj, credentials=(str(username), str(password)))
 
     # Log in
     try:
-        context.obj.client.login()
-        typer.echo(f"Successfully logged in as '{context.obj.config.username}'.")
+        auth = api.client.login()
+        console.print(f"{Messages.SUCCESS.value} Logged in as user: '{username}'")
+        console.print(f"{Messages.NOTE.value} Obtained token: '{auth['token']}'")
+        console.print(
+            f"{Messages.NOTE.value} To authenticate, assign this token to the following environment variable: '{OnyxEnv.TOKEN.value}'"
+        )
     except requests.HTTPError as e:
-        show_error(e.response)
+        raise_error(e.response)
 
 
-@app.command()
+@app.command(hidden=BASIC_CLI)
 def logout(
     context: typer.Context,
 ):
     """
-    Log out of Onyx.
+    Log out.
     """
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    api = setup_onyx_api(context.obj)
 
     try:
-        context.obj.client.logout()
-        typer.echo("Successfully logged out.")
+        api.client.logout()
+        console.print(f"{Messages.SUCCESS.value} Logged out.")
     except requests.HTTPError as e:
-        show_error(e.response)
+        raise_error(e.response)
 
 
-@app.command()
+@app.command(hidden=BASIC_CLI)
 def logoutall(
     context: typer.Context,
 ):
     """
-    Log out of Onyx everywhere.
+    Log out across all clients.
     """
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    api = setup_onyx_api(context.obj)
 
     try:
-        context.obj.client.logoutall()
-        typer.echo("Successfully logged out everywhere.")
+        api.client.logoutall()
+        console.print(f"{Messages.SUCCESS.value} Logged out across all clients.")
     except requests.HTTPError as e:
-        show_error(e.response)
+        raise_error(e.response)
 
 
 @app.command()
@@ -177,90 +257,104 @@ def profile(
     context: typer.Context,
 ):
     """
-    View the logged-in user's information.
+    View profile information.
     """
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    api = setup_onyx_api(context.obj)
 
-    user = context.obj.client._profile()
-    if user.ok:
-        print_response(user)
-    else:
-        show_error(user)
+    try:
+        user = api.client.profile()
+        table = create_table(
+            data=[user],
+            map={
+                "Username": "username",
+                "Email": "email",
+                "Site": "site",
+            },
+        )
+        console.print(table)
+    except requests.HTTPError as e:
+        raise_error(e.response)
 
 
-@app.command()
+@app.command(hidden=BASIC_CLI)
 def waiting(
     context: typer.Context,
 ):
     """
-    List users waiting for approval.
+    View users waiting for approval.
     """
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    api = setup_onyx_api(context.obj)
 
-    users = context.obj.client._waiting()
-    if users.ok:
-        print_response(users)
-    else:
-        show_error(users)
+    try:
+        waiting = api.client.waiting()
+        table = create_table(
+            data=waiting,
+            map={
+                "Username": "username",
+                "Email": "email",
+                "Site": "site",
+                "Date Joined": "date_joined",
+            },
+        )
+        console.print(table)
+    except requests.HTTPError as e:
+        raise_error(e.response)
 
 
-@app.command()
+@app.command(hidden=BASIC_CLI)
 def approve(
     context: typer.Context,
-    username: str,
+    username: str = typer.Argument(..., help="Name of the user being approved."),
 ):
     """
     Approve a user.
     """
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    api = setup_onyx_api(context.obj)
 
     try:
-        approval = context.obj.client.approve(username)
-        typer.echo(f"Successfully approved '{approval['username']}'.")
+        approval = api.client.approve(username)
+        console.print(f"{Messages.SUCCESS.value} Approved user: {approval['username']}")
     except requests.HTTPError as e:
-        show_error(e.response)
+        raise_error(e.response)
 
 
 @app.command()
-def siteusers(
+def users(
     context: typer.Context,
+    all: Optional[bool] = typer.Option(
+        None,
+        "-a",
+        "--all",
+        help="View all users, across all sites",
+        hidden=BASIC_CLI,
+    ),
 ):
     """
-    List site users.
+    View users from the same site.
     """
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    api = setup_onyx_api(context.obj)
 
-    users = context.obj.client._site_users()
-    if users.ok:
-        print_response(users)
-    else:
-        show_error(users)
+    try:
+        if all:
+            users = api.client.all_users()
+        else:
+            users = api.client.site_users()
 
-
-@app.command()
-def allusers(
-    context: typer.Context,
-):
-    """
-    List all users.
-    """
-
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
-
-    users = context.obj.client._all_users()
-    if users.ok:
-        print_response(users)
-    else:
-        show_error(users)
+        table = create_table(
+            data=users,
+            map={
+                "Username": "username",
+                "Email": "email",
+                "Site": "site",
+            },
+        )
+        console.print(table)
+    except requests.HTTPError as e:
+        raise_error(e.response)
 
 
 @app.command()
@@ -271,228 +365,301 @@ def projects(
     View available projects.
     """
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    api = setup_onyx_api(context.obj)
 
-    projects = context.obj.client._projects()
-    if projects.ok:
-        print_response(projects)
-    else:
-        show_error(projects)
+    try:
+        projects = api.client.projects()
+        table = create_table(
+            data=projects,
+            map={
+                "Project": "project",
+                "Action": "action",
+                "Scope": "scope",
+            },
+            styles={
+                "action": {
+                    "view": "bold cyan",
+                    "add": "bold green",
+                    "change": "bold yellow",
+                    "delete": "bold red",
+                }
+            },
+        )
+        console.print(table)
+    except requests.HTTPError as e:
+        raise_error(e.response)
+
+
+def add_fields(
+    table: Table, data: Dict[str, Any], prefix: Optional[str] = None
+) -> None:
+    for field, field_info in data.items():
+        table.add_row(
+            f"[dim]{prefix}.{field}[/dim]" if prefix else field,
+            "[bold red]required[/]"
+            if field_info["required"]
+            else "[bold cyan]optional[/]",
+            field_info["type"],
+            field_info.get("description", ""),
+            ", ".join(field_info.get("values")) if field_info.get("values") else "",
+        )
+
+        if field_info["type"] == "relation":
+            add_fields(
+                table,
+                field_info["fields"],
+                prefix=f"{prefix}.{field}" if prefix else field,
+            )
 
 
 @app.command()
 def fields(
     context: typer.Context,
-    project: str,
+    project: str = typer.Argument(...),
     scope: Optional[List[str]] = typer.Option(
-        default=None,
+        None,
+        "-s",
+        "--scope",
+        help=HelpText.SCOPE.value,
     ),
 ):
     """
-    View fields for a project.
+    View the field specification for a project.
     """
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    api = setup_onyx_api(context.obj)
 
-    fields = context.obj.client._fields(
-        project,
-        scope=scope,
-    )
-    if fields.ok:
-        print_response(fields)
-    else:
-        show_error(fields)
+    try:
+        fields = api.client.fields(
+            project,
+            scope=scope,
+        )
+        table = Table(
+            caption=f"Fields specification for the '{project}' project. Version: {fields['version']}",
+            show_lines=True,
+        )
+        for column in ["Field", "Status", "Type", "Description", "Values"]:
+            table.add_column(column, overflow="fold")
+
+        add_fields(table, fields["fields"])
+        console.print(table)
+    except requests.HTTPError as e:
+        raise_error(e.response)
 
 
 @app.command()
 def choices(
     context: typer.Context,
-    project: str,
-    field: str,
+    project: str = typer.Argument(...),
+    field: str = typer.Argument(...),
 ):
     """
-    View choices for a field.
+    View allowed choices for a field.
     """
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    api = setup_onyx_api(context.obj)
 
-    choices = context.obj.client._choices(project, field)
-    if choices.ok:
-        print_response(choices)
-    else:
-        show_error(choices)
+    try:
+        choices = api.client.choices(project, field)
+        table = Table(
+            show_lines=True,
+        )
+        table.add_column("Field")
+        table.add_column("Values")
+        table.add_row(field, ", ".join(choices))
+        console.print(table)
+    except requests.HTTPError as e:
+        raise_error(e.response)
 
 
 @app.command()
 def get(
     context: typer.Context,
-    project: str,
-    cid: str,
+    project: str = typer.Argument(...),
+    cid: str = typer.Argument(...),
     include: Optional[List[str]] = typer.Option(
-        default=None,
+        None,
+        "-i",
+        "--include",
+        help=HelpText.INCLUDE.value,
     ),
     exclude: Optional[List[str]] = typer.Option(
-        default=None,
+        None,
+        "-e",
+        "--exclude",
+        help=HelpText.EXCLUDE.value,
     ),
     scope: Optional[List[str]] = typer.Option(
-        default=None,
+        None,
+        "-s",
+        "--scope",
+        help=HelpText.SCOPE.value,
     ),
 ):
     """
     Get a record from a project.
     """
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    api = setup_onyx_api(context.obj)
 
-    record = context.obj.client._get(
-        project,
-        cid,
-        include=include,
-        exclude=exclude,
-        scope=scope,
-    )
-    if record.ok:
-        print_response(record)
-    else:
-        show_error(record)
-
-
-class Formats(enum.Enum):
-    CSV = "csv"
-    TSV = "tsv"
-    JSON = "json"
+    try:
+        record = api.client.get(
+            project,
+            cid,
+            include=include,
+            exclude=exclude,
+            scope=scope,
+        )
+        typer.echo(json.dumps(record, indent=4))
+    except requests.HTTPError as e:
+        raise_error(e.response)
 
 
 @app.command()
 def filter(
     context: typer.Context,
-    project: str,
+    project: str = typer.Argument(...),
     field: Optional[List[str]] = typer.Option(
-        default=None,
+        None,
+        "-f",
+        "--field",
+        help=HelpText.FIELD.value,
     ),
     include: Optional[List[str]] = typer.Option(
-        default=None,
+        None,
+        "-i",
+        "--include",
+        help=HelpText.INCLUDE.value,
     ),
     exclude: Optional[List[str]] = typer.Option(
-        default=None,
+        None,
+        "-e",
+        "--exclude",
+        help=HelpText.EXCLUDE.value,
     ),
     scope: Optional[List[str]] = typer.Option(
-        default=None,
+        None,
+        "-s",
+        "--scope",
+        help=HelpText.SCOPE.value,
     ),
     format: Optional[Formats] = typer.Option(
-        default=None,
+        Formats.JSON.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
     ),
 ):
     """
-    Filter records from a project.
+    Filter multiple records from a project.
     """
 
-    assert isinstance(context.obj.config, OnyxConfig)
-    assert isinstance(context.obj.client, OnyxClient)
+    api = setup_onyx_api(context.obj)
 
     fields = {}
     if field:
-        for f_v in field:
+        for name_value in field:
             try:
-                f, v = f_v.split("=")
+                name, value = name_value.split("=")
             except ValueError:
                 raise click.BadParameter(
-                    "'field=value' syntax was not used for --field"
+                    "'name=value' syntax was not used",
+                    param_hint="'-f' / '--field'",
                 )
-            f = f.replace(".", "__")
-            fields.setdefault(f, []).append(v)
+            name = name.replace(".", "__")
+            fields.setdefault(name, []).append(value)
 
-    if format:
-        results = context.obj.client.filter(
+    if format == Formats.JSON:
+        results = api.client._filter(
             project,
             fields,
             include=include,
             exclude=exclude,
             scope=scope,
         )
-        try:
-            if format == Formats.JSON:
-                data = [result for result in results]
-                typer.echo(json.dumps(data))
-            else:
-                result = next(results, None)
-                if result:
-                    writer = csv.DictWriter(
-                        sys.stdout,
-                        delimiter="\t" if format == Formats.TSV else ",",
-                        fieldnames=result.keys(),
-                    )
-                    writer.writeheader()
-                    writer.writerow(result)
 
-                    for result in results:
-                        writer.writerow(result)
-        except requests.HTTPError as e:
-            show_error(e.response)
-    else:
-        results = context.obj.client._filter(
-            project,
-            fields,
-            include=include,
-            exclude=exclude,
-            scope=scope,
-        )
         for result in results:
             if result.ok:
-                print_response(result)
+                try:
+                    result_json = result.json()
+                    rendered_response = json.dumps(result_json["data"], indent=4)
+
+                    # Nobody needs to know these hacks
+                    if result_json["previous"]:
+                        rendered_response = rendered_response.removeprefix("[\n")
+
+                    if result_json["next"]:
+                        rendered_response = (
+                            rendered_response.removesuffix("}\n]") + "},"
+                        )
+
+                    typer.echo(rendered_response)
+                except json.decoder.JSONDecodeError:
+                    raise click.exceptions.ClickException(result.text)
             else:
-                show_error(result)
+                raise_error(result)
+    else:
+        try:
+            records = api.client.filter(
+                project,
+                fields,
+                include=include,
+                exclude=exclude,
+                scope=scope,
+            )
+            record = next(records, None)
+            if record:
+                writer = csv.DictWriter(
+                    sys.stdout,
+                    delimiter="\t" if format == Formats.TSV else ",",
+                    fieldnames=record.keys(),
+                )
+                writer.writeheader()
+                writer.writerow(record)
 
-
-@dataclasses.dataclass
-class OnyxCLI:
-    config: OnyxConfig
-    client: OnyxClient
+                for record in records:
+                    writer.writerow(record)
+        except requests.HTTPError as e:
+            raise_error(e.response)
 
 
 def version_callback(value: bool):
     if value:
-        typer.echo(__version__)
+        console.print(__version__)
         raise typer.Exit()
 
 
 @app.callback(name="onyx", help=f"Client Version: {__version__}")
 def common(
     context: typer.Context,
-    config: Optional[str] = typer.Option(
-        default=OnyxConfig.CONFIG_FILE_PATH
-        if os.path.isfile(
-            OnyxConfig.CONFIG_FILE_PATH.replace("~", os.path.expanduser("~"))
-        )
-        else None,
-        envvar="ONYX_CLIENT_CONFIG",
-    ),
     domain: Optional[str] = typer.Option(
-        default=None,
-        envvar="ONYX_CLIENT_DOMAIN",
+        None,
+        "-d",
+        "--domain",
+        envvar=OnyxEnv.DOMAIN.value,
+        help="Domain name for Onyx.",
+        hidden=BASIC_CLI,
     ),
     token: Optional[str] = typer.Option(
-        default=None,
-        envvar="ONYX_CLIENT_TOKEN",
+        None,
+        "-t",
+        "--token",
+        envvar=OnyxEnv.TOKEN.value,
+        help="Token for authentication.",
+        hidden=BASIC_CLI,
     ),
     version: Optional[bool] = typer.Option(
         None,
+        "-v",
         "--version",
         callback=version_callback,
         help="Show the client version number and exit.",
     ),
 ):
-    conf = OnyxConfig(
-        config_path=config,
+    context.obj = OnyxAPIOptions(
         domain=domain,
         token=token,
     )
-    client = OnyxClient(conf)
-    context.obj = OnyxCLI(conf, client)
 
 
 def main():
