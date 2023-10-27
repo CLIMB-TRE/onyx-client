@@ -10,49 +10,30 @@ $ onyx [OPTIONS] COMMAND [ARGS]...
 
 **Options**:
 
-* `--config TEXT`: [env var: ONYX_CLIENT_CONFIG; default: ~/.onyx]
-* `--domain TEXT`: [env var: ONYX_CLIENT_DOMAIN]
-* `--token TEXT`: [env var: ONYX_CLIENT_TOKEN]
-* `--version`: Show the client version number and exit.
-* `--install-completion`: Install completion for the current shell.
-* `--show-completion`: Show completion for the current shell, to copy it or customize the installation.
+* `-d, --domain TEXT`: Domain name for Onyx.  [env var: ONYX_DOMAIN]
+* `-t, --token TEXT`: Token for authentication.  [env var: ONYX_TOKEN]
+* `-v, --version`: Show the client version number and exit.
 * `--help`: Show this message and exit.
 
 **Commands**:
 
-* `init`: Create a config file.
-* `register`: Register a new user.
-* `login`: Log in to Onyx.
-* `logout`: Log out of Onyx.
-* `logoutall`: Log out of Onyx everywhere.
-* `profile`: View the logged-in user's information.
-* `waiting`: List users waiting for approval.
+* `register`: Create a new user.
+* `login`: Log in.
+* `logout`: Log out.
+* `logoutall`: Log out across all clients.
+* `profile`: View profile information.
+* `waiting`: View users waiting for approval.
 * `approve`: Approve a user.
-* `siteusers`: List site users.
-* `allusers`: List all users.
+* `users`: View users from the same site.
 * `projects`: View available projects.
-* `fields`: View fields for a project.
-* `choices`: View choices for a field.
+* `fields`: View the field specification for a project.
+* `choices`: View allowed choices for a field.
 * `get`: Get a record from a project.
-* `filter`: Filter records from a project.
-
-## `onyx init`
-
-Create a config file.
-
-**Usage**:
-
-```console
-$ onyx init [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
+* `filter`: Filter multiple records from a project.
 
 ## `onyx register`
 
-Register a new user.
+Create a new user.
 
 **Usage**:
 
@@ -66,7 +47,7 @@ $ onyx register [OPTIONS]
 
 ## `onyx login`
 
-Log in to Onyx.
+Log in.
 
 **Usage**:
 
@@ -76,13 +57,13 @@ $ onyx login [OPTIONS]
 
 **Options**:
 
-* `--username TEXT`: [env var: ONYX_CLIENT_USERNAME]
-* `--password TEXT`: [env var: ONYX_CLIENT_PASSWORD]
+* `-u, --username TEXT`: Name of the user logging in.  [env var: ONYX_USERNAME]
+* `-p, --password TEXT`: Password of the user logging in.  [env var: ONYX_PASSWORD]
 * `--help`: Show this message and exit.
 
 ## `onyx logout`
 
-Log out of Onyx.
+Log out.
 
 **Usage**:
 
@@ -96,7 +77,7 @@ $ onyx logout [OPTIONS]
 
 ## `onyx logoutall`
 
-Log out of Onyx everywhere.
+Log out across all clients.
 
 **Usage**:
 
@@ -110,7 +91,7 @@ $ onyx logoutall [OPTIONS]
 
 ## `onyx profile`
 
-View the logged-in user's information.
+View profile information.
 
 **Usage**:
 
@@ -124,7 +105,7 @@ $ onyx profile [OPTIONS]
 
 ## `onyx waiting`
 
-List users waiting for approval.
+View users waiting for approval.
 
 **Usage**:
 
@@ -148,38 +129,25 @@ $ onyx approve [OPTIONS] USERNAME
 
 **Arguments**:
 
-* `USERNAME`: [required]
+* `USERNAME`: Name of the user being approved.  [required]
 
 **Options**:
 
 * `--help`: Show this message and exit.
 
-## `onyx siteusers`
+## `onyx users`
 
-List site users.
-
-**Usage**:
-
-```console
-$ onyx siteusers [OPTIONS]
-```
-
-**Options**:
-
-* `--help`: Show this message and exit.
-
-## `onyx allusers`
-
-List all users.
+View users from the same site.
 
 **Usage**:
 
 ```console
-$ onyx allusers [OPTIONS]
+$ onyx users [OPTIONS]
 ```
 
 **Options**:
 
+* `-a, --all`: View all users, across all sites
 * `--help`: Show this message and exit.
 
 ## `onyx projects`
@@ -198,7 +166,7 @@ $ onyx projects [OPTIONS]
 
 ## `onyx fields`
 
-View fields for a project.
+View the field specification for a project.
 
 **Usage**:
 
@@ -212,12 +180,12 @@ $ onyx fields [OPTIONS] PROJECT
 
 **Options**:
 
-* `--scope TEXT`
+* `-s, --scope TEXT`: Access additional fields beyond the 'base' group of fields.
 * `--help`: Show this message and exit.
 
 ## `onyx choices`
 
-View choices for a field.
+View allowed choices for a field.
 
 **Usage**:
 
@@ -251,14 +219,14 @@ $ onyx get [OPTIONS] PROJECT CID
 
 **Options**:
 
-* `--include TEXT`
-* `--exclude TEXT`
-* `--scope TEXT`
+* `-i, --include TEXT`: Set which fields to include in the output.
+* `-e, --exclude TEXT`: Set which fields to exclude from the output.
+* `-s, --scope TEXT`: Access additional fields beyond the 'base' group of fields.
 * `--help`: Show this message and exit.
 
 ## `onyx filter`
 
-Filter records from a project.
+Filter multiple records from a project.
 
 **Usage**:
 
@@ -272,9 +240,9 @@ $ onyx filter [OPTIONS] PROJECT
 
 **Options**:
 
-* `--field TEXT`
-* `--include TEXT`
-* `--exclude TEXT`
-* `--scope TEXT`
-* `--format [csv|tsv|json]`
+* `-f, --field TEXT`: Filter the data by providing criteria that fields must match. Uses a `name=value` syntax.
+* `-i, --include TEXT`: Set which fields to include in the output.
+* `-e, --exclude TEXT`: Set which fields to exclude from the output.
+* `-s, --scope TEXT`: Access additional fields beyond the 'base' group of fields.
+* `-F, --format [json|csv|tsv]`: Set the file format of the returned data.  [default: json]
 * `--help`: Show this message and exit.
