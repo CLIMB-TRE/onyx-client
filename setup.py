@@ -12,7 +12,7 @@ setuptools.setup(
     entry_points={"console_scripts": "onyx = onyx.cli2:main"},
     install_requires=[
         "requests",
-        "typer",
+        "typer>=0.6.0",
         "rich",
         "django-query-tools>=0.3.3",
     ],
