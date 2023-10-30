@@ -1,14 +1,11 @@
-import os
-import enum
 from typing import Optional
 
 
-class OnyxEnv(enum.Enum):
+class OnyxEnv:
     DOMAIN = "ONYX_DOMAIN"
+    TOKEN = "ONYX_TOKEN"
     USERNAME = "ONYX_USERNAME"
     PASSWORD = "ONYX_PASSWORD"
-    TOKEN = "ONYX_TOKEN"
-    DISPLAY = "ONYX_DISPLAY"
 
 
 class OnyxConfig:
@@ -16,37 +13,43 @@ class OnyxConfig:
     Class for storing information required to connect/authenticate with Onyx.
     """
 
+    __slots__ = "domain", "token", "username", "password"
+
     def __init__(
         self,
-        domain: Optional[str] = None,
-        credentials: Optional[tuple[str, str]] = None,
+        domain: str,
         token: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
     ) -> None:
         """
-        Initialise the config.
+        Initialise a config.
+
+        This object stores information required to connect and authenticate with Onyx.
+
+        A domain must be provided, alongside an API token and/or the username + password.
+
+        Parameters
+        ----------
+        domain : str
+            Domain for connecting to Onyx.
+        token : str, optional
+            Token for authenticating with Onyx.
+        username : str, optional
+            Username for authenticating with Onyx.
+        password : str, optional
+            Password for authenticating with Onyx.
         """
 
         if not domain:
-            domain = os.environ[OnyxEnv.DOMAIN.value]
+            raise Exception("A domain must be provided for connecting to Onyx.")
 
-        if not credentials:
-            username = os.getenv(OnyxEnv.USERNAME.value)
-            password = os.getenv(OnyxEnv.PASSWORD.value)
-
-            if username and password:
-                credentials = (username, password)
-
-        if not token:
-            token = os.getenv(OnyxEnv.TOKEN.value)
+        if (not token) and not (username and password):
+            raise Exception(
+                "Either a token or login credentials (username and password) must be provided for authenticating to Onyx."
+            )
 
         self.domain = domain
-        self.credentials = credentials
         self.token = token
-
-        if not self.domain:
-            raise Exception("Must provide a domain to connect to Onyx.")
-
-        if not (self.credentials or self.token):
-            raise Exception(
-                "Must provide either credentials (username, password) or a token to authenticate with Onyx."
-            )
+        self.username = username
+        self.password = password
