@@ -25,7 +25,7 @@ $ onyx [OPTIONS] COMMAND [ARGS]...
 * `filter`: Filter multiple records from a project.
 * `choices`: View options for a choice field.
 * `profile`: View profile information.
-* `users`: View users from the same site.
+* `siteusers`: View users from the same site.
 * `auth`: Authentication commands.
 * `admin`: Admin commands.
 
@@ -140,14 +140,14 @@ $ onyx profile [OPTIONS]
 
 * `--help`: Show this message and exit.
 
-## `onyx users`
+## `onyx siteusers`
 
 View users from the same site.
 
 **Usage**:
 
 ```console
-$ onyx users [OPTIONS]
+$ onyx siteusers [OPTIONS]
 ```
 
 **Options**:
