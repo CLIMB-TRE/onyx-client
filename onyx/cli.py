@@ -72,7 +72,7 @@ class OnyxAPI:
 def setup_onyx_api(options: OnyxConfigOptions) -> OnyxAPI:
     try:
         config = OnyxConfig(
-            domain=options.domain,  #  type: ignore
+            domain=options.domain if options.domain else "",
             username=options.username,
             password=options.password,
             token=options.token,
@@ -348,9 +348,19 @@ def filter(
 
                     # Nobody needs to know these hacks
                     if result_json["previous"]:
+                        if not rendered_response.startswith("[\n"):
+                            raise Exception(
+                                "Response JSON has invalid start character(s)."
+                            )
+
                         rendered_response = rendered_response.removeprefix("[\n")
 
                     if result_json["next"]:
+                        if not rendered_response.endswith("}\n]"):
+                            raise Exception(
+                                "Response JSON has invalid end character(s)."
+                            )
+
                         rendered_response = (
                             rendered_response.removesuffix("}\n]") + "},"
                         )
@@ -436,7 +446,7 @@ def profile(
 
 
 @app.command()
-def users(
+def siteusers(
     context: typer.Context,
 ):
     """
@@ -465,6 +475,11 @@ def register(context: typer.Context):
     """
     Create a new user.
     """
+
+    try:
+        OnyxConfig._validate_domain(context.obj.domain)
+    except Exception as e:
+        raise click.exceptions.ClickException(e.args[0])
 
     # Get required information to create a user
     first_name = typer.prompt("Please enter your first name")
@@ -499,6 +514,11 @@ def login(
     """
     Log in.
     """
+
+    try:
+        OnyxConfig._validate_domain(context.obj.domain)
+    except Exception as e:
+        raise click.exceptions.ClickException(e.args[0])
 
     # Get the username and password
     if not context.obj.username:
