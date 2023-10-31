@@ -1,677 +1,705 @@
-import os
-import sys
 import csv
-import stat
+import sys
+import enum
 import json
+import dataclasses
+from typing import Optional, List, Dict, Any
 import requests
-import argparse
-from . import version, utils, config
-from .api import OnyxClient
+import click
+import typer
+from typer.core import TyperGroup
+from rich.console import Console
+from rich.table import Table
+from .version import __version__
+from .config import OnyxConfig, OnyxEnv
+from .api import OnyxClient, OnyxError
 
 
-def config_required(func):
-    def wrapped_func(args):
-        conf = config.OnyxConfig()
-        return func(conf, args)
-
-    return wrapped_func
+console = Console()
 
 
-def client_required(func):
-    def wrapped_func(args):
-        client = OnyxClient(
-            username=args.user,
-            env_password=args.envpass,
+class DefinedOrderGroup(TyperGroup):
+    def list_commands(self, ctx):
+        return self.commands.keys()
+
+
+app = typer.Typer(
+    cls=DefinedOrderGroup,
+    no_args_is_help=True,
+    pretty_exceptions_show_locals=False,
+    add_completion=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
+
+auth_app = typer.Typer(
+    name="auth",
+    help="Authentication commands.",
+    cls=DefinedOrderGroup,
+    no_args_is_help=True,
+    pretty_exceptions_show_locals=False,
+    add_completion=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
+
+admin_app = typer.Typer(
+    name="admin",
+    help="Admin commands.",
+    cls=DefinedOrderGroup,
+    no_args_is_help=True,
+    pretty_exceptions_show_locals=False,
+    add_completion=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
+
+app.add_typer(auth_app)
+app.add_typer(admin_app)
+
+
+@dataclasses.dataclass
+class OnyxConfigOptions:
+    domain: Optional[str]
+    token: Optional[str]
+    username: Optional[str]
+    password: Optional[str]
+
+
+@dataclasses.dataclass
+class OnyxAPI:
+    config: OnyxConfig
+    client: OnyxClient
+
+
+def setup_onyx_api(options: OnyxConfigOptions) -> OnyxAPI:
+    try:
+        config = OnyxConfig(
+            domain=options.domain if options.domain else "",
+            username=options.username,
+            password=options.password,
+            token=options.token,
         )
-        return func(client, args)
+        client = OnyxClient(config)
+    except Exception as e:
+        raise click.exceptions.ClickException(e.args[0])
 
-    return wrapped_func
-
-
-def create_config(args):
-    """
-    Generate the config directory and config file.
-    """
-
-    domain = args.domain
-    config_dir = args.config_dir
-
-    if domain is None:
-        domain = utils.get_input("domain")
-
-    if config_dir is None:
-        config_dir = utils.get_input("config directory")
-
-    config_dir = config_dir.replace("~", os.path.expanduser("~"))
-
-    if os.path.isfile(config_dir):
-        raise FileExistsError("Provided path to a file, not a directory.")
-
-    if not os.path.isdir(config_dir):
-        os.mkdir(config_dir)
-
-    config_file_path = os.path.join(config_dir, config.CONFIG_FILE_NAME)
-
-    if os.path.isfile(config_file_path):
-        print(f"Config file already exists: {os.path.abspath(config_file_path)}")
-        print("If you wish to overwrite this config, please delete this file.")
-        exit()
-
-    with open(config_file_path, "w") as config_file:
-        json.dump(
-            {"domain": domain, "users": {}, "default_user": None},
-            config_file,
-            indent=4,
-        )
-
-    # Read-write for OS user only
-    os.chmod(config_file_path, stat.S_IRUSR | stat.S_IWUSR)
-
-    print("Config created successfully.")
-    print(
-        "Please create the following environment variable to store the path to your config:"
-    )
-    print("")
-    print(f"export {config.ONYX_CLIENT_CONFIG}={os.path.abspath(config_dir)}")
-    print("")
-    print("IMPORTANT: DO NOT CHANGE PERMISSIONS OF CONFIG FILE(S)".center(100, "!"))
-    warning_message = [
-        "The file(s) within your config directory store sensitive information such as tokens.",
-        "They have been created with the permissions needed to keep your information safe.",
-        "DO NOT CHANGE THESE PERMISSIONS. Doing so may allow other users to read your tokens!",
-    ]
-    for line in warning_message:
-        print(line)
-    print("".center(100, "!"))
+    return OnyxAPI(config, client)
 
 
-@config_required
-def set_default_user(conf: config.OnyxConfig, args):
-    """
-    Set the default user in the config.
-    """
+def cli_error(response: requests.Response):
+    try:
+        messages = response.json()["messages"]
+        detail = messages.get("detail")
 
-    username = args.username
-
-    if username is None:
-        username = utils.get_input("username")
-
-    conf.set_default_user(username)
-    print(f"User '{username}' has been set as the default user.")
-
-
-@config_required
-def get_default_user(conf: config.OnyxConfig, args):
-    """
-    Get the default user in the config.
-    """
-
-    default_user = conf.get_default_user()
-    print(default_user)
-
-
-@config_required
-def add_user(conf: config.OnyxConfig, args):
-    """
-    Add user to the config.
-    """
-
-    username = args.username
-
-    if username is None:
-        username = utils.get_input("username")
-
-    conf.add_user(username)
-    print(f"User '{username}' has been added to the config.")
-
-
-@config_required
-def config_users(conf: config.OnyxConfig, args):
-    """
-    List all users in the config.
-    """
-
-    users = conf.list_users()
-    for user in users:
-        print(user)
-
-
-@config_required
-def register(conf: config.OnyxConfig, args):
-    """
-    Create a new user.
-    """
-
-    first_name = utils.get_input("first name")
-    last_name = utils.get_input("last name")
-    email = utils.get_input("email address")
-    site = utils.get_input("site code")
-
-    password = utils.get_input("password", password=True)
-    password2 = utils.get_input("password (again)", password=True)
-
-    while password != password2:
-        print("Passwords do not match. Please try again.")
-        password = utils.get_input("password", password=True)
-        password2 = utils.get_input("password (again)", password=True)
-
-    registration = OnyxClient._register(
-        conf,
-        first_name=first_name,
-        last_name=last_name,
-        email=email,
-        site=site,
-        password=password,
-    )
-
-    utils.print_response(registration)
-
-    if registration.ok:
-        print("Account created successfully.")
-        check = ""
-        while check not in ["Y", "N"]:
-            check = input(
-                "Would you like to add this account to the config? [y/n]: "
-            ).upper()
-
-        username = registration.json()["data"]["username"]
-
-        if check == "Y":
-            conf.add_user(username)
-            print(f"User '{username}' has been added to the config.")
+        if detail:
+            formatted_response = detail
         else:
-            print(f"User '{username}' has not been added to the config.")
+            formatted_response = json.dumps(messages, indent=4)
+
+    except json.decoder.JSONDecodeError:
+        formatted_response = response.text
+
+    raise click.exceptions.ClickException(formatted_response)
 
 
-@client_required
-def login(client: OnyxClient, args):
-    """
-    Log in as a user.
-    """
-
-    response = client._login()
-    if response.ok:
-        print("Logged in successfully.")
-    else:
-        utils.print_response(response)
-
-
-@client_required
-def logout(client: OnyxClient, args):
-    """
-    Log out the current user.
-    """
-
-    response = client._logout()
-    if response.ok:
-        print("Logged out successfully.")
-    else:
-        utils.print_response(response)
-
-
-@client_required
-def logoutall(client: OnyxClient, args):
-    """
-    Log out the current user everywhere.
-    """
-
-    response = client._logoutall()
-    if response.ok:
-        print("Logged out everywhere successfully.")
-    else:
-        utils.print_response(response)
-
-
-@client_required
-def approve(client: OnyxClient, args):
-    """
-    Approve a user.
-    """
-
-    approval = client._approve(args.username)
-    utils.print_response(approval)
-
-
-@client_required
-def waiting(client: OnyxClient, args):
-    """
-    List users waiting for site approval.
-    """
-
-    users = client._waiting()
-    utils.print_response(users)
-
-
-@client_required
-def site_users(client: OnyxClient, args):
-    """
-    List site users.
-    """
-
-    users = client._site_users()
-    utils.print_response(users)
-
-
-@client_required
-def all_users(client: OnyxClient, args):
-    """
-    List all users.
-    """
-
-    users = client._all_users()
-    utils.print_response(users)
-
-
-@client_required
-def create(client: OnyxClient, args):
-    """
-    Post new records to the database.
-    """
-
-    fields = utils.construct_unique_fields_dict(args.field)
-
-    if args.csv:
-        creations = client._csv_create(
-            args.project,
-            csv_path=args.csv,
-            fields=fields,
-            multithreaded=args.multithreaded,
-            test=args.test,
-        )
-        utils.execute_uploads(creations)
-
-    elif args.tsv:
-        creations = client._csv_create(
-            args.project,
-            csv_path=args.tsv,
-            fields=fields,
-            delimiter="\t",
-            multithreaded=args.multithreaded,
-            test=args.test,
-        )
-        utils.execute_uploads(creations)
-
-    else:
-        creation = client._create(args.project, fields=fields, test=args.test)
-        utils.print_response(creation)
-
-
-@client_required
-def get(client: OnyxClient, args):
-    """
-    Get a record from the database.
-    """
-
-    include = args.include
-    exclude = args.exclude
-    scope = args.scope
-
-    if include:
-        include = utils.flatten_list_of_lists(include)
-
-    if exclude:
-        exclude = utils.flatten_list_of_lists(exclude)
-
-    if scope:
-        scope = utils.flatten_list_of_lists(scope)
-
-    response = client._get(
-        args.project, args.cid, include=include, exclude=exclude, scope=scope
+def create_table(
+    data: List[Dict[str, Any]],
+    map: Dict[str, str],
+    styles: Optional[Dict[str, Dict[str, str]]] = None,
+) -> Table:
+    table = Table(
+        show_lines=True,
     )
-    utils.print_response(response)
 
+    for column in map.keys():
+        table.add_column(column)
 
-@client_required
-def filter(client: OnyxClient, args):
-    """
-    Filter records from the database.
-    """
-
-    fields = utils.construct_fields_dict(args.field)
-    include = args.include
-    exclude = args.exclude
-    scope = args.scope
-
-    if include:
-        include = utils.flatten_list_of_lists(include)
-
-    if exclude:
-        exclude = utils.flatten_list_of_lists(exclude)
-
-    if scope:
-        scope = utils.flatten_list_of_lists(scope)
-
-    if args.format:
-        results = client.filter(
-            args.project, fields, include=include, exclude=exclude, scope=scope
+    for row in data:
+        table.add_row(
+            *(
+                row[key]
+                if (not styles) or (key not in styles) or (row[key] not in styles[key])
+                else f"[{styles[key][row[key]]}]{row[key]}[/]"
+                for key in map.values()
+            )
         )
-        try:
-            if args.format == "json":
-                data = [result for result in results]
-                print(json.dumps(data))
-            else:
-                result = next(results, None)
-                if result:
-                    writer = csv.DictWriter(
-                        sys.stdout,
-                        delimiter="\t" if args.format == "tsv" else ",",
-                        fieldnames=result.keys(),
-                    )
-                    writer.writeheader()
-                    writer.writerow(result)
 
-                    for result in results:
-                        writer.writerow(result)
-        except requests.HTTPError as e:
-            utils.print_response(e.response)
-    else:
-        results = client._filter(
-            args.project, fields, include=include, exclude=exclude, scope=scope
-        )
-        for result in results:
-            utils.print_response(result)
+    return table
 
 
-@client_required
-def update(client: OnyxClient, args):
-    """
-    Update records in the database.
-    """
-
-    fields = utils.construct_unique_fields_dict(args.field)
-
-    if args.csv:
-        updates = client._csv_update(
-            args.project,
-            csv_path=args.csv,
-            fields=fields,
-            multithreaded=args.multithreaded,
-            test=args.test,
-        )
-        utils.execute_uploads(updates)
-
-    elif args.tsv:
-        updates = client._csv_update(
-            args.project,
-            csv_path=args.tsv,
-            fields=fields,
-            delimiter="\t",
-            multithreaded=args.multithreaded,
-            test=args.test,
-        )
-        utils.execute_uploads(updates)
-
-    else:
-        update = client._update(args.project, args.cid, fields=fields, test=args.test)
-        utils.print_response(update)
+class HelpText(enum.Enum):
+    FIELD = "Filter the data by providing criteria that fields must match. Uses a `name=value` syntax."
+    INCLUDE = "Set which fields to include in the output."
+    EXCLUDE = "Set which fields to exclude from the output."
+    SCOPE = "Access additional fields beyond the 'base' group of fields."
+    FORMAT = "Set the file format of the returned data."
 
 
-@client_required
-def delete(client: OnyxClient, args):
-    """
-    Delete records in the database.
-    """
-
-    if args.csv:
-        deletions = client._csv_delete(
-            args.project,
-            csv_path=args.csv,
-            multithreaded=args.multithreaded,
-        )
-        utils.execute_uploads(deletions)
-
-    elif args.tsv:
-        deletions = client._csv_delete(
-            args.project,
-            csv_path=args.tsv,
-            delimiter="\t",
-            multithreaded=args.multithreaded,
-        )
-        utils.execute_uploads(deletions)
-
-    else:
-        deletion = client._delete(args.project, args.cid)
-        utils.print_response(deletion)
+class Formats(enum.Enum):
+    JSON = "json"
+    CSV = "csv"
+    TSV = "tsv"
 
 
-@client_required
-def projects(client: OnyxClient, args):
+class Messages(enum.Enum):
+    SUCCESS = "[bold green][SUCCESS][/]"
+    NOTE = "[bold cyan][NOTE][/]"
+
+
+@app.command()
+def projects(
+    context: typer.Context,
+):
     """
     View available projects.
     """
 
-    projects = client._projects()
-    utils.print_response(projects)
+    api = setup_onyx_api(context.obj)
+
+    try:
+        projects = api.client.projects()
+        table = create_table(
+            data=projects,
+            map={
+                "Project": "project",
+                "Action": "action",
+                "Scope": "scope",
+            },
+            styles={
+                "action": {
+                    "view": "bold cyan",
+                    "add": "bold green",
+                    "change": "bold yellow",
+                    "delete": "bold red",
+                }
+            },
+        )
+        console.print(table)
+    except OnyxError as e:
+        cli_error(e.response)
 
 
-@client_required
-def fields(client: OnyxClient, args):
+def add_fields(
+    table: Table, data: Dict[str, Any], prefix: Optional[str] = None
+) -> None:
+    for field, field_info in data.items():
+        table.add_row(
+            f"[dim]{prefix}.{field}[/dim]" if prefix else field,
+            "[bold red]required[/]"
+            if field_info["required"]
+            else "[bold cyan]optional[/]",
+            field_info["type"],
+            field_info.get("description", ""),
+            ", ".join(field_info.get("values")) if field_info.get("values") else "",
+        )
+
+        if field_info["type"] == "relation":
+            add_fields(
+                table,
+                field_info["fields"],
+                prefix=f"{prefix}.{field}" if prefix else field,
+            )
+
+
+@app.command()
+def fields(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    scope: Optional[List[str]] = typer.Option(
+        None,
+        "-s",
+        "--scope",
+        help=HelpText.SCOPE.value,
+    ),
+):
     """
-    View fields for a project.
+    View the field specification for a project.
     """
 
-    scope = args.scope
+    api = setup_onyx_api(context.obj)
 
-    if scope:
-        scope = utils.flatten_list_of_lists(scope)
+    try:
+        fields = api.client.fields(
+            project,
+            scope=scope,
+        )
+        table = Table(
+            caption=f"Fields specification for the '{project}' project. Version: {fields['version']}",
+            show_lines=True,
+        )
+        for column in ["Field", "Status", "Type", "Description", "Values"]:
+            table.add_column(column, overflow="fold")
 
-    fields = client._fields(args.project, scope=scope)
-    utils.print_response(fields)
+        add_fields(table, fields["fields"])
+        console.print(table)
+    except OnyxError as e:
+        cli_error(e.response)
 
 
-@client_required
-def choices(client: OnyxClient, args):
+@app.command()
+def get(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    cid: str = typer.Argument(...),
+    include: Optional[List[str]] = typer.Option(
+        None,
+        "-i",
+        "--include",
+        help=HelpText.INCLUDE.value,
+    ),
+    exclude: Optional[List[str]] = typer.Option(
+        None,
+        "-e",
+        "--exclude",
+        help=HelpText.EXCLUDE.value,
+    ),
+    scope: Optional[List[str]] = typer.Option(
+        None,
+        "-s",
+        "--scope",
+        help=HelpText.SCOPE.value,
+    ),
+):
     """
-    View choices for a field.
+    Get a record from a project.
     """
 
-    choices = client._choices(args.project, args.field)
-    utils.print_response(choices)
+    api = setup_onyx_api(context.obj)
+
+    try:
+        record = api.client.get(
+            project,
+            cid,
+            include=include,
+            exclude=exclude,
+            scope=scope,
+        )
+        typer.echo(json.dumps(record, indent=4))
+    except OnyxError as e:
+        cli_error(e.response)
+
+
+@app.command()
+def filter(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    field: Optional[List[str]] = typer.Option(
+        None,
+        "-f",
+        "--field",
+        help=HelpText.FIELD.value,
+    ),
+    include: Optional[List[str]] = typer.Option(
+        None,
+        "-i",
+        "--include",
+        help=HelpText.INCLUDE.value,
+    ),
+    exclude: Optional[List[str]] = typer.Option(
+        None,
+        "-e",
+        "--exclude",
+        help=HelpText.EXCLUDE.value,
+    ),
+    scope: Optional[List[str]] = typer.Option(
+        None,
+        "-s",
+        "--scope",
+        help=HelpText.SCOPE.value,
+    ),
+    format: Optional[Formats] = typer.Option(
+        Formats.JSON.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    Filter multiple records from a project.
+    """
+
+    api = setup_onyx_api(context.obj)
+
+    fields = {}
+    if field:
+        for name_value in field:
+            try:
+                name, value = name_value.split("=")
+            except ValueError:
+                raise click.BadParameter(
+                    "'name=value' syntax was not used",
+                    param_hint="'-f' / '--field'",
+                )
+            name = name.replace(".", "__")
+            fields.setdefault(name, []).append(value)
+
+    if format == Formats.JSON:
+        results = super(OnyxClient, api.client).filter(
+            project,
+            fields,
+            include=include,
+            exclude=exclude,
+            scope=scope,
+        )
+
+        for result in results:
+            if result.ok:
+                try:
+                    result_json = result.json()
+                    rendered_response = json.dumps(result_json["data"], indent=4)
+
+                    # Nobody needs to know these hacks
+                    if result_json["previous"]:
+                        if not rendered_response.startswith("[\n"):
+                            raise Exception(
+                                "Response JSON has invalid start character(s)."
+                            )
+
+                        rendered_response = rendered_response.removeprefix("[\n")
+
+                    if result_json["next"]:
+                        if not rendered_response.endswith("}\n]"):
+                            raise Exception(
+                                "Response JSON has invalid end character(s)."
+                            )
+
+                        rendered_response = (
+                            rendered_response.removesuffix("}\n]") + "},"
+                        )
+
+                    typer.echo(rendered_response)
+                except json.decoder.JSONDecodeError:
+                    raise click.exceptions.ClickException(result.text)
+            else:
+                cli_error(result)
+    else:
+        try:
+            records = api.client.filter(
+                project,
+                fields,
+                include=include,
+                exclude=exclude,
+                scope=scope,
+            )
+            record = next(records, None)
+            if record:
+                writer = csv.DictWriter(
+                    sys.stdout,
+                    delimiter="\t" if format == Formats.TSV else ",",
+                    fieldnames=record.keys(),
+                )
+                writer.writeheader()
+                writer.writerow(record)
+
+                for record in records:
+                    writer.writerow(record)
+        except OnyxError as e:
+            cli_error(e.response)
+
+
+@app.command()
+def choices(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    field: str = typer.Argument(...),
+):
+    """
+    View options for a choice field.
+    """
+
+    api = setup_onyx_api(context.obj)
+
+    try:
+        choices = api.client.choices(project, field)
+        table = Table(
+            show_lines=True,
+        )
+        table.add_column("Field")
+        table.add_column("Values")
+        table.add_row(field, ", ".join(choices))
+        console.print(table)
+    except OnyxError as e:
+        cli_error(e.response)
+
+
+@app.command()
+def profile(
+    context: typer.Context,
+):
+    """
+    View profile information.
+    """
+
+    api = setup_onyx_api(context.obj)
+
+    try:
+        user = api.client.profile()
+        table = create_table(
+            data=[user],
+            map={
+                "Username": "username",
+                "Email": "email",
+                "Site": "site",
+            },
+        )
+        console.print(table)
+    except OnyxError as e:
+        cli_error(e.response)
+
+
+@app.command()
+def siteusers(
+    context: typer.Context,
+):
+    """
+    View users from the same site.
+    """
+
+    api = setup_onyx_api(context.obj)
+
+    try:
+        users = api.client.site_users()
+        table = create_table(
+            data=users,
+            map={
+                "Username": "username",
+                "Email": "email",
+                "Site": "site",
+            },
+        )
+        console.print(table)
+    except OnyxError as e:
+        cli_error(e.response)
+
+
+@auth_app.command()
+def register(context: typer.Context):
+    """
+    Create a new user.
+    """
+
+    try:
+        OnyxConfig._validate_domain(context.obj.domain)
+    except Exception as e:
+        raise click.exceptions.ClickException(e.args[0])
+
+    # Get required information to create a user
+    first_name = typer.prompt("Please enter your first name")
+    last_name = typer.prompt("Please enter your last name")
+    email = typer.prompt("Please enter your email address")
+    site = typer.prompt("Please enter your site code")
+    password = typer.prompt(
+        "Please enter your password", hide_input=True, confirmation_prompt=True
+    )
+
+    # Register the user
+    try:
+        registration = OnyxClient.register(
+            context.obj.domain,
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            site=site,
+            password=password,
+        )
+        console.print(
+            f"{Messages.SUCCESS.value} Created user: '{registration['username']}'"
+        )
+    except OnyxError as e:
+        cli_error(e.response)
+
+
+@auth_app.command()
+def login(
+    context: typer.Context,
+):
+    """
+    Log in.
+    """
+
+    try:
+        OnyxConfig._validate_domain(context.obj.domain)
+    except Exception as e:
+        raise click.exceptions.ClickException(e.args[0])
+
+    # Get the username and password
+    if not context.obj.username:
+        context.obj.username = typer.prompt("Please enter your username")
+
+    if not context.obj.password:
+        context.obj.password = typer.prompt(
+            "Please enter your password", hide_input=True
+        )
+
+    api = setup_onyx_api(context.obj)
+
+    # Log in
+    try:
+        auth = api.client.login()
+        console.print(
+            f"{Messages.SUCCESS.value} Logged in as user: '{api.config.username}'"
+        )
+        console.print(f"{Messages.NOTE.value} Obtained token: '{auth['token']}'")
+        console.print(
+            f"{Messages.NOTE.value} To authenticate, assign this token to the following environment variable: '{OnyxEnv.TOKEN}'"
+        )
+    except OnyxError as e:
+        cli_error(e.response)
+
+
+@auth_app.command()
+def logout(
+    context: typer.Context,
+):
+    """
+    Log out.
+    """
+
+    api = setup_onyx_api(context.obj)
+
+    try:
+        api.client.logout()
+        console.print(f"{Messages.SUCCESS.value} Logged out.")
+    except OnyxError as e:
+        cli_error(e.response)
+
+
+@auth_app.command()
+def logoutall(
+    context: typer.Context,
+):
+    """
+    Log out across all clients.
+    """
+
+    api = setup_onyx_api(context.obj)
+
+    try:
+        api.client.logoutall()
+        console.print(f"{Messages.SUCCESS.value} Logged out across all clients.")
+    except OnyxError as e:
+        cli_error(e.response)
+
+
+@admin_app.command()
+def waiting(
+    context: typer.Context,
+):
+    """
+    View users waiting for approval.
+    """
+
+    api = setup_onyx_api(context.obj)
+
+    try:
+        waiting = api.client.waiting()
+        table = create_table(
+            data=waiting,
+            map={
+                "Username": "username",
+                "Email": "email",
+                "Site": "site",
+                "Date Joined": "date_joined",
+            },
+        )
+        console.print(table)
+    except OnyxError as e:
+        cli_error(e.response)
+
+
+@admin_app.command()
+def approve(
+    context: typer.Context,
+    username: str = typer.Argument(..., help="Name of the user being approved."),
+):
+    """
+    Approve a user.
+    """
+
+    api = setup_onyx_api(context.obj)
+
+    try:
+        approval = api.client.approve(username)
+        console.print(f"{Messages.SUCCESS.value} Approved user: {approval['username']}")
+    except OnyxError as e:
+        cli_error(e.response)
+
+
+@admin_app.command()
+def allusers(
+    context: typer.Context,
+):
+    """
+    View users across all sites.
+    """
+
+    api = setup_onyx_api(context.obj)
+
+    try:
+        users = api.client.all_users()
+        table = create_table(
+            data=users,
+            map={
+                "Username": "username",
+                "Email": "email",
+                "Site": "site",
+            },
+        )
+        console.print(table)
+    except OnyxError as e:
+        cli_error(e.response)
+
+
+def version_callback(value: bool):
+    if value:
+        console.print(__version__)
+        raise typer.Exit()
+
+
+@app.callback(name="onyx", help=f"Client Version: {__version__}")
+def common(
+    context: typer.Context,
+    domain: Optional[str] = typer.Option(
+        None,
+        "-d",
+        "--domain",
+        envvar=OnyxEnv.DOMAIN,
+        help="Domain name for connecting to Onyx.",
+    ),
+    token: Optional[str] = typer.Option(
+        None,
+        "-t",
+        "--token",
+        envvar=OnyxEnv.TOKEN,
+        help="Token for authenticating with Onyx.",
+    ),
+    username: Optional[str] = typer.Option(
+        None,
+        "-u",
+        "--username",
+        envvar=OnyxEnv.USERNAME,
+        help="Username for authenticating with Onyx.",
+    ),
+    password: Optional[str] = typer.Option(
+        None,
+        "-p",
+        "--password",
+        envvar=OnyxEnv.PASSWORD,
+        help="Password for authenticating with Onyx.",
+    ),
+    version: Optional[bool] = typer.Option(
+        None,
+        "-v",
+        "--version",
+        callback=version_callback,
+        help="Show the client version number and exit.",
+    ),
+):
+    context.obj = OnyxConfigOptions(
+        domain=domain,
+        token=token,
+        username=username,
+        password=password,
+    )
 
 
 def main():
-    user_parser = argparse.ArgumentParser(add_help=False)
-    user_parser.add_argument(
-        "-u",
-        "--user",
-        help="Which user to execute the command as.",
-    )
-    user_parser.add_argument(
-        "-p",
-        "--envpass",
-        action="store_true",
-        help="When a password is required, the client will use the env variable with format 'ONYX_<USER>_PASSWORD'.",
-    )
-    parser = argparse.ArgumentParser(parents=[user_parser])
-    parser.add_argument(
-        "-v",
-        "--version",
-        action="version",
-        version=version.__version__,
-        help="Client version number.",
-    )
-    command = parser.add_subparsers(dest="command", metavar="{command}", required=True)
-
-    # CONFIG COMMANDS
-    config_parser = command.add_parser("config", help="Config-specific commands.")
-    config_commands_parser = config_parser.add_subparsers(
-        dest="config_command", metavar="{config-command}", required=True
-    )
-    create_config_parser = config_commands_parser.add_parser(
-        "create", help="Create a config."
-    )
-    create_config_parser.add_argument("--domain", help="Onyx domain name.")
-    create_config_parser.add_argument(
-        "--config-dir",
-        help="Path to the config directory.",
-    )
-    create_config_parser.set_defaults(func=create_config)
-    set_default_user_parser = config_commands_parser.add_parser(
-        "setdefault", help="Set the default user."
-    )
-    set_default_user_parser.add_argument(
-        "username", nargs="?", help="User to be set as the default."
-    )
-    set_default_user_parser.set_defaults(func=set_default_user)
-    get_default_user_parser = config_commands_parser.add_parser(
-        "getdefault", help="Get the default user."
-    )
-    get_default_user_parser.set_defaults(func=get_default_user)
-    add_user_parser = config_commands_parser.add_parser(
-        "adduser",
-        help="Add a pre-existing user to the config.",
-    )
-    add_user_parser.add_argument(
-        "username", nargs="?", help="User to be added to the config."
-    )
-    add_user_parser.set_defaults(func=add_user)
-    config_users_parser = config_commands_parser.add_parser(
-        "users", help="List all users in the config."
-    )
-    config_users_parser.set_defaults(func=config_users)
-
-    # ACCOUNTS COMMANDS
-    register_parser = command.add_parser("register", help="Register a new user.")
-    register_parser.set_defaults(func=register)
-    login_parser = command.add_parser("login", help="Log in to onyx.")
-    login_parser.set_defaults(func=login)
-    logout_parser = command.add_parser("logout", help="Log out of onyx.")
-    logout_parser.set_defaults(func=logout)
-    logoutall_parser = command.add_parser(
-        "logoutall", help="Log out of onyx everywhere."
-    )
-    logoutall_parser.set_defaults(func=logoutall)
-    waiting_parser = command.add_parser(
-        "waiting",
-        help="List users waiting for approval.",
-    )
-    waiting_parser.set_defaults(func=waiting)
-    approve_parser = command.add_parser(
-        "approve",
-        help="Approve a user.",
-    )
-    approve_parser.add_argument("username", help="User to be approved.")
-    approve_parser.set_defaults(func=approve)
-    site_users_parser = command.add_parser(
-        "siteusers",
-        help="List site users.",
-    )
-    site_users_parser.set_defaults(func=site_users)
-    all_users_parser = command.add_parser(
-        "allusers",
-        help="List all users.",
-    )
-    all_users_parser.set_defaults(func=all_users)
-
-    # PROJECT COMMANDS
-    projects_parser = command.add_parser("projects", help="View available projects.")
-    projects_parser.set_defaults(func=projects)
-
-    fields_parser = command.add_parser("fields", help="View fields for a project.")
-    fields_parser.add_argument("project")
-    fields_parser.add_argument("-s", "--scope", nargs="+", action="append")
-    fields_parser.set_defaults(func=fields)
-
-    choices_parser = command.add_parser("choices", help="View choices for a field.")
-    choices_parser.add_argument("project")
-    choices_parser.add_argument("field")
-    choices_parser.set_defaults(func=choices)
-
-    # CRUD PARSER GROUPINGS
-    test_parser = argparse.ArgumentParser(add_help=False)
-    test_parser.add_argument(
-        "--test", action="store_true", help="Run the command as a test."
-    )
-    multithreaded_parser = argparse.ArgumentParser(add_help=False)
-    multithreaded_parser.add_argument("--multithreaded", action="store_true")
-    cid_action_parser = argparse.ArgumentParser(add_help=False)
-    cid_action_parser.add_argument("project")
-    cid_action_group = cid_action_parser.add_mutually_exclusive_group(required=True)
-    cid_action_group.add_argument("cid", nargs="?", help="optional")
-    cid_action_group.add_argument(
-        "--csv",
-        help="Carry out action on multiple records via a .csv file. CID column required.",
-    )
-    cid_action_group.add_argument(
-        "--tsv",
-        help="Carry out action on multiple records via a .tsv file. CID column required.",
-    )
-
-    # CREATE COMMANDS
-    create_parser = command.add_parser(
-        "create",
-        help="Create records in a project.",
-        parents=[test_parser, multithreaded_parser],
-    )
-    create_parser.add_argument("project")
-    create_parser.add_argument(
-        "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
-    )
-    create_action_group = create_parser.add_mutually_exclusive_group()
-    create_action_group.add_argument(
-        "--csv", help="Carry out action on multiple records via a .csv file."
-    )
-    create_action_group.add_argument(
-        "--tsv", help="Carry out action on multiple records via a .tsv file."
-    )
-    create_parser.set_defaults(func=create)
-
-    # GET COMMANDS
-    get_parser = command.add_parser("get", help="Get a record from a project.")
-    get_parser.add_argument("project")
-    get_parser.add_argument("cid")
-    get_parser.add_argument(
-        "-i", "--include", nargs="+", action="append", metavar="FIELD"
-    )
-    get_parser.add_argument(
-        "-e", "--exclude", nargs="+", action="append", metavar="FIELD"
-    )
-    get_parser.add_argument("-s", "--scope", nargs="+", action="append")
-    get_parser.set_defaults(func=get)
-
-    # FILTER COMMANDS
-    filter_parser = command.add_parser("filter", help="Filter records from a project.")
-    filter_parser.add_argument("project")
-    filter_parser.add_argument(
-        "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
-    )
-    filter_parser.add_argument(
-        "-i", "--include", nargs="+", action="append", metavar="FIELD"
-    )
-    filter_parser.add_argument(
-        "-e", "--exclude", nargs="+", action="append", metavar="FIELD"
-    )
-    filter_parser.add_argument("-s", "--scope", nargs="+", action="append")
-    filter_parser.add_argument("--format", choices=["tsv", "csv", "json"])
-    filter_parser.set_defaults(func=filter)
-
-    # UPDATE COMMANDS
-    update_parser = command.add_parser(
-        "update",
-        help="Update records in a project.",
-        parents=[test_parser, multithreaded_parser, cid_action_parser],
-    )
-    update_parser.add_argument(
-        "-f", "--field", nargs=2, action="append", metavar=("FIELD", "VALUE")
-    )
-    update_parser.set_defaults(func=update)
-
-    # DELETE COMMANDS
-    delete_parser = command.add_parser(
-        "delete",
-        help="Delete records in a project.",
-        parents=[multithreaded_parser, cid_action_parser],
-    )
-    delete_parser.set_defaults(func=delete)
-
-    args = parser.parse_args()
-
-    if args.command in ["create", "update", "delete"]:
-        if args.multithreaded and not (args.csv or args.tsv):
-            parser.error("one of the arguments --csv --tsv is required")
-
-        if args.command == "update":
-            if args.cid and not args.field:
-                parser.error("the following arguments are required: -f/--field")
-
-    args.func(args)
+    app()
