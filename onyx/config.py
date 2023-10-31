@@ -15,6 +15,26 @@ class OnyxConfig:
 
     __slots__ = "domain", "token", "username", "password"
 
+    @classmethod
+    def _validate_domain(
+        cls,
+        domain: str,
+    ):
+        if not domain:
+            raise Exception("A domain must be provided for connecting to Onyx.")
+
+    @classmethod
+    def _validate_auth(
+        cls,
+        token: Optional[str],
+        username: Optional[str],
+        password: Optional[str],
+    ):
+        if (not token) and not (username and password):
+            raise Exception(
+                "Either a token or login credentials (username and password) must be provided for authenticating to Onyx."
+            )
+
     def __init__(
         self,
         domain: str,
@@ -41,14 +61,8 @@ class OnyxConfig:
             Password for authenticating with Onyx.
         """
 
-        if not domain:
-            raise Exception("A domain must be provided for connecting to Onyx.")
-
-        if (not token) and not (username and password):
-            raise Exception(
-                "Either a token or login credentials (username and password) must be provided for authenticating to Onyx."
-            )
-
+        self._validate_domain(domain)
+        self._validate_auth(token, username, password)
         self.domain = domain
         self.token = token
         self.username = username
