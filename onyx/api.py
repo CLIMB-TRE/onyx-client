@@ -9,8 +9,11 @@ from .config import OnyxConfig
 
 
 class OnyxError(Exception):
-    def __init__(self, response: requests.Response):
-        self.response = response
+    def __init__(self, http_error: requests.HTTPError):
+        if http_error.response is None:
+            raise http_error
+
+        self.response = http_error.response
 
 
 def onyx_error(method):
@@ -18,10 +21,7 @@ def onyx_error(method):
         try:
             return method(self, *args, **kwargs)
         except requests.HTTPError as e:
-            if e.response is None:
-                raise e
-
-            raise OnyxError(e.response)
+            raise OnyxError(e) from e
 
     return wrapped_method
 
