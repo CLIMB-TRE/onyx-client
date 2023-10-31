@@ -25,33 +25,33 @@ Check it works:
 ```
 $ onyx
                                                                                                
- Usage: onyx [OPTIONS] COMMAND [ARGS]...                                                       
-                                                                                               
- Client Version: 2.0.0                                                                         
-                                                                                               
-╭─ Options ───────────────────────────────────────────────────────────────────────────────────╮
-│ --domain    -d      TEXT  Domain name for connecting to Onyx. [env var: ONYX_DOMAIN]        │
-│                           [default: None]                                                   │
-│ --token     -t      TEXT  Token for authenticating with Onyx. [env var: ONYX_TOKEN]         │
-│                           [default: None]                                                   │
-│ --username  -u      TEXT  Username for authenticating with Onyx. [env var: ONYX_USERNAME]   │
-│                           [default: None]                                                   │
-│ --password  -p      TEXT  Password for authenticating with Onyx. [env var: ONYX_PASSWORD]   │
-│                           [default: None]                                                   │
-│ --version   -v            Show the client version number and exit.                          │
-│ --help      -h            Show this message and exit.                                       │
-╰─────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Commands ──────────────────────────────────────────────────────────────────────────────────╮
-│ projects         View available projects.                                                   │
-│ fields           View the field specification for a project.                                │
-│ get              Get a record from a project.                                               │
-│ filter           Filter multiple records from a project.                                    │
-│ choices          View options for a choice field.                                           │
-│ profile          View profile information.                                                  │
-│ users            View users from the same site.                                             │
-│ auth             Authentication commands.                                                   │
-│ admin            Admin commands.                                                            │
-╰─────────────────────────────────────────────────────────────────────────────────────────────╯
+ Usage: onyx [OPTIONS] COMMAND [ARGS]...                                                        
+                                                                                                
+ Client Version: 2.0.0                                                                          
+                                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────╮
+│ --domain    -d      TEXT  Domain name for connecting to Onyx. [env var: ONYX_DOMAIN]         │
+│                           [default: None]                                                    │
+│ --token     -t      TEXT  Token for authenticating with Onyx. [env var: ONYX_TOKEN]          │
+│                           [default: None]                                                    │
+│ --username  -u      TEXT  Username for authenticating with Onyx. [env var: ONYX_USERNAME]    │
+│                           [default: None]                                                    │
+│ --password  -p      TEXT  Password for authenticating with Onyx. [env var: ONYX_PASSWORD]    │
+│                           [default: None]                                                    │
+│ --version   -v            Show the client version number and exit.                           │
+│ --help      -h            Show this message and exit.                                        │
+╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────────────────────╮
+│ projects           View available projects.                                                  │
+│ fields             View the field specification for a project.                               │
+│ get                Get a record from a project.                                              │
+│ filter             Filter multiple records from a project.                                   │
+│ choices            View options for a choice field.                                          │
+│ profile            View profile information.                                                 │
+│ siteusers          View users from the same site.                                            │
+│ auth               Authentication commands.                                                  │
+│ admin              Admin commands.                                                           │
+╰──────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 For more information, check out the documentation on how to use the [CLI](docs/cli.md) and the [Python API](docs/api.md).
