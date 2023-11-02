@@ -27,97 +27,186 @@ class OnyxClientBase:
     __slots__ = "config", "_request_handler", "_session"
     ENDPOINTS = {
         "register": lambda domain: OnyxClient._handle_endpoint(
-            os.path.join(domain, "accounts/register/"),
+            lambda: os.path.join(
+                str(domain),
+                "accounts/register/",
+            ),
             domain=domain,
         ),
         "login": lambda domain: OnyxClient._handle_endpoint(
-            os.path.join(domain, "accounts/login/"),
+            lambda: os.path.join(
+                str(domain),
+                "accounts/login/",
+            ),
             domain=domain,
         ),
         "logout": lambda domain: OnyxClient._handle_endpoint(
-            os.path.join(domain, "accounts/logout/"),
+            lambda: os.path.join(
+                str(domain),
+                "accounts/logout/",
+            ),
             domain=domain,
         ),
         "logoutall": lambda domain: OnyxClient._handle_endpoint(
-            os.path.join(domain, "accounts/logoutall/"),
+            lambda: os.path.join(
+                str(domain),
+                "accounts/logoutall/",
+            ),
             domain=domain,
         ),
         "profile": lambda domain: OnyxClient._handle_endpoint(
-            os.path.join(domain, "accounts/profile/"),
+            lambda: os.path.join(
+                str(domain),
+                "accounts/profile/",
+            ),
             domain=domain,
         ),
         "waiting": lambda domain: OnyxClient._handle_endpoint(
-            os.path.join(domain, "accounts/waiting/"),
+            lambda: os.path.join(
+                str(domain),
+                "accounts/waiting/",
+            ),
             domain=domain,
         ),
         "approve": lambda domain, username: OnyxClient._handle_endpoint(
-            os.path.join(domain, "accounts/approve", username, ""),
+            lambda: os.path.join(
+                str(domain),
+                "accounts/approve",
+                str(username),
+                "",
+            ),
             domain=domain,
             username=username,
         ),
         "siteusers": lambda domain: OnyxClient._handle_endpoint(
-            os.path.join(domain, "accounts/site/"),
+            lambda: os.path.join(
+                str(domain),
+                "accounts/site/",
+            ),
             domain=domain,
         ),
         "allusers": lambda domain: OnyxClient._handle_endpoint(
-            os.path.join(domain, "accounts/all/"),
+            lambda: os.path.join(
+                str(domain),
+                "accounts/all/",
+            ),
             domain=domain,
         ),
         "projects": lambda domain: OnyxClient._handle_endpoint(
-            os.path.join(domain, "projects/"),
+            lambda: os.path.join(
+                str(domain),
+                "projects/",
+            ),
             domain=domain,
         ),
         "fields": lambda domain, project: OnyxClient._handle_endpoint(
-            os.path.join(domain, "projects", project, "fields/"),
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "fields/",
+            ),
             domain=domain,
             project=project,
         ),
         "choices": lambda domain, project, field: OnyxClient._handle_endpoint(
-            os.path.join(domain, "projects", project, "choices", field, ""),
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "choices",
+                str(field),
+                "",
+            ),
             domain=domain,
             project=project,
             field=field,
         ),
         "create": lambda domain, project: OnyxClient._handle_endpoint(
-            os.path.join(domain, "projects", project, ""),
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "",
+            ),
             domain=domain,
             project=project,
         ),
         "filter": lambda domain, project: OnyxClient._handle_endpoint(
-            os.path.join(domain, "projects", project, ""),
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "",
+            ),
             domain=domain,
             project=project,
         ),
         "get": lambda domain, project, cid: OnyxClient._handle_endpoint(
-            os.path.join(domain, "projects", project, cid, ""),
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                str(cid),
+                "",
+            ),
             domain=domain,
             project=project,
             cid=cid,
         ),
         "update": lambda domain, project, cid: OnyxClient._handle_endpoint(
-            os.path.join(domain, "projects", project, cid, ""),
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                str(cid),
+                "",
+            ),
             domain=domain,
             project=project,
             cid=cid,
         ),
         "delete": lambda domain, project, cid: OnyxClient._handle_endpoint(
-            os.path.join(domain, "projects", project, cid, ""),
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                str(cid),
+                "",
+            ),
             domain=domain,
             project=project,
             cid=cid,
         ),
         "query": lambda domain, project: OnyxClient._handle_endpoint(
-            os.path.join(domain, "projects", project, "query/"),
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "query/",
+            ),
             domain=domain,
             project=project,
         ),
         "testcreate": lambda domain, project: OnyxClient._handle_endpoint(
-            os.path.join(domain, "projects", project, "test/"),
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "test/",
+            ),
             domain=domain,
             project=project,
         ),
         "testupdate": lambda domain, project, cid: OnyxClient._handle_endpoint(
-            os.path.join(domain, "projects", project, "test", cid, ""),
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "test",
+                str(cid),
+                "",
+            ),
             domain=domain,
             project=project,
             cid=cid,
@@ -142,7 +231,7 @@ class OnyxClientBase:
     @classmethod
     def _handle_endpoint(cls, endpoint, **kwargs):
         for name, val in kwargs.items():
-            if not val or not str(val).strip():
+            if val is None or not str(val).strip():
                 raise OnyxClientError(f"Argument '{name}' was not provided.")
 
             # Crude but effective
@@ -162,7 +251,7 @@ class OnyxClientBase:
                         f"Argument '{name}' cannot start with value 'choices/'. This resolves to a different endpoint."
                     )
 
-        return endpoint
+        return endpoint()
 
     def _request(self, method: str, retries: int = 3, **kwargs) -> requests.Response:
         if not retries:
