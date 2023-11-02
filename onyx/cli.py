@@ -4,7 +4,6 @@ import enum
 import json
 import dataclasses
 from typing import Optional, List, Dict, Any
-import requests
 import click
 import typer
 from typer.core import TyperGroup
@@ -12,7 +11,8 @@ from rich.console import Console
 from rich.table import Table
 from .version import __version__
 from .config import OnyxConfig, OnyxEnv
-from .api import OnyxClient, OnyxError
+from .api import OnyxClient, onyx_errors
+from . import exceptions
 
 
 console = Console()
@@ -70,34 +70,36 @@ class OnyxAPI:
 
 
 def setup_onyx_api(options: OnyxConfigOptions) -> OnyxAPI:
-    try:
-        config = OnyxConfig(
-            domain=options.domain if options.domain else "",
-            username=options.username,
-            password=options.password,
-            token=options.token,
-        )
-        client = OnyxClient(config)
-    except Exception as e:
-        raise click.exceptions.ClickException(e.args[0])
-
+    config = OnyxConfig(
+        domain=options.domain if options.domain else "",
+        username=options.username,
+        password=options.password,
+        token=options.token,
+    )
+    client = OnyxClient(config)
     return OnyxAPI(config, client)
 
 
-def cli_error(response: requests.Response):
-    try:
-        messages = response.json()["messages"]
-        detail = messages.get("detail")
+def handle_error(e: Exception):
+    if isinstance(e, exceptions.OnyxHTTPError):
+        try:
+            messages = e.response.json()["messages"]
+            detail = messages.get("detail")
 
-        if detail:
-            formatted_response = detail
-        else:
-            formatted_response = json.dumps(messages, indent=4)
+            if detail:
+                formatted_response = detail
+            else:
+                formatted_response = json.dumps(messages, indent=4)
 
-    except json.decoder.JSONDecodeError:
-        formatted_response = response.text
+        except json.decoder.JSONDecodeError:
+            formatted_response = e.response.text
+        raise click.exceptions.ClickException(formatted_response)
 
-    raise click.exceptions.ClickException(formatted_response)
+    elif isinstance(e, exceptions.OnyxError):
+        raise click.exceptions.ClickException(e.args[0])
+
+    else:
+        raise e
 
 
 def create_table(
@@ -126,9 +128,9 @@ def create_table(
 
 
 class HelpText(enum.Enum):
-    FIELD = "Filter the data by providing criteria that fields must match. Uses a `name=value` syntax."
-    INCLUDE = "Set which fields to include in the output."
-    EXCLUDE = "Set which fields to exclude from the output."
+    FIELD = "Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax."
+    INCLUDE = "Specify which fields to include in the output."
+    EXCLUDE = "Specify which fields to exclude from the output."
     SCOPE = "Access additional fields beyond the 'base' group of fields."
     FORMAT = "Set the file format of the returned data."
 
@@ -152,9 +154,8 @@ def projects(
     View available projects.
     """
 
-    api = setup_onyx_api(context.obj)
-
     try:
+        api = setup_onyx_api(context.obj)
         projects = api.client.projects()
         table = create_table(
             data=projects,
@@ -173,8 +174,8 @@ def projects(
             },
         )
         console.print(table)
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 def add_fields(
@@ -214,9 +215,8 @@ def fields(
     View the field specification for a project.
     """
 
-    api = setup_onyx_api(context.obj)
-
     try:
+        api = setup_onyx_api(context.obj)
         fields = api.client.fields(
             project,
             scope=scope,
@@ -230,8 +230,8 @@ def fields(
 
         add_fields(table, fields["fields"])
         console.print(table)
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 @app.command()
@@ -262,9 +262,8 @@ def get(
     Get a record from a project.
     """
 
-    api = setup_onyx_api(context.obj)
-
     try:
+        api = setup_onyx_api(context.obj)
         record = api.client.get(
             project,
             cid,
@@ -273,8 +272,8 @@ def get(
             scope=scope,
         )
         typer.echo(json.dumps(record, indent=4))
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 @app.command()
@@ -316,43 +315,46 @@ def filter(
     Filter multiple records from a project.
     """
 
-    api = setup_onyx_api(context.obj)
+    try:
+        api = setup_onyx_api(context.obj)
 
-    fields = {}
-    if field:
-        for name_value in field:
-            try:
-                name, value = name_value.split("=")
-            except ValueError:
-                raise click.BadParameter(
-                    "'name=value' syntax was not used",
-                    param_hint="'-f' / '--field'",
-                )
-            name = name.replace(".", "__")
-            fields.setdefault(name, []).append(value)
-
-    if format == Formats.JSON:
-        results = super(OnyxClient, api.client).filter(
-            project,
-            fields,
-            include=include,
-            exclude=exclude,
-            scope=scope,
-        )
-
-        for result in results:
-            if result.ok:
+        fields = {}
+        if field:
+            for name_value in field:
                 try:
-                    result_json = result.json()
+                    name, value = name_value.split("=")
+                except ValueError:
+                    raise click.BadParameter(
+                        "'name=value' syntax was not used",
+                        param_hint="'-f' / '--field'",
+                    )
+                name = name.replace(".", "__")
+                fields.setdefault(name, []).append(value)
+
+        if format == Formats.JSON:
+            # ...nobody needs to know
+            results = onyx_errors(super(OnyxClient, api.client).filter)(
+                project,
+                fields,
+                include=include,
+                exclude=exclude,
+                scope=scope,
+            )
+
+            for result in results:
+                if result.ok:
+                    try:
+                        result_json = result.json()
+                    except json.decoder.JSONDecodeError:
+                        raise click.exceptions.ClickException(result.text)
+
                     rendered_response = json.dumps(result_json["data"], indent=4)
 
-                    # Nobody needs to know these hacks
                     if result_json["previous"]:
                         if not rendered_response.startswith("[\n"):
                             raise Exception(
                                 "Response JSON has invalid start character(s)."
                             )
-
                         rendered_response = rendered_response.removeprefix("[\n")
 
                     if result_json["next"]:
@@ -360,18 +362,14 @@ def filter(
                             raise Exception(
                                 "Response JSON has invalid end character(s)."
                             )
-
                         rendered_response = (
                             rendered_response.removesuffix("}\n]") + "},"
                         )
 
                     typer.echo(rendered_response)
-                except json.decoder.JSONDecodeError:
-                    raise click.exceptions.ClickException(result.text)
-            else:
-                cli_error(result)
-    else:
-        try:
+                else:
+                    raise exceptions.OnyxHTTPError("", result)
+        else:
             records = api.client.filter(
                 project,
                 fields,
@@ -379,6 +377,7 @@ def filter(
                 exclude=exclude,
                 scope=scope,
             )
+
             record = next(records, None)
             if record:
                 writer = csv.DictWriter(
@@ -391,8 +390,8 @@ def filter(
 
                 for record in records:
                     writer.writerow(record)
-        except OnyxError as e:
-            cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 @app.command()
@@ -405,9 +404,8 @@ def choices(
     View options for a choice field.
     """
 
-    api = setup_onyx_api(context.obj)
-
     try:
+        api = setup_onyx_api(context.obj)
         choices = api.client.choices(project, field)
         table = Table(
             show_lines=True,
@@ -416,8 +414,8 @@ def choices(
         table.add_column("Values")
         table.add_row(field, ", ".join(choices))
         console.print(table)
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 @app.command()
@@ -428,9 +426,8 @@ def profile(
     View profile information.
     """
 
-    api = setup_onyx_api(context.obj)
-
     try:
+        api = setup_onyx_api(context.obj)
         user = api.client.profile()
         table = create_table(
             data=[user],
@@ -441,8 +438,8 @@ def profile(
             },
         )
         console.print(table)
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 @app.command()
@@ -453,9 +450,8 @@ def siteusers(
     View users from the same site.
     """
 
-    api = setup_onyx_api(context.obj)
-
     try:
+        api = setup_onyx_api(context.obj)
         users = api.client.site_users()
         table = create_table(
             data=users,
@@ -466,8 +462,8 @@ def siteusers(
             },
         )
         console.print(table)
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 @auth_app.command()
@@ -478,20 +474,17 @@ def register(context: typer.Context):
 
     try:
         OnyxConfig._validate_domain(context.obj.domain)
-    except Exception as e:
-        raise click.exceptions.ClickException(e.args[0])
 
-    # Get required information to create a user
-    first_name = typer.prompt("Please enter your first name")
-    last_name = typer.prompt("Please enter your last name")
-    email = typer.prompt("Please enter your email address")
-    site = typer.prompt("Please enter your site code")
-    password = typer.prompt(
-        "Please enter your password", hide_input=True, confirmation_prompt=True
-    )
+        # Get required information to create a user
+        first_name = typer.prompt("Please enter your first name")
+        last_name = typer.prompt("Please enter your last name")
+        email = typer.prompt("Please enter your email address")
+        site = typer.prompt("Please enter your site code")
+        password = typer.prompt(
+            "Please enter your password", hide_input=True, confirmation_prompt=True
+        )
 
-    # Register the user
-    try:
+        # Register the user
         registration = OnyxClient.register(
             context.obj.domain,
             first_name=first_name,
@@ -503,8 +496,8 @@ def register(context: typer.Context):
         console.print(
             f"{Messages.SUCCESS.value} Created user: '{registration['username']}'"
         )
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 @auth_app.command()
@@ -517,22 +510,19 @@ def login(
 
     try:
         OnyxConfig._validate_domain(context.obj.domain)
-    except Exception as e:
-        raise click.exceptions.ClickException(e.args[0])
 
-    # Get the username and password
-    if not context.obj.username:
-        context.obj.username = typer.prompt("Please enter your username")
+        # Get the username and password
+        if not context.obj.username:
+            context.obj.username = typer.prompt("Please enter your username")
 
-    if not context.obj.password:
-        context.obj.password = typer.prompt(
-            "Please enter your password", hide_input=True
-        )
+        if not context.obj.password:
+            context.obj.password = typer.prompt(
+                "Please enter your password", hide_input=True
+            )
 
-    api = setup_onyx_api(context.obj)
+        api = setup_onyx_api(context.obj)
 
-    # Log in
-    try:
+        # Log in
         auth = api.client.login()
         console.print(
             f"{Messages.SUCCESS.value} Logged in as user: '{api.config.username}'"
@@ -541,8 +531,8 @@ def login(
         console.print(
             f"{Messages.NOTE.value} To authenticate, assign this token to the following environment variable: '{OnyxEnv.TOKEN}'"
         )
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 @auth_app.command()
@@ -553,13 +543,12 @@ def logout(
     Log out.
     """
 
-    api = setup_onyx_api(context.obj)
-
     try:
+        api = setup_onyx_api(context.obj)
         api.client.logout()
         console.print(f"{Messages.SUCCESS.value} Logged out.")
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 @auth_app.command()
@@ -570,13 +559,12 @@ def logoutall(
     Log out across all clients.
     """
 
-    api = setup_onyx_api(context.obj)
-
     try:
+        api = setup_onyx_api(context.obj)
         api.client.logoutall()
         console.print(f"{Messages.SUCCESS.value} Logged out across all clients.")
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 @admin_app.command()
@@ -587,9 +575,8 @@ def waiting(
     View users waiting for approval.
     """
 
-    api = setup_onyx_api(context.obj)
-
     try:
+        api = setup_onyx_api(context.obj)
         waiting = api.client.waiting()
         table = create_table(
             data=waiting,
@@ -601,8 +588,8 @@ def waiting(
             },
         )
         console.print(table)
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 @admin_app.command()
@@ -614,13 +601,12 @@ def approve(
     Approve a user.
     """
 
-    api = setup_onyx_api(context.obj)
-
     try:
+        api = setup_onyx_api(context.obj)
         approval = api.client.approve(username)
         console.print(f"{Messages.SUCCESS.value} Approved user: {approval['username']}")
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 @admin_app.command()
@@ -631,9 +617,8 @@ def allusers(
     View users across all sites.
     """
 
-    api = setup_onyx_api(context.obj)
-
     try:
+        api = setup_onyx_api(context.obj)
         users = api.client.all_users()
         table = create_table(
             data=users,
@@ -644,8 +629,8 @@ def allusers(
             },
         )
         console.print(table)
-    except OnyxError as e:
-        cli_error(e.response)
+    except Exception as e:
+        handle_error(e)
 
 
 def version_callback(value: bool):
