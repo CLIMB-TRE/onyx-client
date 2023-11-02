@@ -1,29 +1,26 @@
 import os
 import sys
 import csv
+import inspect
 import requests
-import concurrent.futures
+from requests import HTTPError, RequestException
 from typing import Any, Generator, List, Dict, IO, Optional, Union
-from django_query_tools.client import F as OnyxField
+from django_query_tools.client import F
 from .config import OnyxConfig
+from .exceptions import (
+    OnyxClientError,
+    OnyxConnectionError,
+    OnyxRequestError,
+    OnyxServerError,
+)
 
 
-class OnyxError(Exception):
-    def __init__(self, http_error: requests.HTTPError):
-        if http_error.response is None:
-            raise http_error
+class OnyxField(F):
+    """
+    Class that represents a single field-value pair for use in Onyx queries.
+    """
 
-        self.response = http_error.response
-
-
-def onyx_error(method):
-    def wrapped_method(self, *args, **kwargs):
-        try:
-            return method(self, *args, **kwargs)
-        except requests.HTTPError as e:
-            raise OnyxError(e) from e
-
-    return wrapped_method
+    pass
 
 
 class OnyxClientBase:
@@ -71,7 +68,7 @@ class OnyxClientBase:
             domain=domain,
         ),
         "fields": lambda domain, project: OnyxClient._handle_endpoint(
-            os.path.join(domain, f"projects", project, "fields/"),
+            os.path.join(domain, "projects", project, "fields/"),
             domain=domain,
             project=project,
         ),
@@ -128,15 +125,6 @@ class OnyxClientBase:
     }
 
     def __init__(self, config: OnyxConfig):
-        """
-        Initialise a client.
-
-        Parameters
-        ----------
-        config : OnyxConfig
-            Object that stores information for connecting and authenticating with Onyx.
-        """
-
         self.config = config
         self._session = None
         self._request_handler = requests.request
@@ -155,7 +143,24 @@ class OnyxClientBase:
     def _handle_endpoint(cls, endpoint, **kwargs):
         for name, val in kwargs.items():
             if not val or not str(val).strip():
-                raise Exception(f"Endpoint argument '{name}' was not provided.")
+                raise OnyxClientError(f"Argument '{name}' was not provided.")
+
+            # Crude but effective
+            # Prevents calling other endpoints from the get() function with a cid equal to the endpoint name
+            # Its not the end of the world if that did happen, but to the user it would be quite confusing
+            if name == "cid":
+                if val in {"test", "query", "fields", "lookups", "choices"}:
+                    raise OnyxClientError(
+                        f"Argument '{name}' cannot have value '{val}'. This resolves to a different endpoint."
+                    )
+                if val.startswith("test/"):
+                    raise OnyxClientError(
+                        f"Argument '{name}' cannot start with value 'test/'. This resolves to a different endpoint."
+                    )
+                if val.startswith("choices/"):
+                    raise OnyxClientError(
+                        f"Argument '{name}' cannot start with value 'choices/'. This resolves to a different endpoint."
+                    )
 
         return endpoint
 
@@ -197,19 +202,17 @@ class OnyxClientBase:
         csv_file: Optional[IO] = None,
         fields: Optional[Dict[str, Any]] = None,
         delimiter: Optional[str] = None,
-        multithreaded: bool = False,
+        multiline: bool = False,
         test: bool = False,
         cid_required: bool = False,
     ) -> Generator[requests.Response, Any, None]:
+        # Get appropriate endpoint for test/prod
         if test:
             endpoint = "test" + endpoint
 
-        if multithreaded and not (self.config.username and self.config.password):
-            raise Exception("Multithreaded mode requires a username and password.")
-
+        # Validate and determine CSV source
         if csv_path and csv_file:
-            raise Exception("Cannot provide both csv_path and csv_file.")
-
+            raise OnyxClientError("Cannot provide both 'csv_path' and 'csv_file'.")
         if csv_path:
             if csv_path == "-":
                 csv_file = sys.stdin
@@ -217,95 +220,297 @@ class OnyxClientBase:
                 csv_file = open(csv_path)
         else:
             if not csv_file:
-                raise Exception("Must provide either csv_path or csv_file.")
-
-        overwrite = lambda x, ow: x | ow if ow else x
+                raise OnyxClientError("Must provide either 'csv_path' or 'csv_file'.")
 
         try:
+            # Create CSV reader
             if delimiter is None:
                 reader = csv.DictReader(csv_file)
             else:
                 reader = csv.DictReader(csv_file, delimiter=delimiter)
 
-            record = next(reader, None)
+            records = []
 
-            if record:
-                if cid_required:
-                    cid = record.pop("cid", None)
-                    if cid is None:
-                        raise KeyError("A 'cid' column must be provided.")
+            # Read the first two records (if they exist) and store in 'records' list
+            # This is done to protect against two scenarios:
+            # - There are no records in the file (never allowed)
+            # - There is more than one record, but multiline = False (not allowed)
+            record_1 = next(reader, None)
+            if record_1:
+                records.append(record_1)
+            else:
+                raise OnyxClientError("File must contain at least one record.")
+            record_2 = next(reader, None)
+            if record_2:
+                if not multiline:
+                    raise OnyxClientError(
+                        "File contains multiple records but this is not allowed. To upload multiple records, set 'multiline' = True."
+                    )
+                records.append(record_2)
 
-                    response = self._request(
-                        method=method,
-                        url=OnyxClient.ENDPOINTS[endpoint](
+            # Iterate over the read and unread records and upload sequentially
+            for iterator in (records, reader):
+                for record in iterator:
+                    if cid_required:
+                        # Grab the cid, if required for the URL
+                        cid = record.pop("cid", None)
+                        if not cid:
+                            raise OnyxClientError("Record requires a 'cid' for upload.")
+                        url = OnyxClient.ENDPOINTS[endpoint](
                             self.config.domain, project, cid
-                        ),
-                        json=overwrite(record, fields),
-                    )
-                    yield response
-
-                    if multithreaded:
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
-                            futures = [
-                                executor.submit(
-                                    self._request,
-                                    method,
-                                    url=OnyxClient.ENDPOINTS[endpoint](
-                                        self.config.domain, project, record.pop("cid")
-                                    ),
-                                    json=overwrite(record, fields),
-                                )
-                                for record in reader
-                            ]
-                            for future in concurrent.futures.as_completed(futures):
-                                yield future.result()
+                        )
                     else:
-                        for record in reader:
-                            response = self._request(
-                                method=method,
-                                url=OnyxClient.ENDPOINTS[endpoint](
-                                    self.config.domain, project, record.pop("cid")
-                                ),
-                                json=overwrite(record, fields),
-                            )
-                            yield response
-                else:
+                        url = OnyxClient.ENDPOINTS[endpoint](
+                            self.config.domain, project
+                        )
+
                     response = self._request(
                         method=method,
-                        url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project),
-                        json=overwrite(record, fields),
+                        url=url,
+                        json=record | fields if fields else record,
                     )
                     yield response
 
-                    if multithreaded:
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
-                            futures = [
-                                executor.submit(
-                                    self._request,
-                                    method,
-                                    url=OnyxClient.ENDPOINTS[endpoint](
-                                        self.config.domain, project
-                                    ),
-                                    json=overwrite(record, fields),
-                                )
-                                for record in reader
-                            ]
-                            for future in concurrent.futures.as_completed(futures):
-                                yield future.result()
-                    else:
-                        for record in reader:
-                            response = self._request(
-                                method=method,
-                                url=OnyxClient.ENDPOINTS[endpoint](
-                                    self.config.domain, project
-                                ),
-                                json=overwrite(record, fields),
-                            )
-                            yield response
         finally:
-            # Close the file, only if it was opened within this function
+            # If the file was opened within this function, close it
             if csv_path and csv_file is not sys.stdin:
                 csv_file.close()
+
+    def _csv_handle_multiline(
+        self,
+        responses: Generator[requests.Response, Any, None],
+        multiline: bool,
+    ) -> Dict[str, Any] | List[Dict[str, Any]]:
+        if multiline:
+            results = []
+            for response in responses:
+                response.raise_for_status()
+                results.append(response.json()["data"])
+            return results
+        else:
+            response = next(responses, None)
+            if response is None:
+                raise OnyxClientError("Iterator must contain at least one record.")
+
+            response.raise_for_status()
+            return response.json()["data"]
+
+    def projects(self) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["projects"](self.config.domain),
+        )
+        return response
+
+    def fields(
+        self,
+        project: str,
+        scope: Union[List[str], str, None] = None,
+    ) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["fields"](self.config.domain, project),
+            params={"scope": scope},
+        )
+        return response
+
+    def choices(self, project: str, field: str) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["choices"](self.config.domain, project, field),
+        )
+        return response
+
+    def create(
+        self,
+        project: str,
+        fields: Dict[str, Any],
+        test: bool = False,
+    ) -> requests.Response:
+        if test:
+            endpoint = "testcreate"
+        else:
+            endpoint = "create"
+
+        response = self._request(
+            method="post",
+            url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project),
+            json=fields,
+        )
+        return response
+
+    def get(
+        self,
+        project: str,
+        cid: str,
+        include: Union[List[str], str, None] = None,
+        exclude: Union[List[str], str, None] = None,
+        scope: Union[List[str], str, None] = None,
+    ) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["get"](self.config.domain, project, cid),
+            params={"include": include, "exclude": exclude, "scope": scope},
+        )
+        return response
+
+    def filter(
+        self,
+        project: str,
+        fields: Optional[Dict[str, Any]] = None,
+        include: Union[List[str], str, None] = None,
+        exclude: Union[List[str], str, None] = None,
+        scope: Union[List[str], str, None] = None,
+    ) -> Generator[requests.Response, Any, None]:
+        if fields is None:
+            fields = {}
+
+        fields = fields | {"include": include, "exclude": exclude, "scope": scope}
+        _next = OnyxClient.ENDPOINTS["filter"](self.config.domain, project)
+
+        while _next is not None:
+            response = self._request(
+                method="get",
+                url=_next,
+                params=fields,
+            )
+            yield response
+
+            fields = None
+            if response.ok:
+                _next = response.json()["next"]
+            else:
+                _next = None
+
+    def query(
+        self,
+        project: str,
+        query: Optional[OnyxField] = None,
+        include: Union[List[str], str, None] = None,
+        exclude: Union[List[str], str, None] = None,
+        scope: Union[List[str], str, None] = None,
+    ) -> Generator[requests.Response, Any, None]:
+        if query:
+            if not isinstance(query, OnyxField):
+                raise OnyxClientError(
+                    f"Query must be an instance of {OnyxField}. Received: {type(query)}"
+                )
+            else:
+                query_json = query.query
+        else:
+            query_json = None
+
+        fields = {"include": include, "exclude": exclude, "scope": scope}
+        _next = OnyxClient.ENDPOINTS["query"](self.config.domain, project)
+
+        while _next is not None:
+            response = self._request(
+                method="post",
+                url=_next,
+                json=query_json,
+                params=fields,
+            )
+            yield response
+
+            fields = None
+            if response.ok:
+                _next = response.json()["next"]
+            else:
+                _next = None
+
+    def update(
+        self,
+        project: str,
+        cid: str,
+        fields: Optional[Dict[str, Any]] = None,
+        test: bool = False,
+    ) -> requests.Response:
+        if test:
+            endpoint = "testupdate"
+        else:
+            endpoint = "update"
+
+        response = self._request(
+            method="patch",
+            url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project, cid),
+            json=fields,
+        )
+        return response
+
+    def delete(
+        self,
+        project: str,
+        cid: str,
+    ) -> requests.Response:
+        response = self._request(
+            method="delete",
+            url=OnyxClient.ENDPOINTS["delete"](self.config.domain, project, cid),
+        )
+        return response
+
+    def csv_create(
+        self,
+        project: str,
+        csv_path: Optional[str] = None,
+        csv_file: Optional[IO] = None,
+        fields: Optional[Dict[str, Any]] = None,
+        delimiter: Optional[str] = None,
+        multiline: bool = False,
+        test: bool = False,
+    ) -> Generator[requests.Response, Any, None]:
+        yield from self._csv_upload(
+            method="post",
+            endpoint="create",
+            project=project,
+            csv_path=csv_path,
+            csv_file=csv_file,
+            fields=fields,
+            delimiter=delimiter,
+            multiline=multiline,
+            test=test,
+        )
+
+    def csv_update(
+        self,
+        project: str,
+        csv_path: Optional[str] = None,
+        csv_file: Optional[IO] = None,
+        fields: Optional[Dict[str, Any]] = None,
+        delimiter: Optional[str] = None,
+        multiline: bool = False,
+        test: bool = False,
+    ) -> Generator[requests.Response, Any, None]:
+        yield from self._csv_upload(
+            method="patch",
+            endpoint="update",
+            project=project,
+            csv_path=csv_path,
+            csv_file=csv_file,
+            fields=fields,
+            delimiter=delimiter,
+            multiline=multiline,
+            test=test,
+            cid_required=True,
+        )
+
+    def csv_delete(
+        self,
+        project: str,
+        csv_path: Optional[str] = None,
+        csv_file: Optional[IO] = None,
+        delimiter: Optional[str] = None,
+        multiline: bool = False,
+    ) -> Generator[requests.Response, Any, None]:
+        yield from self._csv_upload(
+            method="delete",
+            endpoint="delete",
+            project=project,
+            csv_path=csv_path,
+            csv_file=csv_file,
+            delimiter=delimiter,
+            multiline=multiline,
+            cid_required=True,
+        )
 
     @classmethod
     def register(
@@ -400,333 +605,113 @@ class OnyxClientBase:
         )
         return response
 
-    def create(
-        self,
-        project: str,
-        fields: Dict[str, Any],
-        test: bool = False,
-    ) -> requests.Response:
-        if test:
-            endpoint = "testcreate"
-        else:
-            endpoint = "create"
 
-        response = self._request(
-            method="post",
-            url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project),
-            json=fields,
-        )
-        return response
+def onyx_errors(method):
+    """
+    Decorator that coerces `requests` library errors into appropriate `OnyxError` subclasses.
+    """
+    if inspect.isgeneratorfunction(method):
 
-    def csv_create(
-        self,
-        project: str,
-        csv_path: Optional[str] = None,
-        csv_file: Optional[IO] = None,
-        fields: Optional[Dict[str, Any]] = None,
-        delimiter: Optional[str] = None,
-        multithreaded: bool = False,
-        test: bool = False,
-    ) -> Generator[requests.Response, Any, None]:
-        yield from self._csv_upload(
-            method="post",
-            endpoint="create",
-            project=project,
-            csv_path=csv_path,
-            csv_file=csv_file,
-            fields=fields,
-            delimiter=delimiter,
-            multithreaded=multithreaded,
-            test=test,
-        )
+        def wrapped_generator_method(self, *args, **kwargs):
+            try:
+                yield from method(self, *args, **kwargs)
 
-    def get(
-        self,
-        project: str,
-        cid: str,
-        include: Union[List[str], str, None] = None,
-        exclude: Union[List[str], str, None] = None,
-        scope: Union[List[str], str, None] = None,
-    ) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["get"](self.config.domain, project, cid),
-            params={"include": include, "exclude": exclude, "scope": scope},
-        )
-        return response
+            except HTTPError as e:
+                if e.response is None:
+                    raise e
+                elif e.response.status_code < 500:
+                    raise OnyxRequestError(
+                        message=e.args[0],
+                        response=e.response,
+                    ) from e
+                else:
+                    raise OnyxServerError(
+                        message=e.args[0],
+                        response=e.response,
+                    ) from e
+            except RequestException as e:
+                raise OnyxConnectionError(e.args[0]) from e
 
-    def filter(
-        self,
-        project: str,
-        fields: Optional[Dict[str, Any]] = None,
-        include: Union[List[str], str, None] = None,
-        exclude: Union[List[str], str, None] = None,
-        scope: Union[List[str], str, None] = None,
-    ) -> Generator[requests.Response, Any, None]:
-        if fields is None:
-            fields = {}
+        return wrapped_generator_method
+    else:
 
-        fields = fields | {"include": include, "exclude": exclude, "scope": scope}
-        _next = OnyxClient.ENDPOINTS["filter"](self.config.domain, project)
+        def wrapped_method(self, *args, **kwargs):
+            try:
+                return method(self, *args, **kwargs)
 
-        while _next is not None:
-            response = self._request(
-                method="get",
-                url=_next,
-                params=fields,
-            )
-            yield response
+            except HTTPError as e:
+                if e.response is None:
+                    raise e
+                elif e.response.status_code < 500:
+                    raise OnyxRequestError(
+                        message=e.args[0],
+                        response=e.response,
+                    ) from e
+                else:
+                    raise OnyxServerError(
+                        message=e.args[0],
+                        response=e.response,
+                    ) from e
+            except RequestException as e:
+                raise OnyxConnectionError(e.args[0]) from e
 
-            fields = None
-            if response.ok:
-                _next = response.json()["next"]
-            else:
-                _next = None
-
-    def query(
-        self,
-        project: str,
-        query: Optional[OnyxField] = None,
-        include: Union[List[str], str, None] = None,
-        exclude: Union[List[str], str, None] = None,
-        scope: Union[List[str], str, None] = None,
-    ) -> Generator[requests.Response, Any, None]:
-        if query:
-            if not isinstance(query, OnyxField):
-                raise Exception(f"Query must be an instance of {OnyxField}.")
-            else:
-                query_json = query.query
-        else:
-            query_json = None
-
-        fields = {"include": include, "exclude": exclude, "scope": scope}
-        _next = OnyxClient.ENDPOINTS["query"](self.config.domain, project)
-
-        while _next is not None:
-            response = self._request(
-                method="post",
-                url=_next,
-                json=query_json,
-                params=fields,
-            )
-            yield response
-
-            fields = None
-            if response.ok:
-                _next = response.json()["next"]
-            else:
-                _next = None
-
-    def update(
-        self,
-        project: str,
-        cid: str,
-        fields: Optional[Dict[str, Any]] = None,
-        test: bool = False,
-    ) -> requests.Response:
-        if test:
-            endpoint = "testupdate"
-        else:
-            endpoint = "update"
-
-        response = self._request(
-            method="patch",
-            url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project, cid),
-            json=fields,
-        )
-        return response
-
-    def csv_update(
-        self,
-        project: str,
-        csv_path: Optional[str] = None,
-        csv_file: Optional[IO] = None,
-        fields: Optional[Dict[str, Any]] = None,
-        delimiter: Optional[str] = None,
-        multithreaded: bool = False,
-        test: bool = False,
-    ) -> Generator[requests.Response, Any, None]:
-        yield from self._csv_upload(
-            method="patch",
-            endpoint="update",
-            project=project,
-            csv_path=csv_path,
-            csv_file=csv_file,
-            fields=fields,
-            delimiter=delimiter,
-            multithreaded=multithreaded,
-            test=test,
-            cid_required=True,
-        )
-
-    def delete(
-        self,
-        project: str,
-        cid: str,
-    ) -> requests.Response:
-        response = self._request(
-            method="delete",
-            url=OnyxClient.ENDPOINTS["delete"](self.config.domain, project, cid),
-        )
-        return response
-
-    def csv_delete(
-        self,
-        project: str,
-        csv_path: Optional[str] = None,
-        csv_file: Optional[IO] = None,
-        delimiter: Optional[str] = None,
-        multithreaded: bool = False,
-    ) -> Generator[requests.Response, Any, None]:
-        yield from self._csv_upload(
-            method="delete",
-            endpoint="delete",
-            project=project,
-            csv_path=csv_path,
-            csv_file=csv_file,
-            delimiter=delimiter,
-            multithreaded=multithreaded,
-            cid_required=True,
-        )
-
-    def projects(self) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["projects"](self.config.domain),
-        )
-        return response
-
-    def fields(
-        self,
-        project: str,
-        scope: Union[List[str], str, None] = None,
-    ) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["fields"](self.config.domain, project),
-            params={"scope": scope},
-        )
-        return response
-
-    def choices(self, project: str, field: str) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["choices"](self.config.domain, project, field),
-        )
-        return response
+        return wrapped_method
 
 
 class OnyxClient(OnyxClientBase):
     """
-    Class for querying and manipulating metadata within Onyx.
+    Class for querying and manipulating data within Onyx.
     """
 
-    @classmethod
-    @onyx_error
-    def register(
-        cls,
-        domain: str,
-        first_name: str,
-        last_name: str,
-        email: str,
-        site: str,
-        password: str,
+    def __init__(self, config: OnyxConfig):
+        """
+        Initialise a client.
+
+        :param config: Object that stores information for connecting and authenticating with Onyx.
+        """
+        super().__init__(config)
+
+    @onyx_errors
+    def projects(self) -> List[Dict[str, str]]:
+        """
+        View available projects.
+        """
+
+        response = super().projects()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def fields(
+        self,
+        project: str,
+        scope: Union[List[str], str, None] = None,
     ) -> Dict[str, Any]:
         """
-        Create a new user.
+        View fields for a project.
+
+        :param project: Name of the project.
+        :param scope: Additional named group(s) of fields to include in the output.
         """
-        response = super().register(
-            domain,
-            first_name,
-            last_name,
-            email,
-            site,
-            password,
-        )
+
+        response = super().fields(project, scope=scope)
         response.raise_for_status()
         return response.json()["data"]
 
-    @onyx_error
-    def login(self) -> Dict[str, Any]:
+    @onyx_errors
+    def choices(self, project: str, field: str) -> List[str]:
         """
-        Log in as a particular user, get a new token and store the token in the client.
+        View choices for a field.
 
-        If no user is provided, the `default_user` in the config is used.
+        :param project: Name of the project.
+        :param field: Choice field on the project.
         """
 
-        response = super().login()
+        response = super().choices(project, field)
         response.raise_for_status()
         return response.json()["data"]
 
-    @onyx_error
-    def logout(self) -> None:
-        """
-        Log out the user in this client.
-        """
-
-        response = super().logout()
-        response.raise_for_status()
-
-    @onyx_error
-    def logoutall(self) -> None:
-        """
-        Log out the user in all clients.
-        """
-
-        response = super().logoutall()
-        response.raise_for_status()
-
-    @onyx_error
-    def profile(self) -> Dict[str, str]:
-        """
-        View the logged-in user's information.
-        """
-
-        response = super().profile()
-        response.raise_for_status()
-        return response.json()["data"]
-
-    @onyx_error
-    def approve(self, username: str) -> Dict[str, Any]:
-        """
-        Approve another user.
-        """
-
-        response = super().approve(username)
-        response.raise_for_status()
-        return response.json()["data"]
-
-    @onyx_error
-    def waiting(self) -> List[Dict[str, Any]]:
-        """
-        Get users waiting for approval.
-        """
-
-        response = super().waiting()
-        response.raise_for_status()
-        return response.json()["data"]
-
-    @onyx_error
-    def site_users(self) -> List[Dict[str, Any]]:
-        """
-        Get the users within the site of the requesting user.
-        """
-
-        response = super().site_users()
-        response.raise_for_status()
-        return response.json()["data"]
-
-    @onyx_error
-    def all_users(self) -> List[Dict[str, Any]]:
-        """
-        Get all users.
-        """
-
-        response = super().all_users()
-        response.raise_for_status()
-        return response.json()["data"]
-
-    @onyx_error
+    @onyx_errors
     def create(
         self,
         project: str,
@@ -734,66 +719,78 @@ class OnyxClient(OnyxClientBase):
         test: bool = False,
     ) -> Dict[str, Any]:
         """
-        Post a record to the database.
+        Create a record in a project.
+
+        :param project: Name of the project.
+        :param fields: Object representing the record to be created.
+        :param test: If True, runs the command as a test. Default: False
         """
 
         response = super().create(project, fields, test=test)
         response.raise_for_status()
         return response.json()["data"]
 
-    @onyx_error
-    def csv_create(
-        self,
-        project: str,
-        csv_path: Optional[str] = None,
-        csv_file: Optional[IO] = None,
-        fields: Optional[Dict[str, Any]] = None,
-        delimiter: Optional[str] = None,
-        multithreaded: bool = False,
-        test: bool = False,
-    ) -> Generator[Dict[str, Any], Any, None]:
-        """
-        Post a .csv or .tsv containing records to the database.
-        """
-
-        responses = super().csv_create(
-            project,
-            csv_path=csv_path,
-            csv_file=csv_file,
-            fields=fields,
-            delimiter=delimiter,
-            multithreaded=multithreaded,
-            test=test,
-        )
-        for response in responses:
-            response.raise_for_status()
-            for result in response.json()["data"]:
-                yield result
-
-    @onyx_error
+    @onyx_errors
     def get(
         self,
         project: str,
-        cid: str,
+        cid: Optional[str] = None,
+        fields: Optional[Dict[str, Any]] = None,
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         scope: Union[List[str], str, None] = None,
     ) -> Dict[str, Any]:
         """
-        Get a record from the database.
+        Get a record from a project.
+
+        :param project: Name of the project.
+        :param cid: Unique identifier for the record in the project.
+        :param fields: Series of conditions on fields, used to uniquely identify a record.
+        :param include: Fields to include in the output.
+        :param exclude: Fields to exclude from the output.
+        :param scope: Additional named group(s) of fields to include in the output.
         """
 
-        response = super().get(
-            project,
-            cid,
-            include=include,
-            exclude=exclude,
-            scope=scope,
-        )
-        response.raise_for_status()
-        return response.json()["data"]
+        if cid and fields:
+            raise OnyxClientError("Cannot provide both 'cid' and 'fields'.")
 
-    @onyx_error
+        if not (cid or fields):
+            raise OnyxClientError("Must provide either 'cid' or 'fields'.")
+
+        if cid:
+            response = super().get(
+                project,
+                cid,
+                include=include,
+                exclude=exclude,
+                scope=scope,
+            )
+            response.raise_for_status()
+            return response.json()["data"]
+        else:
+            responses = super().filter(
+                project,
+                fields=fields,
+                include=include,
+                exclude=exclude,
+                scope=scope,
+            )
+            response = next(responses, None)
+            if response is None:
+                raise OnyxClientError(
+                    f"Expected one record to be returned but received no response."
+                )
+
+            response.raise_for_status()
+            count = len(response.json()["data"])
+            if count != 1:
+                raise OnyxClientError(
+                    f"Expected one record to be returned but received: {count}"
+                )
+
+            return response.json()["data"][0]
+
+    @onyx_errors
     def filter(
         self,
         project: str,
@@ -803,7 +800,13 @@ class OnyxClient(OnyxClientBase):
         scope: Union[List[str], str, None] = None,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
-        Filter records from the database.
+        Filter records from a project.
+
+        :param project: Name of the project.
+        :param fields: Series of conditions on fields, used to filter the data.
+        :param include: Fields to include in the output.
+        :param exclude: Fields to exclude from the output.
+        :param scope: Additional named group(s) of fields to include in the output.
         """
 
         responses = super().filter(
@@ -818,7 +821,7 @@ class OnyxClient(OnyxClientBase):
             for result in response.json()["data"]:
                 yield result
 
-    @onyx_error
+    @onyx_errors
     def query(
         self,
         project: str,
@@ -828,7 +831,13 @@ class OnyxClient(OnyxClientBase):
         scope: Union[List[str], str, None] = None,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
-        Get records from the database.
+        Query records from a project.
+
+        :param project: Name of the project.
+        :param query: Arbitrarily complex expression on fields, used to filter the data.
+        :param include: Fields to include in the output.
+        :param exclude: Fields to exclude from the output.
+        :param scope: Additional named group(s) of fields to include in the output.
         """
 
         responses = super().query(
@@ -843,7 +852,7 @@ class OnyxClient(OnyxClientBase):
             for result in response.json()["data"]:
                 yield result
 
-    @onyx_error
+    @onyx_errors
     def update(
         self,
         project: str,
@@ -852,14 +861,70 @@ class OnyxClient(OnyxClientBase):
         test: bool = False,
     ) -> Dict[str, Any]:
         """
-        Update a record in the database.
+        Update a record in a project.
+
+        :param project: Name of the project.
+        :param cid: Unique identifier for the record in the project.
+        :param fields: Object representing the updates being made to the record.
+        :param test: If True, runs the command as a test. Default: False
         """
 
         response = super().update(project, cid, fields=fields, test=test)
         response.raise_for_status()
         return response.json()["data"]
 
-    @onyx_error
+    @onyx_errors
+    def delete(
+        self,
+        project: str,
+        cid: str,
+    ) -> Dict[str, Any]:
+        """
+        Delete a record in a project.
+
+        :param project: Name of the project.
+        :param cid: Unique identifier for the record in the project.
+        """
+
+        response = super().delete(project, cid)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def csv_create(
+        self,
+        project: str,
+        csv_path: Optional[str] = None,
+        csv_file: Optional[IO] = None,
+        fields: Optional[Dict[str, Any]] = None,
+        delimiter: Optional[str] = None,
+        multiline: bool = False,
+        test: bool = False,
+    ) -> Dict[str, Any] | List[Dict[str, Any]]:
+        """
+        Use a CSV file to create record(s) in a project.
+
+        :param project: Name of the project.
+        :param csv_path: Path to the CSV file being used for record upload.
+        :param csv_file: File object for the CSV file being used for record upload.
+        :param fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
+        :param delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
+        :param multiline: If True, allows processing of CSV files with more than one record. Default: False
+        :param test: If True, runs the command as a test. Default: False
+        """
+
+        responses = super().csv_create(
+            project,
+            csv_path=csv_path,
+            csv_file=csv_file,
+            fields=fields,
+            delimiter=delimiter,
+            multiline=multiline,
+            test=test,
+        )
+        return self._csv_handle_multiline(responses, multiline)
+
+    @onyx_errors
     def csv_update(
         self,
         project: str,
@@ -867,11 +932,19 @@ class OnyxClient(OnyxClientBase):
         csv_file: Optional[IO] = None,
         fields: Optional[Dict[str, Any]] = None,
         delimiter: Optional[str] = None,
-        multithreaded: bool = False,
+        multiline: bool = False,
         test: bool = False,
-    ) -> Generator[Dict[str, Any], Any, None]:
+    ) -> Dict[str, Any] | List[Dict[str, Any]]:
         """
-        Use a .csv or .tsv to update records in the database.
+        Use a CSV file to update record(s) in a project.
+
+        :param project: Name of the project.
+        :param csv_path: Path to the CSV file being used for record upload.
+        :param csv_file: File object for the CSV file being used for record upload.
+        :param fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
+        :param delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
+        :param multiline: If True, allows processing of CSV files with more than one record. Default: False
+        :param test: If True, runs the command as a test. Default: False
         """
 
         responses = super().csv_update(
@@ -880,39 +953,29 @@ class OnyxClient(OnyxClientBase):
             csv_file=csv_file,
             fields=fields,
             delimiter=delimiter,
-            multithreaded=multithreaded,
+            multiline=multiline,
             test=test,
         )
-        for response in responses:
-            response.raise_for_status()
-            for result in response.json()["data"]:
-                yield result
+        return self._csv_handle_multiline(responses, multiline)
 
-    @onyx_error
-    def delete(
-        self,
-        project: str,
-        cid: str,
-    ) -> Dict[str, Any]:
-        """
-        Delete a record in the database.
-        """
-
-        response = super().delete(project, cid)
-        response.raise_for_status()
-        return response.json()["data"]
-
-    @onyx_error
+    @onyx_errors
     def csv_delete(
         self,
         project: str,
         csv_path: Optional[str] = None,
         csv_file: Optional[IO] = None,
         delimiter: Optional[str] = None,
-        multithreaded: bool = False,
-    ) -> Generator[Dict[str, Any], Any, None]:
+        multiline: bool = False,
+    ) -> Dict[str, Any] | List[Dict[str, Any]]:
         """
-        Use a .csv or .tsv to delete records in the database.
+        Use a CSV file to delete record(s) in a project.
+
+        :param project: Name of the project.
+        :param csv_path: Path to the CSV file being used for record upload.
+        :param csv_file: File object for the CSV file being used for record upload.
+        :param fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
+        :param delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
+        :param multiline: If True, allows processing of CSV files with more than one record. Default: False
         """
 
         responses = super().csv_delete(
@@ -920,43 +983,118 @@ class OnyxClient(OnyxClientBase):
             csv_path=csv_path,
             csv_file=csv_file,
             delimiter=delimiter,
-            multithreaded=multithreaded,
+            multiline=multiline,
         )
-        for response in responses:
-            response.raise_for_status()
-            for result in response.json()["data"]:
-                yield result
+        return self._csv_handle_multiline(responses, multiline)
 
-    @onyx_error
-    def projects(self) -> List[Dict[str, str]]:
-        """
-        View available projects.
-        """
-
-        response = super().projects()
-        response.raise_for_status()
-        return response.json()["data"]
-
-    @onyx_error
-    def fields(
-        self,
-        project: str,
-        scope: Union[List[str], str, None] = None,
+    @classmethod
+    @onyx_errors
+    def register(
+        cls,
+        domain: str,
+        first_name: str,
+        last_name: str,
+        email: str,
+        site: str,
+        password: str,
     ) -> Dict[str, Any]:
         """
-        View fields for a project.
-        """
+        Create a new user.
 
-        response = super().fields(project, scope=scope)
+        :param domain: Domain name for connecting to Onyx.
+        :param first_name: First name of the registering user.
+        :param last_name: Last name of the registering user.
+        :param email: Email of the registering user.
+        :param site: Site code of the registering user.
+        :param password: Password of the registering user.
+        """
+        response = super().register(
+            domain,
+            first_name,
+            last_name,
+            email,
+            site,
+            password,
+        )
         response.raise_for_status()
         return response.json()["data"]
 
-    @onyx_error
-    def choices(self, project: str, field: str) -> List[str]:
+    @onyx_errors
+    def login(self) -> Dict[str, Any]:
         """
-        View choices for a field.
+        Log in the user.
         """
 
-        response = super().choices(project, field)
+        response = super().login()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def logout(self) -> None:
+        """
+        Log out the user.
+        """
+
+        response = super().logout()
+        response.raise_for_status()
+
+    @onyx_errors
+    def logoutall(self) -> None:
+        """
+        Log out the user in all clients.
+        """
+
+        response = super().logoutall()
+        response.raise_for_status()
+
+    @onyx_errors
+    def profile(self) -> Dict[str, str]:
+        """
+        View the user's information.
+        """
+
+        response = super().profile()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def approve(self, username: str) -> Dict[str, Any]:
+        """
+        Approve another user.
+
+        :param username: Name of the user being approved.
+        """
+
+        response = super().approve(username)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def waiting(self) -> List[Dict[str, Any]]:
+        """
+        Get users waiting for approval.
+        """
+
+        response = super().waiting()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def site_users(self) -> List[Dict[str, Any]]:
+        """
+        Get users within the site of the requesting user.
+        """
+
+        response = super().site_users()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def all_users(self) -> List[Dict[str, Any]]:
+        """
+        Get all users.
+        """
+
+        response = super().all_users()
         response.raise_for_status()
         return response.json()["data"]
