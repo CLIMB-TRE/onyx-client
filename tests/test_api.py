@@ -8,6 +8,7 @@ from onyx.exceptions import OnyxClientError
 DOMAIN = "https://onyx.domain"
 TOKEN = "token"
 EXPIRY = "expiry"
+EXPIRED_TOKEN = "expired_token"
 USERNAME = "username"
 PASSWORD = "password"
 EMAIL = "email"
@@ -118,6 +119,8 @@ APPROVE_DATA = {
     "is_approved": True,
 }
 
+INVALID_AUTH_MESSAGE = {"detail": "Invalid username/password."}
+
 
 class MockResponse:
     def __init__(self, data, status_code):
@@ -163,6 +166,9 @@ def mock_request(
     params=None,
     json=None,
 ):
+    if headers and headers.get("Authorization") != f"Token {TOKEN}":
+        return MockResponse(INVALID_AUTH_MESSAGE, 401)
+
     if method == "post":
         if (
             url == OnyxClient.ENDPOINTS["create"](DOMAIN, PROJECT)
@@ -243,6 +249,7 @@ class OnyxClientTestCase(TestCase):
     def setUp(self) -> None:
         self.config = OnyxConfig(
             domain=DOMAIN,
+            token=EXPIRED_TOKEN,
             username=USERNAME,
             password=PASSWORD,
         )
@@ -251,11 +258,13 @@ class OnyxClientTestCase(TestCase):
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_projects(self, mock_request):
         self.assertEqual(self.client.projects(), PROJECT_DATA)
+        self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_fields(self, mock_request):
         self.assertEqual(self.client.fields(PROJECT), FIELDS_DATA)
         self.assertEqual(self.client.fields(PROJECT, scope="admin"), FIELDS_ADMIN_DATA)
+        self.assertEqual(self.config.token, TOKEN)
 
         for empty_project in ["", " ", None]:
             with pytest.raises(OnyxClientError):
@@ -264,6 +273,7 @@ class OnyxClientTestCase(TestCase):
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_choices(self, mock_request):
         self.assertEqual(self.client.choices(PROJECT, CHOICE_FIELD), CHOICES_DATA)
+        self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
             with pytest.raises(OnyxClientError):
@@ -278,6 +288,7 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(
             self.client.create(PROJECT, CREATE_FIELDS, test=True), TESTCREATE_DATA
         )
+        self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
             with pytest.raises(OnyxClientError):
@@ -292,6 +303,7 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(
             self.client.update(PROJECT, CID, UPDATE_FIELDS, test=True), TESTUPDATE_DATA
         )
+        self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
             with pytest.raises(OnyxClientError):
@@ -327,10 +339,12 @@ class OnyxClientTestCase(TestCase):
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_profile(self, mock_request):
         self.assertEqual(self.client.profile(), PROFILE_DATA)
+        self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_approve(self, mock_request):
         self.assertEqual(self.client.approve(OTHER_USERNAME), APPROVE_DATA)
+        self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
             with pytest.raises(OnyxClientError):
@@ -339,11 +353,14 @@ class OnyxClientTestCase(TestCase):
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_waiting(self, mock_request):
         self.assertEqual(self.client.waiting(), WAITING_DATA)
+        self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_site_users(self, mock_request):
         self.assertEqual(self.client.site_users(), SITE_USERS_DATA)
+        self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_all_users(self, mock_request):
         self.assertEqual(self.client.all_users(), ALL_USERS_DATA)
+        self.assertEqual(self.config.token, TOKEN)
