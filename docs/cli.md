@@ -79,8 +79,8 @@ $ onyx get [OPTIONS] PROJECT CID
 
 **Options**:
 
-* `-i, --include TEXT`: Set which fields to include in the output.
-* `-e, --exclude TEXT`: Set which fields to exclude from the output.
+* `-i, --include TEXT`: Specify which fields to include in the output.
+* `-e, --exclude TEXT`: Specify which fields to exclude from the output.
 * `-s, --scope TEXT`: Access additional fields beyond the 'base' group of fields.
 * `--help`: Show this message and exit.
 
@@ -100,9 +100,9 @@ $ onyx filter [OPTIONS] PROJECT
 
 **Options**:
 
-* `-f, --field TEXT`: Filter the data by providing criteria that fields must match. Uses a `name=value` syntax.
-* `-i, --include TEXT`: Set which fields to include in the output.
-* `-e, --exclude TEXT`: Set which fields to exclude from the output.
+* `-f, --field TEXT`: Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax.
+* `-i, --include TEXT`: Specify which fields to include in the output.
+* `-e, --exclude TEXT`: Specify which fields to exclude from the output.
 * `-s, --scope TEXT`: Access additional fields beyond the 'base' group of fields.
 * `-F, --format [json|csv|tsv]`: Set the file format of the returned data.  [default: json]
 * `--help`: Show this message and exit.
