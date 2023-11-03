@@ -119,47 +119,50 @@ APPROVE_DATA = {
 }
 
 
-def mocked_onyx_request(method, **kwargs):
-    class MockResponse:
-        def __init__(self, data, status_code):
-            self.status_code = status_code
-            if self.status_code > 500:
-                self.ok = False
-                self.data = {
-                    "status": "error",
-                    "code": status_code,
-                    "messages": data,
-                }
-            elif 400 <= self.status_code < 500:
-                self.ok = False
-                self.data = {
-                    "status": "fail",
-                    "code": status_code,
-                    "messages": data,
-                }
-            else:
-                self.ok = True
-                self.data = {
-                    "status": "success",
-                    "code": status_code,
-                    "data": data,
-                }
+class MockResponse:
+    def __init__(self, data, status_code):
+        self.status_code = status_code
+        if self.status_code < 400:
+            self.ok = True
+            self.data = {
+                "status": "success",
+                "code": status_code,
+                "data": data,
+            }
+        elif 400 <= self.status_code < 500:
+            self.ok = False
+            self.data = {
+                "status": "fail",
+                "code": status_code,
+                "messages": data,
+            }
+        else:
+            self.ok = False
+            self.data = {
+                "status": "error",
+                "code": status_code,
+                "messages": data,
+            }
 
-        def json(self):
-            return self.data
+    def json(self):
+        return self.data
 
-        def raise_for_status(self):
-            if self.status_code >= 400:
-                raise requests.HTTPError(
-                    "Something bad happened.",
-                    response=self,  #  type: ignore
-                )
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise requests.HTTPError(
+                "Something bad happened.",
+                response=self,  #  type: ignore
+            )
 
-    auth = kwargs.pop("auth", None)
-    url = kwargs.pop("url", None)
-    params = kwargs.pop("params", None)
-    json = kwargs.pop("json", None)
 
+def mock_request(
+    method=None,
+    headers=None,
+    auth=None,
+    url=None,
+    params=None,
+    json=None,
+):
     if method == "post":
         if (
             url == OnyxClient.ENDPOINTS["create"](DOMAIN, PROJECT)
@@ -245,11 +248,11 @@ class OnyxClientTestCase(TestCase):
         )
         self.client = OnyxClient(self.config)
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_projects(self, mock_request):
         self.assertEqual(self.client.projects(), PROJECT_DATA)
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_fields(self, mock_request):
         self.assertEqual(self.client.fields(PROJECT), FIELDS_DATA)
         self.assertEqual(self.client.fields(PROJECT, scope="admin"), FIELDS_ADMIN_DATA)
@@ -258,7 +261,7 @@ class OnyxClientTestCase(TestCase):
             with pytest.raises(OnyxClientError):
                 self.client.fields(empty_project)
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_choices(self, mock_request):
         self.assertEqual(self.client.choices(PROJECT, CHOICE_FIELD), CHOICES_DATA)
 
@@ -269,7 +272,7 @@ class OnyxClientTestCase(TestCase):
             with pytest.raises(OnyxClientError):
                 self.client.choices(PROJECT, empty)
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_create(self, mock_request):
         self.assertEqual(self.client.create(PROJECT, CREATE_FIELDS), CREATE_DATA)
         self.assertEqual(
@@ -283,7 +286,7 @@ class OnyxClientTestCase(TestCase):
             with pytest.raises(OnyxClientError):
                 self.client.create(empty, CREATE_FIELDS, test=True)
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_update(self, mock_request):
         self.assertEqual(self.client.update(PROJECT, CID, UPDATE_FIELDS), UPDATE_DATA)
         self.assertEqual(
@@ -306,26 +309,26 @@ class OnyxClientTestCase(TestCase):
     def test_register(self):
         pass  # TODO
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_login(self, mock_request):
         self.assertEqual(self.client.login(), LOGIN_DATA)
         self.assertEqual(self.config.token, TOKEN)
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_logout(self, mock_request):
         self.assertEqual(self.client.logout(), LOGOUT_DATA)
         self.assertEqual(self.config.token, None)
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_logoutall(self, mock_request):
         self.assertEqual(self.client.logoutall(), LOGOUTALL_DATA)
         self.assertEqual(self.config.token, None)
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_profile(self, mock_request):
         self.assertEqual(self.client.profile(), PROFILE_DATA)
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_approve(self, mock_request):
         self.assertEqual(self.client.approve(OTHER_USERNAME), APPROVE_DATA)
 
@@ -333,14 +336,14 @@ class OnyxClientTestCase(TestCase):
             with pytest.raises(OnyxClientError):
                 self.client.approve(empty)
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_waiting(self, mock_request):
         self.assertEqual(self.client.waiting(), WAITING_DATA)
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_site_users(self, mock_request):
         self.assertEqual(self.client.site_users(), SITE_USERS_DATA)
 
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mocked_onyx_request)
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_all_users(self, mock_request):
         self.assertEqual(self.client.all_users(), ALL_USERS_DATA)
