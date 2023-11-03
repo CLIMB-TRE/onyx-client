@@ -369,7 +369,7 @@ class OnyxClientBase:
         self,
         responses: Generator[requests.Response, Any, None],
         multiline: bool,
-    ) -> Dict[str, Any] | List[Dict[str, Any]]:
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         if multiline:
             results = []
             for response in responses:
@@ -989,7 +989,7 @@ class OnyxClient(OnyxClientBase):
         delimiter: Optional[str] = None,
         multiline: bool = False,
         test: bool = False,
-    ) -> Dict[str, Any] | List[Dict[str, Any]]:
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
         Use a CSV file to create record(s) in a project.
 
@@ -1023,7 +1023,7 @@ class OnyxClient(OnyxClientBase):
         delimiter: Optional[str] = None,
         multiline: bool = False,
         test: bool = False,
-    ) -> Dict[str, Any] | List[Dict[str, Any]]:
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
         Use a CSV file to update record(s) in a project.
 
@@ -1055,7 +1055,7 @@ class OnyxClient(OnyxClientBase):
         csv_file: Optional[IO] = None,
         delimiter: Optional[str] = None,
         multiline: bool = False,
-    ) -> Dict[str, Any] | List[Dict[str, Any]]:
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
         Use a CSV file to delete record(s) in a project.
 
