@@ -326,6 +326,9 @@ class OnyxClientBase:
         # Iterate over the read and unread records and upload sequentially
         for iterator in (records, reader):
             for record in iterator:
+                if fields:
+                    record = record | fields
+
                 if cid_required:
                     # Grab the cid, if required for the URL
                     cid = record.pop("cid", None)
@@ -340,7 +343,7 @@ class OnyxClientBase:
                 response = self._request(
                     method=method,
                     url=url,
-                    json=record | fields if fields else record,
+                    json=record,
                 )
                 yield response
 
