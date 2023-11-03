@@ -1,95 +1,87 @@
 import pytest
+from unittest import TestCase
 from onyx import OnyxConfig
 from onyx.exceptions import OnyxConfigError
 
 
-domain = "https://onyx.domain"
-token = "token"
-username = "username"
-password = "password"
+DOMAIN = "https://onyx.domain"
+TOKEN = "token"
+USERNAME = "username"
+PASSWORD = "password"
 
 
-def test_config_ok():
-    config = OnyxConfig(
-        domain=domain,
-        token=token,
-        username=username,
-        password=password,
-    )
-    assert config.domain == domain
-    assert config.token == token
-    assert config.username == username
-    assert config.password == password
+class OnyxConfigTestCase(TestCase):
+    def test_init(self):
+        config = OnyxConfig(
+            domain=DOMAIN,
+            token=TOKEN,
+            username=USERNAME,
+            password=PASSWORD,
+        )
+        self.assertEqual(config.domain, DOMAIN)
+        self.assertEqual(config.token, TOKEN)
+        self.assertEqual(config.username, USERNAME)
+        self.assertEqual(config.password, PASSWORD)
 
+        config = OnyxConfig(
+            domain=DOMAIN,
+            token=TOKEN,
+        )
+        self.assertEqual(config.domain, DOMAIN)
+        self.assertEqual(config.token, TOKEN)
 
-def test_config_token_ok():
-    config = OnyxConfig(
-        domain=domain,
-        token=token,
-    )
-    assert config.domain == domain
-    assert config.token == token
+        config = OnyxConfig(
+            domain=DOMAIN,
+            username=USERNAME,
+            password=PASSWORD,
+        )
+        self.assertEqual(config.domain, DOMAIN)
+        self.assertEqual(config.username, USERNAME)
+        self.assertEqual(config.password, PASSWORD)
 
+        # TODO: Handle " "
+        for empty in ["", None]:
+            with pytest.raises(OnyxConfigError):
+                OnyxConfig(
+                    domain=empty,
+                    token=TOKEN,
+                    username=USERNAME,
+                    password=PASSWORD,
+                )
 
-def test_config_username_password_ok():
-    config = OnyxConfig(
-        domain=domain,
-        username=username,
-        password=password,
-    )
-    assert config.domain == domain
-    assert config.username == username
-    assert config.password == password
+            with pytest.raises(OnyxConfigError):
+                OnyxConfig(
+                    domain=empty,
+                    token=TOKEN,
+                )
 
+            with pytest.raises(OnyxConfigError):
+                OnyxConfig(
+                    domain=empty,
+                    username=USERNAME,
+                    password=PASSWORD,
+                )
 
-def test_config_empty_domain_fail():
-    # TODO: Handle " "
-    for empty in ["", None]:
-        with pytest.raises(OnyxConfigError):
-            OnyxConfig(
-                domain=empty,
-                token=token,
-                username=username,
-                password=password,
-            )
+            with pytest.raises(OnyxConfigError):
+                OnyxConfig(
+                    domain=DOMAIN,
+                    token=empty,
+                    username=empty,
+                    password=empty,
+                )
 
-        with pytest.raises(OnyxConfigError):
-            OnyxConfig(
-                domain=empty,
-                token=token,
-            )
+            with pytest.raises(OnyxConfigError):
+                OnyxConfig(
+                    domain=DOMAIN,
+                    token=empty,
+                    username=USERNAME,
+                    password=empty,
+                )
 
-        with pytest.raises(OnyxConfigError):
-            OnyxConfig(
-                domain=empty,
-                username=username,
-                password=password,
-            )
-
-
-def test_config_empty_auth_fail():
-    # TODO: Handle " "
-    for empty in ["", None]:
-        with pytest.raises(OnyxConfigError):
-            OnyxConfig(
-                domain=domain,
-                token=empty,
-                username=empty,
-                password=empty,
-            )
-
-        with pytest.raises(OnyxConfigError):
-            OnyxConfig(
-                domain=domain,
-                token=empty,
-                username=username,
-                password=empty,
-            )
-
-        with pytest.raises(OnyxConfigError):
-            OnyxConfig(
-                domain=domain,
-                token=empty,
-                username=username,
-                password=empty,
-            )
+            with pytest.raises(OnyxConfigError):
+                OnyxConfig(
+                    domain=DOMAIN,
+                    token=empty,
+                    username=empty,
+                    password=PASSWORD,
+                )
