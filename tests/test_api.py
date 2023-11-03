@@ -1,3 +1,4 @@
+import io
 import requests
 import pytest
 from unittest import TestCase, mock
@@ -82,6 +83,15 @@ CREATE_FIELDS = {
     "field_1": "value_1",
     "field_2": "value_2",
 }
+CSV_SINGLE_FILE = "field_1,field_2\nvalue_1,value_2"
+TSV_SINGLE_FILE = "field_1\tfield_2\nvalue_1\tvalue_2"
+CSV_MULTI_FILE = "field_1,field_2\nvalue_1,value_2\nvalue_1,value_2"
+TSV_MULTI_FILE = "field_1\tfield_2\nvalue_1\tvalue_2\nvalue_1\tvalue_2"
+CSV_SINGLE_MISSING_FILE = "field_1\nvalue_1"
+TSV_SINGLE_MISSING_FILE = "field_1\nvalue_1"
+CSV_MULTI_MISSING_FILE = "field_1\nvalue_1\nvalue_1"
+TSV_MULTI_MISSING_FILE = "field_1\nvalue_1\nvalue_1"
+MISSING_FIELDS = {"field_2": "value_2"}
 CREATE_DATA = {
     "status": "success",
     "code": 201,
@@ -691,7 +701,115 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_csv_create(self, mock_request):
-        pass  # TODO
+        for data, test in [
+            (CREATE_DATA["data"], False),
+            (TESTCREATE_DATA["data"], True),
+        ]:
+            self.assertEqual(
+                self.client.csv_create(
+                    PROJECT,
+                    io.StringIO(CSV_SINGLE_FILE),
+                    test=test,
+                ),
+                data,
+            )
+            self.assertEqual(
+                self.client.csv_create(
+                    PROJECT,
+                    io.StringIO(TSV_SINGLE_FILE),
+                    delimiter="\t",
+                    test=test,
+                ),
+                data,
+            )
+            self.assertEqual(
+                self.client.csv_create(
+                    PROJECT,
+                    io.StringIO(CSV_MULTI_FILE),
+                    multiline=True,
+                    test=test,
+                ),
+                [data, data],
+            )
+            self.assertEqual(
+                self.client.csv_create(
+                    PROJECT,
+                    io.StringIO(TSV_MULTI_FILE),
+                    delimiter="\t",
+                    multiline=True,
+                    test=test,
+                ),
+                [data, data],
+            )
+            self.assertEqual(
+                self.client.csv_create(
+                    PROJECT,
+                    io.StringIO(CSV_SINGLE_MISSING_FILE),
+                    fields=MISSING_FIELDS,
+                    test=test,
+                ),
+                data,
+            )
+            self.assertEqual(
+                self.client.csv_create(
+                    PROJECT,
+                    io.StringIO(TSV_SINGLE_MISSING_FILE),
+                    fields=MISSING_FIELDS,
+                    delimiter="\t",
+                    test=test,
+                ),
+                data,
+            )
+            self.assertEqual(
+                self.client.csv_create(
+                    PROJECT,
+                    io.StringIO(CSV_MULTI_MISSING_FILE),
+                    fields=MISSING_FIELDS,
+                    multiline=True,
+                    test=test,
+                ),
+                [data, data],
+            )
+            self.assertEqual(
+                self.client.csv_create(
+                    PROJECT,
+                    io.StringIO(TSV_MULTI_MISSING_FILE),
+                    fields=MISSING_FIELDS,
+                    delimiter="\t",
+                    multiline=True,
+                    test=test,
+                ),
+                [data, data],
+            )
+        self.assertEqual(self.config.token, TOKEN)
+
+        with pytest.raises(OnyxClientError):
+            self.client.csv_create(
+                PROJECT,
+                io.StringIO(CSV_MULTI_FILE),
+            )
+
+        with pytest.raises(OnyxClientError):
+            self.client.csv_create(
+                PROJECT,
+                io.StringIO(CSV_MULTI_FILE),
+                test=True,
+            )
+
+        with pytest.raises(OnyxClientError):
+            self.client.csv_create(
+                PROJECT,
+                io.StringIO(TSV_MULTI_FILE),
+                delimiter="\t",
+            )
+
+        with pytest.raises(OnyxClientError):
+            self.client.csv_create(
+                PROJECT,
+                io.StringIO(TSV_MULTI_FILE),
+                delimiter="\t",
+                test=True,
+            )
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_csv_update(self, mock_request):

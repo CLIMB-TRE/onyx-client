@@ -1,10 +1,9 @@
 import os
-import sys
 import csv
 import inspect
 import requests
 from requests import HTTPError, RequestException
-from typing import Any, Generator, List, Dict, IO, Optional, Union
+from typing import Any, Generator, List, Dict, TextIO, Optional, Union
 from django_query_tools.client import F
 from .config import OnyxConfig
 from .exceptions import (
@@ -287,8 +286,7 @@ class OnyxClientBase:
         method: str,
         endpoint: str,
         project: str,
-        csv_path: Optional[str] = None,
-        csv_file: Optional[IO] = None,
+        csv_file: TextIO,
         fields: Optional[Dict[str, Any]] = None,
         delimiter: Optional[str] = None,
         multiline: bool = False,
@@ -299,71 +297,52 @@ class OnyxClientBase:
         if test:
             endpoint = "test" + endpoint
 
-        # Validate and determine CSV source
-        if csv_path and csv_file:
-            raise OnyxClientError("Cannot provide both 'csv_path' and 'csv_file'.")
-        if csv_path:
-            if csv_path == "-":
-                csv_file = sys.stdin
-            else:
-                csv_file = open(csv_path)
+        # Create CSV reader
+        if delimiter is None:
+            reader = csv.DictReader(csv_file)
         else:
-            if not csv_file:
-                raise OnyxClientError("Must provide either 'csv_path' or 'csv_file'.")
+            reader = csv.DictReader(csv_file, delimiter=delimiter)
 
-        try:
-            # Create CSV reader
-            if delimiter is None:
-                reader = csv.DictReader(csv_file)
-            else:
-                reader = csv.DictReader(csv_file, delimiter=delimiter)
+        # Read the first two records (if they exist) and store in 'records' list
+        # This is done to protect against two scenarios:
+        # - There are no records in the file (never allowed)
+        # - There is more than one record, but multiline = False (not allowed)
+        records = []
 
-            records = []
+        record_1 = next(reader, None)
+        if record_1:
+            records.append(record_1)
+        else:
+            raise OnyxClientError("File must contain at least one record.")
 
-            # Read the first two records (if they exist) and store in 'records' list
-            # This is done to protect against two scenarios:
-            # - There are no records in the file (never allowed)
-            # - There is more than one record, but multiline = False (not allowed)
-            record_1 = next(reader, None)
-            if record_1:
-                records.append(record_1)
-            else:
-                raise OnyxClientError("File must contain at least one record.")
-            record_2 = next(reader, None)
-            if record_2:
-                if not multiline:
-                    raise OnyxClientError(
-                        "File contains multiple records but this is not allowed. To upload multiple records, set 'multiline' = True."
+        record_2 = next(reader, None)
+        if record_2:
+            if not multiline:
+                raise OnyxClientError(
+                    "File contains multiple records but this is not allowed. To upload multiple records, set 'multiline' = True."
+                )
+            records.append(record_2)
+
+        # Iterate over the read and unread records and upload sequentially
+        for iterator in (records, reader):
+            for record in iterator:
+                if cid_required:
+                    # Grab the cid, if required for the URL
+                    cid = record.pop("cid", None)
+                    if not cid:
+                        raise OnyxClientError("Record requires a 'cid' for upload.")
+                    url = OnyxClient.ENDPOINTS[endpoint](
+                        self.config.domain, project, cid
                     )
-                records.append(record_2)
+                else:
+                    url = OnyxClient.ENDPOINTS[endpoint](self.config.domain, project)
 
-            # Iterate over the read and unread records and upload sequentially
-            for iterator in (records, reader):
-                for record in iterator:
-                    if cid_required:
-                        # Grab the cid, if required for the URL
-                        cid = record.pop("cid", None)
-                        if not cid:
-                            raise OnyxClientError("Record requires a 'cid' for upload.")
-                        url = OnyxClient.ENDPOINTS[endpoint](
-                            self.config.domain, project, cid
-                        )
-                    else:
-                        url = OnyxClient.ENDPOINTS[endpoint](
-                            self.config.domain, project
-                        )
-
-                    response = self._request(
-                        method=method,
-                        url=url,
-                        json=record | fields if fields else record,
-                    )
-                    yield response
-
-        finally:
-            # If the file was opened within this function, close it
-            if csv_path and csv_file is not sys.stdin:
-                csv_file.close()
+                response = self._request(
+                    method=method,
+                    url=url,
+                    json=record | fields if fields else record,
+                )
+                yield response
 
     def _csv_handle_multiline(
         self,
@@ -540,8 +519,7 @@ class OnyxClientBase:
     def csv_create(
         self,
         project: str,
-        csv_path: Optional[str] = None,
-        csv_file: Optional[IO] = None,
+        csv_file: TextIO,
         fields: Optional[Dict[str, Any]] = None,
         delimiter: Optional[str] = None,
         multiline: bool = False,
@@ -551,7 +529,6 @@ class OnyxClientBase:
             method="post",
             endpoint="create",
             project=project,
-            csv_path=csv_path,
             csv_file=csv_file,
             fields=fields,
             delimiter=delimiter,
@@ -562,8 +539,7 @@ class OnyxClientBase:
     def csv_update(
         self,
         project: str,
-        csv_path: Optional[str] = None,
-        csv_file: Optional[IO] = None,
+        csv_file: TextIO,
         fields: Optional[Dict[str, Any]] = None,
         delimiter: Optional[str] = None,
         multiline: bool = False,
@@ -573,7 +549,6 @@ class OnyxClientBase:
             method="patch",
             endpoint="update",
             project=project,
-            csv_path=csv_path,
             csv_file=csv_file,
             fields=fields,
             delimiter=delimiter,
@@ -585,8 +560,7 @@ class OnyxClientBase:
     def csv_delete(
         self,
         project: str,
-        csv_path: Optional[str] = None,
-        csv_file: Optional[IO] = None,
+        csv_file: TextIO,
         delimiter: Optional[str] = None,
         multiline: bool = False,
     ) -> Generator[requests.Response, Any, None]:
@@ -594,7 +568,6 @@ class OnyxClientBase:
             method="delete",
             endpoint="delete",
             project=project,
-            csv_path=csv_path,
             csv_file=csv_file,
             delimiter=delimiter,
             multiline=multiline,
@@ -707,7 +680,8 @@ def onyx_errors(method):
 
             except HTTPError as e:
                 if e.response is None:
-                    raise e
+                    # TODO: Seems this does not need handling?
+                    raise e  #  type: ignore
                 elif e.response.status_code < 500:
                     raise OnyxRequestError(
                         message=e.args[0],
@@ -730,7 +704,8 @@ def onyx_errors(method):
 
             except HTTPError as e:
                 if e.response is None:
-                    raise e
+                    # TODO: Seems this does not need handling?
+                    raise e  #  type: ignore
                 elif e.response.status_code < 500:
                     raise OnyxRequestError(
                         message=e.args[0],
@@ -983,8 +958,7 @@ class OnyxClient(OnyxClientBase):
     def csv_create(
         self,
         project: str,
-        csv_path: Optional[str] = None,
-        csv_file: Optional[IO] = None,
+        csv_file: TextIO,
         fields: Optional[Dict[str, Any]] = None,
         delimiter: Optional[str] = None,
         multiline: bool = False,
@@ -994,7 +968,6 @@ class OnyxClient(OnyxClientBase):
         Use a CSV file to create record(s) in a project.
 
         :param project: Name of the project.
-        :param csv_path: Path to the CSV file being used for record upload.
         :param csv_file: File object for the CSV file being used for record upload.
         :param fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
         :param delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
@@ -1004,7 +977,6 @@ class OnyxClient(OnyxClientBase):
 
         responses = super().csv_create(
             project,
-            csv_path=csv_path,
             csv_file=csv_file,
             fields=fields,
             delimiter=delimiter,
@@ -1017,8 +989,7 @@ class OnyxClient(OnyxClientBase):
     def csv_update(
         self,
         project: str,
-        csv_path: Optional[str] = None,
-        csv_file: Optional[IO] = None,
+        csv_file: TextIO,
         fields: Optional[Dict[str, Any]] = None,
         delimiter: Optional[str] = None,
         multiline: bool = False,
@@ -1028,7 +999,6 @@ class OnyxClient(OnyxClientBase):
         Use a CSV file to update record(s) in a project.
 
         :param project: Name of the project.
-        :param csv_path: Path to the CSV file being used for record upload.
         :param csv_file: File object for the CSV file being used for record upload.
         :param fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
         :param delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
@@ -1038,7 +1008,6 @@ class OnyxClient(OnyxClientBase):
 
         responses = super().csv_update(
             project,
-            csv_path=csv_path,
             csv_file=csv_file,
             fields=fields,
             delimiter=delimiter,
@@ -1051,8 +1020,7 @@ class OnyxClient(OnyxClientBase):
     def csv_delete(
         self,
         project: str,
-        csv_path: Optional[str] = None,
-        csv_file: Optional[IO] = None,
+        csv_file: TextIO,
         delimiter: Optional[str] = None,
         multiline: bool = False,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
@@ -1060,7 +1028,6 @@ class OnyxClient(OnyxClientBase):
         Use a CSV file to delete record(s) in a project.
 
         :param project: Name of the project.
-        :param csv_path: Path to the CSV file being used for record upload.
         :param csv_file: File object for the CSV file being used for record upload.
         :param fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
         :param delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
@@ -1069,7 +1036,6 @@ class OnyxClient(OnyxClientBase):
 
         responses = super().csv_delete(
             project,
-            csv_path=csv_path,
             csv_file=csv_file,
             delimiter=delimiter,
             multiline=multiline,
