@@ -9,6 +9,8 @@ from onyx.exceptions import OnyxClientError
 DOMAIN = "https://onyx.domain"
 TOKEN = "token"
 EXPIRY = "expiry"
+FIRST_NAME = "first_name"
+LAST_NAME = "last_name"
 USERNAME = "username"
 PASSWORD = "password"
 EMAIL = "email"
@@ -351,6 +353,24 @@ DELETE_DATA = {
         "cid": CID,
     },
 }
+REGISTER_FIELDS = {
+    "first_name": FIRST_NAME,
+    "last_name": LAST_NAME,
+    "email": EMAIL,
+    "password": PASSWORD,
+    "site": SITE,
+}
+REGISTER_DATA = {
+    "status": "success",
+    "code": 201,
+    "data": {
+        "username": USERNAME,
+        "site": SITE,
+        "email": EMAIL,
+        "first_name": FIRST_NAME,
+        "last_name": LAST_NAME,
+    },
+}
 LOGIN_DATA = {
     "status": "success",
     "code": 200,
@@ -579,6 +599,24 @@ def mock_request(
     )
 
 
+def mock_register_post(url=None, json=None):
+    if not json:
+        json = {}
+
+    if url == OnyxClient.ENDPOINTS["register"](DOMAIN) and all(
+        json.get(field) == value for field, value in REGISTER_FIELDS.items()
+    ):
+        return MockResponse(REGISTER_DATA)
+
+    return MockResponse(
+        {
+            "status": "fail",
+            "code": 400,
+            "messages": {"detail": "Something bad happened."},
+        },
+    )
+
+
 class OnyxClientTestCase(TestCase):
     def setUp(self) -> None:
         self.config = OnyxConfig(
@@ -601,9 +639,9 @@ class OnyxClientTestCase(TestCase):
         )
         self.assertEqual(self.config.token, TOKEN)
 
-        for empty_project in ["", " ", None]:
+        for empty in ["", " ", None]:
             with pytest.raises(OnyxClientError):
-                self.client.fields(empty_project)
+                self.client.fields(empty)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_choices(self, mock_request):
@@ -1034,8 +1072,30 @@ class OnyxClientTestCase(TestCase):
                 delimiter="\t",
             )
 
-    def test_register(self):
-        pass  # TODO
+    @mock.patch("requests.post", side_effect=mock_register_post)
+    def test_register(self, mock_request):
+        self.assertEqual(
+            OnyxClient.register(
+                domain=DOMAIN,
+                first_name=FIRST_NAME,
+                last_name=LAST_NAME,
+                email=EMAIL,
+                site=SITE,
+                password=PASSWORD,
+            ),
+            REGISTER_DATA["data"],
+        )
+
+        for empty in ["", " ", None]:
+            with pytest.raises(OnyxClientError):
+                OnyxClient.register(
+                    domain=empty,
+                    first_name=FIRST_NAME,
+                    last_name=LAST_NAME,
+                    email=EMAIL,
+                    site=SITE,
+                    password=PASSWORD,
+                )
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_login(self, mock_request):
