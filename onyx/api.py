@@ -4,22 +4,14 @@ import inspect
 import requests
 from requests import HTTPError, RequestException
 from typing import Any, Generator, List, Dict, TextIO, Optional, Union
-from django_query_tools.client import F
 from .config import OnyxConfig
+from .field import OnyxField
 from .exceptions import (
     OnyxClientError,
     OnyxConnectionError,
     OnyxRequestError,
     OnyxServerError,
 )
-
-
-class OnyxField(F):
-    """
-    Class that represents a single field-value pair for use in Onyx queries.
-    """
-
-    pass
 
 
 class OnyxClientBase:

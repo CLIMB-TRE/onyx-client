@@ -14,6 +14,5 @@ setuptools.setup(
         "requests",
         "typer>=0.6.0",
         "rich",
-        "django-query-tools>=0.3.3",
     ],
 )

@@ -11,7 +11,7 @@ class OnyxError(Exception):
 
 class OnyxConfigError(OnyxError):
     """
-    Onyx config validation error.
+    OnyxConfig validation error.
     """
 
     pass
@@ -19,10 +19,16 @@ class OnyxConfigError(OnyxError):
 
 class OnyxClientError(OnyxError):
     """
-    Onyx client validation error.
+    OnyxClient validation error.
     """
 
     pass
+
+
+class OnyxFieldError(OnyxError):
+    """
+    OnyxField validation error.
+    """
 
 
 class OnyxConnectionError(OnyxError):
