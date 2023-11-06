@@ -2,11 +2,11 @@ import io
 import requests
 import pytest
 from unittest import TestCase, mock
-from onyx import OnyxConfig, OnyxClient
-from onyx.exceptions import OnyxClientError
+from onyx import OnyxConfig, OnyxClient, exceptions, OnyxField
 
 
 DOMAIN = "https://onyx.domain"
+BAD_DOMAIN = "not-onyx"
 TOKEN = "token"
 EXPIRY = "expiry"
 FIRST_NAME = "first_name"
@@ -17,10 +17,6 @@ EMAIL = "email"
 SITE = "site"
 OTHER_USERNAME = "other_username"
 OTHER_EMAIL = "other_email"
-PROJECT = "project"
-ADMIN_SCOPE = "admin"
-CID = "C-0123456789"
-CHOICE_FIELD = "choice_field"
 INVALID_AUTH_DATA = {
     "status": "fail",
     "code": 401,
@@ -28,6 +24,10 @@ INVALID_AUTH_DATA = {
         "detail": "Invalid username/password.",
     },
 }
+PROJECT = "project"
+NOT_PROJECT = "not_project"
+ERROR_CAUSING_PROJECT = "error_causing_project"
+ADMIN_SCOPE = "admin"
 PROJECT_DATA = {
     "status": "success",
     "code": 200,
@@ -49,7 +49,22 @@ FIELDS_DATA = {
                 "type": "text",
                 "required": True,
                 "description": "Unique identifier for a project. Set by Onyx.",
-            }
+            },
+            "sample_id": {
+                "type": "text",
+                "required": True,
+                "description": "Unique identifier for a biological sample.",
+            },
+            "run_name": {
+                "type": "text",
+                "required": True,
+                "description": "Unique identifier for a sequencing run.",
+            },
+            "source_type": {
+                "type": "text",
+                "required": True,
+                "description": "Where was the sample sourced. Is it human, animal... or something else...",
+            },
         },
     },
 }
@@ -64,38 +79,76 @@ FIELDS_ADMIN_DATA = {
                 "required": True,
                 "description": "Unique identifier for a project. Set by Onyx.",
             },
-            "suppressed": {
-                "type": "bool",
+            "sample_id": {
+                "type": "text",
                 "required": True,
-                "description": "True/False for whether a record is suppressed. Set by Onyx.",
+                "description": "Unique identifier for a biological sample.",
+            },
+            "run_name": {
+                "type": "text",
+                "required": True,
+                "description": "Unique identifier for a sequencing run.",
+            },
+            "source_type": {
+                "type": "text",
+                "required": False,
+                "description": "Where was the sample sourced.",
+            },
+            "country": {
+                "type": "bool",
+                "required": False,
+                "description": "Country of origin for the sample.",
+                "values": [
+                    "England",
+                    "N. Ireland",
+                    "Scotland",
+                    "Wales",
+                ],
             },
         },
     },
 }
+FIELDS_NOT_PROJECT_DATA = {
+    "status": "fail",
+    "code": 404,
+    "messages": {
+        "detail": "Project not found.",
+    },
+}
+FIELDS_ERROR_CAUSING_PROJECT_DATA = {
+    "status": "fail",
+    "code": 500,
+    "messages": {
+        "detail": "Internal server error. Oh dear...",
+    },
+}
+CHOICE_FIELD = "country"
 CHOICES_DATA = {
     "status": "success",
     "code": 200,
     "data": [
-        "choice_1",
-        "choice_2",
-        "choice_3",
+        "England",
+        "N. Ireland",
+        "Scotland",
+        "Wales",
     ],
 }
+CID = "C-0123456789"
 CREATE_FIELDS = {
-    "field_1": "value_1",
-    "field_2": "value_2",
+    "sample_id": "sample-123",
+    "run_name": "run-456",
 }
-CSV_CREATE_EMPTY_FILE = "field_1,field_2\n"
-TSV_CREATE_EMPTY_FILE = "field_1\tfield_2\n"
-CSV_CREATE_SINGLE_FILE = "field_1,field_2\nvalue_1,value_2"
-TSV_CREATE_SINGLE_FILE = "field_1\tfield_2\nvalue_1\tvalue_2"
-CSV_CREATE_MULTI_FILE = "field_1,field_2\nvalue_1,value_2\nvalue_1,value_2"
-TSV_CREATE_MULTI_FILE = "field_1\tfield_2\nvalue_1\tvalue_2\nvalue_1\tvalue_2"
-CSV_CREATE_SINGLE_MISSING_FILE = "field_1\nvalue_1"
-TSV_CREATE_SINGLE_MISSING_FILE = "field_1\nvalue_1"
-CSV_CREATE_MULTI_MISSING_FILE = "field_1\nvalue_1\nvalue_1"
-TSV_CREATE_MULTI_MISSING_FILE = "field_1\nvalue_1\nvalue_1"
-MISSING_CREATE_FIELDS = {"field_2": "value_2"}
+CSV_CREATE_EMPTY_FILE = "sample_id,run_name\n"
+TSV_CREATE_EMPTY_FILE = "sample_id\trun_name\n"
+CSV_CREATE_SINGLE_FILE = "sample_id,run_name\nsample-123,run-456"
+TSV_CREATE_SINGLE_FILE = "sample_id\trun_name\nsample-123\trun-456"
+CSV_CREATE_MULTI_FILE = "sample_id,run_name\nsample-123,run-456\nsample-123,run-456"
+TSV_CREATE_MULTI_FILE = "sample_id\trun_name\nsample-123\trun-456\nsample-123\trun-456"
+CSV_CREATE_SINGLE_MISSING_FILE = "sample_id\nsample-123"
+TSV_CREATE_SINGLE_MISSING_FILE = "sample_id\nsample-123"
+CSV_CREATE_MULTI_MISSING_FILE = "sample_id\nsample-123\nsample-123"
+TSV_CREATE_MULTI_MISSING_FILE = "sample_id\nsample-123\nsample-123"
+MISSING_CREATE_FIELDS = {"run_name": "run-456"}
 CREATE_DATA = {
     "status": "success",
     "code": 201,
@@ -114,17 +167,21 @@ GET_DATA = {
     "status": "success",
     "code": 200,
     "data": {
-        "field_1": "value_1",
-        "field_2": "value_2",
+        "cid": CID,
+        "published_date": "2023-09-18",
+        "sample_id": "sample-123",
+        "run_name": "run-456",
     },
 }
 GET_ADMIN_DATA = {
     "status": "success",
     "code": 200,
     "data": {
-        "field_1": "value_1",
-        "field_2": "value_2",
-        "field_3": "value_3",
+        "cid": CID,
+        "published_date": "2023-09-18",
+        "sample_id": "sample-123",
+        "run_name": "run-456",
+        "country": "England",
     },
 }
 FILTER_PAGE_1_URL = f"{OnyxClient.ENDPOINTS['filter'](DOMAIN, PROJECT)}?cursor=page_1"
@@ -136,16 +193,22 @@ FILTER_PAGE_1_DATA = {
     "previous": None,
     "data": [
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
         },
     ],
 }
@@ -156,16 +219,65 @@ FILTER_PAGE_2_DATA = {
     "previous": FILTER_PAGE_1_URL,
     "data": [
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+        },
+    ],
+}
+SAMPLE_ID = "sample-abc"
+RUN_NAME = "run-def"
+FILTER_SPECIFIC_DATA = {
+    "status": "success",
+    "code": 200,
+    "next": None,
+    "previous": None,
+    "data": [
+        {
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-abc",
+            "run_name": "run-def",
+        },
+    ],
+}
+INCLUDE_FIELDS = ["cid", "published_date"]
+FILTER_SPECIFIC_INCLUDE_DATA = {
+    "status": "success",
+    "code": 200,
+    "next": None,
+    "previous": None,
+    "data": [
+        {
+            "cid": CID,
+            "published_date": "2023-09-18",
+        },
+    ],
+}
+EXCLUDE_FIELDS = ["run_name"]
+FILTER_SPECIFIC_EXCLUDE_DATA = {
+    "status": "success",
+    "code": 200,
+    "next": None,
+    "previous": None,
+    "data": [
+        {
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-abc",
         },
     ],
 }
@@ -178,19 +290,25 @@ FILTER_PAGE_1_ADMIN_DATA = {
     "previous": None,
     "data": [
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
-            "field_3": "value_3",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+            "country": "England",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
-            "field_3": "value_3",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+            "country": "England",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
-            "field_3": "value_3",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+            "country": "England",
         },
     ],
 }
@@ -201,19 +319,25 @@ FILTER_PAGE_2_ADMIN_DATA = {
     "previous": FILTER_PAGE_1_ADMIN_URL,
     "data": [
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
-            "field_3": "value_3",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+            "country": "England",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
-            "field_3": "value_3",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+            "country": "England",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
-            "field_3": "value_3",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+            "country": "England",
         },
     ],
 }
@@ -226,16 +350,22 @@ QUERY_PAGE_1_DATA = {
     "previous": None,
     "data": [
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
         },
     ],
 }
@@ -246,19 +376,26 @@ QUERY_PAGE_2_DATA = {
     "previous": QUERY_PAGE_1_URL,
     "data": [
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
         },
     ],
 }
+QUERY_SPECIFIC_BODY = {"&": [{"sample_id": SAMPLE_ID}, {"run_name": RUN_NAME}]}
 QUERY_PAGE_1_ADMIN_URL = f"{OnyxClient.ENDPOINTS['query'](DOMAIN, PROJECT)}?cursor=page_1&scope={ADMIN_SCOPE}"
 QUERY_PAGE_2_ADMIN_URL = f"{OnyxClient.ENDPOINTS['query'](DOMAIN, PROJECT)}?cursor=page_2&scope={ADMIN_SCOPE}"
 QUERY_PAGE_1_ADMIN_DATA = {
@@ -268,19 +405,25 @@ QUERY_PAGE_1_ADMIN_DATA = {
     "previous": None,
     "data": [
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
-            "field_3": "value_3",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+            "country": "England",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
-            "field_3": "value_3",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+            "country": "England",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
-            "field_3": "value_3",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+            "country": "England",
         },
     ],
 }
@@ -291,40 +434,50 @@ QUERY_PAGE_2_ADMIN_DATA = {
     "previous": QUERY_PAGE_1_ADMIN_URL,
     "data": [
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
-            "field_3": "value_3",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+            "country": "England",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
-            "field_3": "value_3",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+            "country": "England",
         },
         {
-            "field_1": "value_1",
-            "field_2": "value_2",
-            "field_3": "value_3",
+            "cid": CID,
+            "published_date": "2023-09-18",
+            "sample_id": "sample-123",
+            "run_name": "run-456",
+            "country": "England",
         },
     ],
 }
 UPDATE_FIELDS = {
-    "field_3": "value_3",
-    "field_4": "value_4",
+    "country": "England",
+    "source_type": "humanoid",
 }
-CSV_UPDATE_EMPTY_FILE = "cid,field_3,field_4\n"
-TSV_UPDATE_EMPTY_FILE = "cid\tfield_3\tfield_4\n"
-CSV_UPDATE_SINGLE_FILE = f"cid,field_3,field_4\n{CID},value_3,value_4"
-TSV_UPDATE_SINGLE_FILE = f"cid\tfield_3\tfield_4\n{CID}\tvalue_3\tvalue_4"
+CSV_UPDATE_EMPTY_FILE = "cid,country,source_type\n"
+TSV_UPDATE_EMPTY_FILE = "cid\tcountry\tsource_type\n"
+CSV_UPDATE_SINGLE_FILE = f"cid,country,source_type\n{CID},England,humanoid"
+TSV_UPDATE_SINGLE_FILE = f"cid\tcountry\tsource_type\n{CID}\tEngland\thumanoid"
 CSV_UPDATE_MULTI_FILE = (
-    f"cid,field_3,field_4\n{CID},value_3,value_4\n{CID},value_3,value_4"
+    f"cid,country,source_type\n{CID},England,humanoid\n{CID},England,humanoid"
 )
 TSV_UPDATE_MULTI_FILE = (
-    f"cid\tfield_3\tfield_4\n{CID}\tvalue_3\tvalue_4\n{CID}\tvalue_3\tvalue_4"
+    f"cid\tcountry\tsource_type\n{CID}\tEngland\thumanoid\n{CID}\tEngland\thumanoid"
 )
-CSV_UPDATE_SINGLE_MISSING_FILE = "field_3,field_4\nvalue_3,value_4"
-TSV_UPDATE_SINGLE_MISSING_FILE = "field_3\tfield_4\nvalue_3\tvalue_4"
-CSV_UPDATE_MULTI_MISSING_FILE = "field_3,field_4\nvalue_3,value_4\nvalue_3,value_4"
-TSV_UPDATE_MULTI_MISSING_FILE = "field_3\tfield_4\nvalue_3\tvalue_4\nvalue_3\tvalue_4"
+CSV_UPDATE_SINGLE_MISSING_FILE = "country,source_type\nEngland,humanoid"
+TSV_UPDATE_SINGLE_MISSING_FILE = "country\tsource_type\nEngland\thumanoid"
+CSV_UPDATE_MULTI_MISSING_FILE = (
+    "country,source_type\nEngland,humanoid\nEngland,humanoid"
+)
+TSV_UPDATE_MULTI_MISSING_FILE = (
+    "country\tsource_type\nEngland\thumanoid\nEngland\thumanoid"
+)
 MISSING_UPDATE_FIELDS = {"cid": CID}
 UPDATE_DATA = {
     "status": "success",
@@ -461,7 +614,7 @@ class MockResponse:
     def raise_for_status(self):
         if self.status_code >= 400:
             raise requests.HTTPError(
-                "Something bad happened.",
+                "Something terrible happened.",
                 response=self,  #  type: ignore
             )
 
@@ -477,11 +630,17 @@ def mock_request(
     if not headers:
         headers = {}
 
+    if not url:
+        url = ""
+
     if not params:
         params = {}
 
     if not json:
         json = {}
+
+    if url.startswith(BAD_DOMAIN):
+        raise requests.ConnectionError
 
     if method == "post" and url == OnyxClient.ENDPOINTS["login"](DOMAIN):
         if auth == (USERNAME, PASSWORD):
@@ -507,7 +666,15 @@ def mock_request(
 
         elif url == OnyxClient.ENDPOINTS["query"](DOMAIN, PROJECT):
             if params.get("scope") == None:
-                return MockResponse(QUERY_PAGE_1_DATA)
+                if json == QUERY_SPECIFIC_BODY:
+                    if params.get("include") == INCLUDE_FIELDS:
+                        return MockResponse(FILTER_SPECIFIC_INCLUDE_DATA)
+                    elif params.get("exclude") == EXCLUDE_FIELDS:
+                        return MockResponse(FILTER_SPECIFIC_EXCLUDE_DATA)
+                    else:
+                        return MockResponse(FILTER_SPECIFIC_DATA)
+                else:
+                    return MockResponse(QUERY_PAGE_1_DATA)
 
             elif params.get("scope") == ADMIN_SCOPE:
                 return MockResponse(QUERY_PAGE_1_ADMIN_DATA)
@@ -535,6 +702,12 @@ def mock_request(
             elif params.get("scope") == ADMIN_SCOPE:
                 return MockResponse(FIELDS_ADMIN_DATA)
 
+        elif url == OnyxClient.ENDPOINTS["fields"](DOMAIN, NOT_PROJECT):
+            return MockResponse(FIELDS_NOT_PROJECT_DATA)
+
+        elif url == OnyxClient.ENDPOINTS["fields"](DOMAIN, ERROR_CAUSING_PROJECT):
+            return MockResponse(FIELDS_ERROR_CAUSING_PROJECT_DATA)
+
         elif url == OnyxClient.ENDPOINTS["choices"](DOMAIN, PROJECT, CHOICE_FIELD):
             return MockResponse(CHOICES_DATA)
 
@@ -547,7 +720,18 @@ def mock_request(
 
         elif url == OnyxClient.ENDPOINTS["filter"](DOMAIN, PROJECT):
             if params.get("scope") == None:
-                return MockResponse(FILTER_PAGE_1_DATA)
+                if (
+                    params.get("sample_id") == SAMPLE_ID
+                    and params.get("run_name") == RUN_NAME
+                ):
+                    if params.get("include") == INCLUDE_FIELDS:
+                        return MockResponse(FILTER_SPECIFIC_INCLUDE_DATA)
+                    elif params.get("exclude") == EXCLUDE_FIELDS:
+                        return MockResponse(FILTER_SPECIFIC_EXCLUDE_DATA)
+                    else:
+                        return MockResponse(FILTER_SPECIFIC_DATA)
+                else:
+                    return MockResponse(FILTER_PAGE_1_DATA)
 
             elif params.get("scope") == ADMIN_SCOPE:
                 return MockResponse(FILTER_PAGE_1_ADMIN_DATA)
@@ -594,7 +778,7 @@ def mock_request(
         {
             "status": "fail",
             "code": 400,
-            "messages": {"detail": "Something bad happened."},
+            "messages": {"detail": "Something terrible happened."},
         },
     )
 
@@ -612,7 +796,7 @@ def mock_register_post(url=None, json=None):
         {
             "status": "fail",
             "code": 400,
-            "messages": {"detail": "Something bad happened."},
+            "messages": {"detail": "Something terrible happened."},
         },
     )
 
@@ -625,6 +809,28 @@ class OnyxClientTestCase(TestCase):
             password=PASSWORD,
         )
         self.client = OnyxClient(self.config)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_connection_error(self, mock_request):
+        self.config.domain = BAD_DOMAIN
+        with pytest.raises(exceptions.OnyxConnectionError):
+            self.client.projects()
+
+        self.assertEqual(self.config.token, None)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_request_error(self, mock_request):
+        with pytest.raises(exceptions.OnyxRequestError):
+            self.client.fields(NOT_PROJECT)
+
+        self.assertEqual(self.config.token, TOKEN)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_server_error(self, mock_request):
+        with pytest.raises(exceptions.OnyxServerError):
+            self.client.fields(ERROR_CAUSING_PROJECT)
+
+        self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_projects(self, mock_request):
@@ -640,7 +846,7 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.fields(empty)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
@@ -651,10 +857,10 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.choices(empty, CHOICE_FIELD)
 
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.choices(PROJECT, empty)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
@@ -669,31 +875,61 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.create(empty, CREATE_FIELDS)
 
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.create(empty, CREATE_FIELDS, test=True)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_get(self, mock_request):
-        # TODO: Test fields, include, exclude
         self.assertEqual(self.client.get(PROJECT, CID), GET_DATA["data"])
         self.assertEqual(
             self.client.get(PROJECT, CID, scope=ADMIN_SCOPE), GET_ADMIN_DATA["data"]
         )
+        self.assertEqual(
+            self.client.get(
+                PROJECT, fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME}
+            ),
+            FILTER_SPECIFIC_DATA["data"][0],
+        )
+        self.assertEqual(
+            self.client.get(
+                PROJECT,
+                fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME},
+                include=INCLUDE_FIELDS,
+            ),
+            FILTER_SPECIFIC_INCLUDE_DATA["data"][0],
+        )
+        self.assertEqual(
+            self.client.get(
+                PROJECT,
+                fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME},
+                exclude=EXCLUDE_FIELDS,
+            ),
+            FILTER_SPECIFIC_EXCLUDE_DATA["data"][0],
+        )
         self.assertEqual(self.config.token, TOKEN)
 
+        # At least one of CID and fields is required
+        with pytest.raises(exceptions.OnyxClientError):
+            self.client.get(PROJECT)
+
+        # More than one record returned
+        with pytest.raises(exceptions.OnyxClientError):
+            self.client.get(
+                PROJECT, fields={"sample_id": "sample-123", "run_name": "run-456"}
+            )
+
         for empty in ["", " ", None]:
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.get(empty, CID)
 
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.get(PROJECT, empty)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_filter(self, mock_request):
-        # TODO: Test fields, include, exclude
         self.assertEqual(
             [x for x in self.client.filter(PROJECT)],
             FILTER_PAGE_1_DATA["data"] + FILTER_PAGE_2_DATA["data"],
@@ -702,15 +938,45 @@ class OnyxClientTestCase(TestCase):
             [x for x in self.client.filter(PROJECT, scope=ADMIN_SCOPE)],
             FILTER_PAGE_1_ADMIN_DATA["data"] + FILTER_PAGE_2_ADMIN_DATA["data"],
         )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.filter(
+                    PROJECT, fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME}
+                )
+            ],
+            FILTER_SPECIFIC_DATA["data"],
+        )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.filter(
+                    PROJECT,
+                    fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME},
+                    include=INCLUDE_FIELDS,
+                )
+            ],
+            FILTER_SPECIFIC_INCLUDE_DATA["data"],
+        )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.filter(
+                    PROJECT,
+                    fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME},
+                    exclude=EXCLUDE_FIELDS,
+                )
+            ],
+            FILTER_SPECIFIC_EXCLUDE_DATA["data"],
+        )
         self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 [x for x in self.client.filter(empty)]
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_query(self, mock_request):
-        # TODO: Test query, include, exclude
         self.assertEqual(
             [x for x in self.client.query(PROJECT)],
             QUERY_PAGE_1_DATA["data"] + QUERY_PAGE_2_DATA["data"],
@@ -719,10 +985,42 @@ class OnyxClientTestCase(TestCase):
             [x for x in self.client.query(PROJECT, scope=ADMIN_SCOPE)],
             QUERY_PAGE_1_ADMIN_DATA["data"] + QUERY_PAGE_2_ADMIN_DATA["data"],
         )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.query(
+                    PROJECT,
+                    query=OnyxField(sample_id=SAMPLE_ID) & OnyxField(run_name=RUN_NAME),
+                )
+            ],
+            FILTER_SPECIFIC_DATA["data"],
+        )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.query(
+                    PROJECT,
+                    query=OnyxField(sample_id=SAMPLE_ID) & OnyxField(run_name=RUN_NAME),
+                    include=INCLUDE_FIELDS,
+                )
+            ],
+            FILTER_SPECIFIC_INCLUDE_DATA["data"],
+        )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.query(
+                    PROJECT,
+                    query=OnyxField(sample_id=SAMPLE_ID) & OnyxField(run_name=RUN_NAME),
+                    exclude=EXCLUDE_FIELDS,
+                )
+            ],
+            FILTER_SPECIFIC_EXCLUDE_DATA["data"],
+        )
         self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 [x for x in self.client.query(empty)]
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
@@ -737,16 +1035,16 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.update(empty, CID, UPDATE_FIELDS)
 
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.update(empty, CID, UPDATE_FIELDS, test=True)
 
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.update(PROJECT, empty, UPDATE_FIELDS)
 
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.update(PROJECT, empty, UPDATE_FIELDS, test=True)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
@@ -755,10 +1053,10 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.delete(empty, CID)
 
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.delete(PROJECT, empty)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
@@ -845,26 +1143,26 @@ class OnyxClientTestCase(TestCase):
             )
         self.assertEqual(self.config.token, TOKEN)
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_create(
                 PROJECT,
                 io.StringIO(CSV_CREATE_EMPTY_FILE),
             )
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_create(
                 PROJECT,
                 io.StringIO(TSV_CREATE_EMPTY_FILE),
                 delimiter="\t",
             )
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_create(
                 PROJECT,
                 io.StringIO(CSV_CREATE_MULTI_FILE),
             )
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_create(
                 PROJECT,
                 io.StringIO(TSV_CREATE_MULTI_FILE),
@@ -955,26 +1253,26 @@ class OnyxClientTestCase(TestCase):
             )
         self.assertEqual(self.config.token, TOKEN)
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_update(
                 PROJECT,
                 io.StringIO(CSV_UPDATE_EMPTY_FILE),
             )
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_update(
                 PROJECT,
                 io.StringIO(TSV_UPDATE_EMPTY_FILE),
                 delimiter="\t",
             )
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_update(
                 PROJECT,
                 io.StringIO(CSV_UPDATE_MULTI_FILE),
             )
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_update(
                 PROJECT,
                 io.StringIO(TSV_UPDATE_MULTI_FILE),
@@ -982,27 +1280,27 @@ class OnyxClientTestCase(TestCase):
             )
 
         # Testing lack of CID for update
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_update(
                 PROJECT,
                 io.StringIO(CSV_UPDATE_SINGLE_MISSING_FILE),
             )
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_update(
                 PROJECT,
                 io.StringIO(CSV_UPDATE_MULTI_MISSING_FILE),
                 multiline=True,
             )
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_update(
                 PROJECT,
                 io.StringIO(TSV_UPDATE_SINGLE_MISSING_FILE),
                 delimiter="\t",
             )
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_update(
                 PROJECT,
                 io.StringIO(TSV_UPDATE_MULTI_MISSING_FILE),
@@ -1046,26 +1344,26 @@ class OnyxClientTestCase(TestCase):
         )
         self.assertEqual(self.config.token, TOKEN)
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_delete(
                 PROJECT,
                 io.StringIO(CSV_DELETE_EMPTY_FILE),
             )
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_delete(
                 PROJECT,
                 io.StringIO(TSV_DELETE_EMPTY_FILE),
                 delimiter="\t",
             )
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_delete(
                 PROJECT,
                 io.StringIO(CSV_DELETE_MULTI_FILE),
             )
 
-        with pytest.raises(OnyxClientError):
+        with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_delete(
                 PROJECT,
                 io.StringIO(TSV_DELETE_MULTI_FILE),
@@ -1087,7 +1385,7 @@ class OnyxClientTestCase(TestCase):
         )
 
         for empty in ["", " ", None]:
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 OnyxClient.register(
                     domain=empty,
                     first_name=FIRST_NAME,
@@ -1123,7 +1421,7 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
-            with pytest.raises(OnyxClientError):
+            with pytest.raises(exceptions.OnyxClientError):
                 self.client.approve(empty)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
