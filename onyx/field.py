@@ -14,6 +14,8 @@ class OnyxField:
     Class that represents a single field-value pair for use in Onyx queries.
     """
 
+    __slots__ = "query"
+
     def __init__(self, **kwargs) -> None:
         if len(kwargs) != 1:
             raise OnyxFieldError(
