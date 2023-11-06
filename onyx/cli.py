@@ -1,3 +1,4 @@
+import os
 import csv
 import sys
 import enum
@@ -15,7 +16,14 @@ from .api import OnyxClient, onyx_errors
 from . import exceptions
 
 
-console = Console()
+color_system = "auto"
+if os.getenv("ONYX_COLOURS", "").upper().strip() == "NONE":
+    from typer import rich_utils
+
+    rich_utils.COLOR_SYSTEM = None
+    color_system = None
+
+console = Console(color_system=color_system)
 
 
 class DefinedOrderGroup(TyperGroup):
@@ -96,7 +104,7 @@ def handle_error(e: Exception):
         raise click.exceptions.ClickException(formatted_response)
 
     elif isinstance(e, exceptions.OnyxError):
-        raise click.exceptions.ClickException(e.args[0])
+        raise click.exceptions.ClickException(str(e))
 
     else:
         raise e

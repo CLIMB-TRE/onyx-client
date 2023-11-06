@@ -687,16 +687,16 @@ def onyx_errors(method):
                     raise e  #  type: ignore
                 elif e.response.status_code < 500:
                     raise OnyxRequestError(
-                        message=e.args[0],
+                        message=str(e),
                         response=e.response,
                     ) from e
                 else:
                     raise OnyxServerError(
-                        message=e.args[0],
+                        message=str(e),
                         response=e.response,
                     ) from e
             except RequestException as e:
-                raise OnyxConnectionError(e.args[0]) from e
+                raise OnyxConnectionError(str(e)) from e
 
         return wrapped_generator_method
     else:
@@ -711,16 +711,16 @@ def onyx_errors(method):
                     raise e  #  type: ignore
                 elif e.response.status_code < 500:
                     raise OnyxRequestError(
-                        message=e.args[0],
+                        message=str(e),
                         response=e.response,
                     ) from e
                 else:
                     raise OnyxServerError(
-                        message=e.args[0],
+                        message=str(e),
                         response=e.response,
                     ) from e
             except RequestException as e:
-                raise OnyxConnectionError(e.args[0]) from e
+                raise OnyxConnectionError(str(e)) from e
 
         return wrapped_method
 
