@@ -139,6 +139,21 @@ def create_table(
     return table
 
 
+def parse_fields_option(fields_option: List[str]) -> Dict[str, str]:
+    fields = {}
+    for name_value in fields_option:
+        try:
+            name, value = name_value.split("=")
+        except ValueError:
+            raise click.BadParameter(
+                "'name=value' syntax was not used.",
+                param_hint="'-f' / '--field'",
+            )
+        name = name.replace(".", "__")
+        fields.setdefault(name, []).append(value)
+    return fields
+
+
 class HelpText(enum.Enum):
     FIELD = "Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax."
     INCLUDE = "Specify which fields to include in the output."
@@ -273,7 +288,15 @@ def fields(
 def get(
     context: typer.Context,
     project: str = typer.Argument(...),
-    cid: str = typer.Argument(...),
+    cid: Optional[str] = typer.Argument(
+        None,
+    ),
+    field: Optional[List[str]] = typer.Option(
+        None,
+        "-f",
+        "--field",
+        help=HelpText.FIELD.value,
+    ),
     include: Optional[List[str]] = typer.Option(
         None,
         "-i",
@@ -299,9 +322,16 @@ def get(
 
     try:
         api = setup_onyx_api(context.obj)
+
+        if field:
+            fields = parse_fields_option(field)
+        else:
+            fields = {}
+
         record = api.client.get(
             project,
             cid,
+            fields=fields,
             include=include,
             exclude=exclude,
             scope=scope,
@@ -353,18 +383,10 @@ def filter(
     try:
         api = setup_onyx_api(context.obj)
 
-        fields = {}
         if field:
-            for name_value in field:
-                try:
-                    name, value = name_value.split("=")
-                except ValueError:
-                    raise click.BadParameter(
-                        "'name=value' syntax was not used",
-                        param_hint="'-f' / '--field'",
-                    )
-                name = name.replace(".", "__")
-                fields.setdefault(name, []).append(value)
+            fields = parse_fields_option(field)
+        else:
+            fields = {}
 
         if format == DataFormats.JSON:
             # ...nobody needs to know

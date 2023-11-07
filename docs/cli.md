@@ -71,16 +71,17 @@ Get a record from a project.
 **Usage**:
 
 ```console
-$ onyx get [OPTIONS] PROJECT CID
+$ onyx get [OPTIONS] PROJECT [CID]
 ```
 
 **Arguments**:
 
 * `PROJECT`: [required]
-* `CID`: [required]
+* `[CID]`
 
 **Options**:
 
+* `-f, --field TEXT`: Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax.
 * `-i, --include TEXT`: Specify which fields to include in the output.
 * `-e, --exclude TEXT`: Specify which fields to exclude from the output.
 * `-s, --scope TEXT`: Access additional fields beyond the 'base' group of fields.
