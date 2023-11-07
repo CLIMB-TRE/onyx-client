@@ -222,25 +222,32 @@ class OnyxClientBase:
     @classmethod
     def _handle_endpoint(cls, endpoint, **kwargs):
         for name, val in kwargs.items():
-            if val is None or not str(val).strip():
+            if val is None:
                 raise OnyxClientError(f"Argument '{name}' was not provided.")
+
+            val = str(val).strip()
+
+            if not val:
+                raise OnyxClientError(f"Argument '{name}' was not provided.")
+
+            elif val.startswith("/"):
+                raise OnyxClientError(
+                    f"Argument '{name}' cannot have a value starting with '/'."
+                )
 
             # Crude but effective
             # Prevents calling other endpoints from the get() function with a cid equal to the endpoint name
             # Its not the end of the world if that did happen, but to the user it would be quite confusing
             if name == "cid":
-                if val in {"test", "query", "fields", "lookups", "choices"}:
-                    raise OnyxClientError(
-                        f"Argument '{name}' cannot have value '{val}'. This resolves to a different endpoint."
-                    )
-                if val.startswith("test/"):
-                    raise OnyxClientError(
-                        f"Argument '{name}' cannot start with value 'test/'. This resolves to a different endpoint."
-                    )
-                if val.startswith("choices/"):
-                    raise OnyxClientError(
-                        f"Argument '{name}' cannot start with value 'choices/'. This resolves to a different endpoint."
-                    )
+                for clash in ["test", "query", "fields", "lookups", "choices"]:
+                    if val == clash:
+                        raise OnyxClientError(
+                            f"Argument '{name}' cannot have value '{val}'. This resolves to a different endpoint."
+                        )
+                    elif val.startswith(f"{clash}/"):
+                        raise OnyxClientError(
+                            f"Argument '{name}' cannot start with value '{val}'. This resolves to a different endpoint."
+                        )
 
         return endpoint()
 

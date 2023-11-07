@@ -1,6 +1,6 @@
 # `onyx`
 
-Client Version: 2.1.0
+Client Version: 2.1.1
 
 **Usage**:
 
