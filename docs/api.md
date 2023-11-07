@@ -1,7 +1,5 @@
 # `onyx`
 
-Client Version: 2.0.0
-
 **[WARNING]**: THIS DOCUMENTATION IS NOT UP TO DATE.
 
 ## Uploading data

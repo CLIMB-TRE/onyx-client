@@ -27,7 +27,7 @@ $ onyx
                                                                                                
  Usage: onyx [OPTIONS] COMMAND [ARGS]...                                                        
                                                                                                 
- Client Version: 2.0.0                                                                          
+ Client Version: 2.1.0                                                                          
                                                                                                 
 ╭─ Options ────────────────────────────────────────────────────────────────────────────────────╮
 │ --domain    -d      TEXT  Domain name for connecting to Onyx. [env var: ONYX_DOMAIN]         │
