@@ -41,6 +41,7 @@ $ onyx projects [OPTIONS]
 
 **Options**:
 
+* `-F, --format [table|json]`: Set the file format of the returned data.  [default: table]
 * `--help`: Show this message and exit.
 
 ## `onyx fields`
@@ -60,6 +61,7 @@ $ onyx fields [OPTIONS] PROJECT
 **Options**:
 
 * `-s, --scope TEXT`: Access additional fields beyond the 'base' group of fields.
+* `-F, --format [table|json]`: Set the file format of the returned data.  [default: table]
 * `--help`: Show this message and exit.
 
 ## `onyx get`
@@ -124,6 +126,7 @@ $ onyx choices [OPTIONS] PROJECT FIELD
 
 **Options**:
 
+* `-F, --format [table|json]`: Set the file format of the returned data.  [default: table]
 * `--help`: Show this message and exit.
 
 ## `onyx profile`
@@ -138,6 +141,7 @@ $ onyx profile [OPTIONS]
 
 **Options**:
 
+* `-F, --format [table|json]`: Set the file format of the returned data.  [default: table]
 * `--help`: Show this message and exit.
 
 ## `onyx siteusers`
@@ -152,6 +156,7 @@ $ onyx siteusers [OPTIONS]
 
 **Options**:
 
+* `-F, --format [table|json]`: Set the file format of the returned data.  [default: table]
 * `--help`: Show this message and exit.
 
 ## `onyx auth`
@@ -263,6 +268,7 @@ $ onyx admin waiting [OPTIONS]
 
 **Options**:
 
+* `-F, --format [table|json]`: Set the file format of the returned data.  [default: table]
 * `--help`: Show this message and exit.
 
 ### `onyx admin approve`
@@ -295,4 +301,5 @@ $ onyx admin allusers [OPTIONS]
 
 **Options**:
 
+* `-F, --format [table|json]`: Set the file format of the returned data.  [default: table]
 * `--help`: Show this message and exit.
