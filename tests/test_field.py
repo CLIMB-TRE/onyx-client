@@ -28,6 +28,9 @@ class OnyxFieldTestCase(TestCase):
             OnyxField(sample_id="sample-123"),
         )
 
+        with pytest.raises(exceptions.OnyxFieldError):
+            assert OnyxField(sample_id="sample-123") == {"sample_id": "sample-123"}
+
     def test_and_operation(self):
         self.assertEqual(
             (
@@ -43,6 +46,9 @@ class OnyxFieldTestCase(TestCase):
                 ]
             },
         )
+
+        with pytest.raises(exceptions.OnyxFieldError):
+            OnyxField(sample_id="sample-123") & {"run_name": "run-456"}  #  type: ignore
 
     def test_or_operation(self):
         self.assertEqual(
@@ -60,6 +66,9 @@ class OnyxFieldTestCase(TestCase):
             },
         )
 
+        with pytest.raises(exceptions.OnyxFieldError):
+            OnyxField(sample_id="sample-123") | {"run_name": "run-456"}  #  type: ignore
+
     def test_xor_operation(self):
         self.assertEqual(
             (
@@ -75,6 +84,9 @@ class OnyxFieldTestCase(TestCase):
                 ]
             },
         )
+
+        with pytest.raises(exceptions.OnyxFieldError):
+            OnyxField(sample_id="sample-123") ^ {"run_name": "run-456"}  #  type: ignore
 
     def test_not_operation(self):
         self.assertEqual(
