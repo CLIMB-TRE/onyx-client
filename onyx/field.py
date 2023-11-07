@@ -33,7 +33,7 @@ class OnyxField:
             OnyxOperator.XOR,
             OnyxOperator.NOT,
         }:
-            if type(value) in [list, tuple, set]:
+            if type(value) in {list, tuple, set}:
                 value = ",".join(map(str, value))
 
         self.query = {field: value}
@@ -44,7 +44,7 @@ class OnyxField:
         """
         if not isinstance(field, OnyxField):
             raise OnyxFieldError(
-                f"Expected another instance of {type(self)}. Received: {type(field)}"
+                f"Expected another instance of the same type. Received: {type(field)}"
             )
 
     def _combine_on_associative(self, field: OnyxField, operation: str) -> OnyxField:
@@ -71,12 +71,20 @@ class OnyxField:
         # And then return {"&" : [{...}] + [{"|" : [{...}]}]} or {"&" : [{...}, {"|" : [{...}]}]}
         self_key, self_value = next(iter(self.query.items()))
         if self_key == operation:
+            if not isinstance(self_value, list):
+                raise OnyxFieldError(
+                    f"Expected associative operation key '{self_key}' to point to a list. Received: {type(self_value)}"
+                )
             self_query = self_value
         else:
             self_query = [self.query]
 
         field_key, field_value = next(iter(field.query.items()))
         if field_key == operation:
+            if not isinstance(field_value, list):
+                raise OnyxFieldError(
+                    f"Expected associative operation key '{field_key}' to point to a list. Received: {type(self_value)}"
+                )
             field_query = field_value
         else:
             field_query = [field.query]
@@ -108,6 +116,11 @@ class OnyxField:
         # If its also a NOT, we pull out the value and initialise that as the query
         self_key, self_value = next(iter(self.query.items()))
         if self_key == OnyxOperator.NOT:
+            if not isinstance(self_value, dict):
+                raise OnyxFieldError(
+                    f"Expected operation key '{self_key}' to point to a dict. Received: {type(self_value)}"
+                )
+
             return OnyxField(**self_value)
         else:
             return OnyxField(**{OnyxOperator.NOT: self.query})
