@@ -88,6 +88,10 @@ def setup_onyx_api(options: OnyxConfigOptions) -> OnyxAPI:
     return OnyxAPI(config, client)
 
 
+def json_dump_pretty(obj: Any):
+    return json.dumps(obj, indent=4)
+
+
 def handle_error(e: Exception):
     if isinstance(e, exceptions.OnyxHTTPError):
         try:
@@ -97,7 +101,7 @@ def handle_error(e: Exception):
             if detail:
                 formatted_response = detail
             else:
-                formatted_response = json.dumps(messages, indent=4)
+                formatted_response = json_dump_pretty(messages)
 
         except json.decoder.JSONDecodeError:
             formatted_response = e.response.text
@@ -143,10 +147,15 @@ class HelpText(enum.Enum):
     FORMAT = "Set the file format of the returned data."
 
 
-class Formats(enum.Enum):
+class DataFormats(enum.Enum):
     JSON = "json"
     CSV = "csv"
     TSV = "tsv"
+
+
+class InfoFormats(enum.Enum):
+    TABLE = "table"
+    JSON = "json"
 
 
 class Messages(enum.Enum):
@@ -157,6 +166,12 @@ class Messages(enum.Enum):
 @app.command()
 def projects(
     context: typer.Context,
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
 ):
     """
     View available projects.
@@ -165,23 +180,26 @@ def projects(
     try:
         api = setup_onyx_api(context.obj)
         projects = api.client.projects()
-        table = create_table(
-            data=projects,
-            map={
-                "Project": "project",
-                "Action": "action",
-                "Scope": "scope",
-            },
-            styles={
-                "action": {
-                    "view": "bold cyan",
-                    "add": "bold green",
-                    "change": "bold yellow",
-                    "delete": "bold red",
-                }
-            },
-        )
-        console.print(table)
+        if format == InfoFormats.TABLE:
+            table = create_table(
+                data=projects,
+                map={
+                    "Project": "project",
+                    "Action": "action",
+                    "Scope": "scope",
+                },
+                styles={
+                    "action": {
+                        "view": "bold cyan",
+                        "add": "bold green",
+                        "change": "bold yellow",
+                        "delete": "bold red",
+                    }
+                },
+            )
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(projects))
     except Exception as e:
         handle_error(e)
 
@@ -218,6 +236,12 @@ def fields(
         "--scope",
         help=HelpText.SCOPE.value,
     ),
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
 ):
     """
     View the field specification for a project.
@@ -229,15 +253,18 @@ def fields(
             project,
             scope=scope,
         )
-        table = Table(
-            caption=f"Fields specification for the '{project}' project. Version: {fields['version']}",
-            show_lines=True,
-        )
-        for column in ["Field", "Status", "Type", "Description", "Values"]:
-            table.add_column(column, overflow="fold")
+        if format == InfoFormats.TABLE:
+            table = Table(
+                caption=f"Fields specification for the '{project}' project. Version: {fields['version']}",
+                show_lines=True,
+            )
+            for column in ["Field", "Status", "Type", "Description", "Values"]:
+                table.add_column(column, overflow="fold")
 
-        add_fields(table, fields["fields"])
-        console.print(table)
+            add_fields(table, fields["fields"])
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(fields))
     except Exception as e:
         handle_error(e)
 
@@ -279,7 +306,7 @@ def get(
             exclude=exclude,
             scope=scope,
         )
-        typer.echo(json.dumps(record, indent=4))
+        typer.echo(json_dump_pretty(record))
     except Exception as e:
         handle_error(e)
 
@@ -312,8 +339,8 @@ def filter(
         "--scope",
         help=HelpText.SCOPE.value,
     ),
-    format: Optional[Formats] = typer.Option(
-        Formats.JSON.value,
+    format: Optional[DataFormats] = typer.Option(
+        DataFormats.JSON.value,
         "-F",
         "--format",
         help=HelpText.FORMAT.value,
@@ -339,7 +366,7 @@ def filter(
                 name = name.replace(".", "__")
                 fields.setdefault(name, []).append(value)
 
-        if format == Formats.JSON:
+        if format == DataFormats.JSON:
             # ...nobody needs to know
             results = onyx_errors(super(OnyxClient, api.client).filter)(
                 project,
@@ -356,7 +383,7 @@ def filter(
                     except json.decoder.JSONDecodeError:
                         raise click.exceptions.ClickException(result.text)
 
-                    rendered_response = json.dumps(result_json["data"], indent=4)
+                    rendered_response = json_dump_pretty(result_json["data"])
 
                     if result_json["previous"]:
                         if not rendered_response.startswith("[\n"):
@@ -390,7 +417,7 @@ def filter(
             if record:
                 writer = csv.DictWriter(
                     sys.stdout,
-                    delimiter="\t" if format == Formats.TSV else ",",
+                    delimiter="\t" if format == DataFormats.TSV else ",",
                     fieldnames=record.keys(),
                 )
                 writer.writeheader()
@@ -407,6 +434,12 @@ def choices(
     context: typer.Context,
     project: str = typer.Argument(...),
     field: str = typer.Argument(...),
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
 ):
     """
     View options for a choice field.
@@ -415,13 +448,16 @@ def choices(
     try:
         api = setup_onyx_api(context.obj)
         choices = api.client.choices(project, field)
-        table = Table(
-            show_lines=True,
-        )
-        table.add_column("Field")
-        table.add_column("Values")
-        table.add_row(field, ", ".join(choices))
-        console.print(table)
+        if format == InfoFormats.TABLE:
+            table = Table(
+                show_lines=True,
+            )
+            table.add_column("Field")
+            table.add_column("Values")
+            table.add_row(field, ", ".join(choices))
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(choices))
     except Exception as e:
         handle_error(e)
 
@@ -429,6 +465,12 @@ def choices(
 @app.command()
 def profile(
     context: typer.Context,
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
 ):
     """
     View profile information.
@@ -437,15 +479,18 @@ def profile(
     try:
         api = setup_onyx_api(context.obj)
         user = api.client.profile()
-        table = create_table(
-            data=[user],
-            map={
-                "Username": "username",
-                "Email": "email",
-                "Site": "site",
-            },
-        )
-        console.print(table)
+        if format == InfoFormats.TABLE:
+            table = create_table(
+                data=[user],
+                map={
+                    "Username": "username",
+                    "Email": "email",
+                    "Site": "site",
+                },
+            )
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(user))
     except Exception as e:
         handle_error(e)
 
@@ -453,6 +498,12 @@ def profile(
 @app.command()
 def siteusers(
     context: typer.Context,
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
 ):
     """
     View users from the same site.
@@ -461,15 +512,18 @@ def siteusers(
     try:
         api = setup_onyx_api(context.obj)
         users = api.client.site_users()
-        table = create_table(
-            data=users,
-            map={
-                "Username": "username",
-                "Email": "email",
-                "Site": "site",
-            },
-        )
-        console.print(table)
+        if format == InfoFormats.TABLE:
+            table = create_table(
+                data=users,
+                map={
+                    "Username": "username",
+                    "Email": "email",
+                    "Site": "site",
+                },
+            )
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(users))
     except Exception as e:
         handle_error(e)
 
@@ -578,6 +632,12 @@ def logoutall(
 @admin_app.command()
 def waiting(
     context: typer.Context,
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
 ):
     """
     View users waiting for approval.
@@ -586,16 +646,19 @@ def waiting(
     try:
         api = setup_onyx_api(context.obj)
         waiting = api.client.waiting()
-        table = create_table(
-            data=waiting,
-            map={
-                "Username": "username",
-                "Email": "email",
-                "Site": "site",
-                "Date Joined": "date_joined",
-            },
-        )
-        console.print(table)
+        if format == InfoFormats.TABLE:
+            table = create_table(
+                data=waiting,
+                map={
+                    "Username": "username",
+                    "Email": "email",
+                    "Site": "site",
+                    "Date Joined": "date_joined",
+                },
+            )
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(waiting))
     except Exception as e:
         handle_error(e)
 
@@ -620,6 +683,12 @@ def approve(
 @admin_app.command()
 def allusers(
     context: typer.Context,
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
 ):
     """
     View users across all sites.
@@ -628,15 +697,18 @@ def allusers(
     try:
         api = setup_onyx_api(context.obj)
         users = api.client.all_users()
-        table = create_table(
-            data=users,
-            map={
-                "Username": "username",
-                "Email": "email",
-                "Site": "site",
-            },
-        )
-        console.print(table)
+        if format == InfoFormats.TABLE:
+            table = create_table(
+                data=users,
+                map={
+                    "Username": "username",
+                    "Email": "email",
+                    "Site": "site",
+                },
+            )
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(users))
     except Exception as e:
         handle_error(e)
 
