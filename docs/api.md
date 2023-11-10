@@ -1,3 +1,0 @@
-::: onyx
-    options:
-      members: true
