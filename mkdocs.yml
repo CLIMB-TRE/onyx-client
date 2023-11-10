@@ -1,4 +1,6 @@
 site_name: Onyx Documentation
+site_url: https://climb-tre.github.io/onyx-client/
+
 theme:
   name: material
 
