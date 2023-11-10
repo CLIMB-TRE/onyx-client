@@ -21,6 +21,8 @@ nav:
   - Getting started: getting_started.md
   - Documentation:
     - Command-line interface: cli.md
-    - Python API: api.md
+    - Python API: 
+      - OnyxConfig: api/config.md
+      - OnyxClient: api/client.md
   - Further Guidance:
     - Examples: examples.md

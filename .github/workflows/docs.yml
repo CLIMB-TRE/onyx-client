@@ -24,7 +24,10 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
-      - run: pip install climb-onyx-client
-      - run: pip install mkdocs-material
-      - run: pip install mkdocstrings[python]
-      - run: mkdocs gh-deploy --force
+      - name: Install dependencies
+        run: |
+          pip install climb-onyx-client
+          pip install mkdocs-material
+          pip install mkdocstrings[python]
+      - name: Deploy site
+        run: mkdocs gh-deploy --force
