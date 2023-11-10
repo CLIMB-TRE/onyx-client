@@ -1,12 +1,26 @@
-site_name: Onyx Documentation
+site_name: Onyx
 site_url: https://climb-tre.github.io/onyx-client/
+repo_url: https://github.com/CLIMB-TRE/onyx-client/
+site_author: CLIMB-TRE
 
 theme:
   name: material
 
+plugins:
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_style: sphinx
+            docstring_section_style: spacy
+            show_source: false
+
 nav:
-  - Home: ../README.md
-  - Installation Guide: install.md
+  - Home: index.md
+  - Getting started: getting_started.md
   - Documentation:
     - Command-line interface: cli.md
     - Python API: api.md
+  - Further Guidance:
+    - Examples: examples.md
