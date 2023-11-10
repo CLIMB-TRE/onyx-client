@@ -7,13 +7,15 @@ theme:
   name: material
 
 plugins:
-- search
-- mkdocstrings:
-  default_handler: python
-  handlers:
-    python:
-      options:
-        show_source: false
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_style: sphinx
+            docstring_section_style: spacy
+            show_source: false
 nav:
   - Home: index.md
   - Getting started: getting_started.md
