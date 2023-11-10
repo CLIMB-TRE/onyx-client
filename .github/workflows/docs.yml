@@ -25,6 +25,6 @@ jobs:
           restore-keys: |
             mkdocs-material-
       - run: pip install climb-onyx-client
-      - run: pip install mkdocs-material 
-      - run: pip install mkdocstrings[python]
+      - run: pip install mkdocs-material
+      - run: pip install mkdocstrings
       - run: mkdocs gh-deploy --force

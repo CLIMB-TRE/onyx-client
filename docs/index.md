@@ -1,4 +1,4 @@
-# Onyx
+# Onyx
 
 This website documents usage of the Onyx client program, designed for interaction with the Onyx database. 
 
