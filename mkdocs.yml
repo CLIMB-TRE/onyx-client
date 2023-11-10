@@ -5,6 +5,9 @@ site_author: CLIMB-TRE
 
 theme:
   name: material
+  palette:
+    primary: blue grey
+    accent: teal
 
 plugins:
   - search
