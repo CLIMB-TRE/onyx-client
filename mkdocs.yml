@@ -6,8 +6,8 @@ site_author: CLIMB-TRE
 theme:
   name: material
   palette:
-    primary: blue grey
-    accent: blue grey
+    primary: black
+    accent: black
 
 plugins:
   - search
