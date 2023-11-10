@@ -1,4 +1,4 @@
-![Onyx](img/onyx.png){ width=800 }
+![Onyx](img/onyx.png)
 
 # Onyx
 
