@@ -5,5 +5,8 @@ theme:
   name: material
 
 nav:
-  - CLI Documentation: cli.md
-  - API Documentation: api.md
+  - Home: ../README.md
+  - Installation Guide: install.md
+  - Documentation:
+    - Command-line interface: cli.md
+    - Python API: api.md
