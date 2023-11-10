@@ -1,0 +1,7 @@
+site_name: Onyx Documentation
+theme:
+  name: material
+
+nav:
+  - CLI Documentation: cli.md
+  - API Documentation: api.md
