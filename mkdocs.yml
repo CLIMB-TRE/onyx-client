@@ -6,6 +6,14 @@ site_author: CLIMB-TRE
 theme:
   name: material
 
+plugins:
+- search
+- mkdocstrings:
+  default_handler: python
+  handlers:
+    python:
+      options:
+        show_source: false
 nav:
   - Home: index.md
   - Getting started: getting_started.md
