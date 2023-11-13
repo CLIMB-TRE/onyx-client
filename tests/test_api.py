@@ -138,12 +138,12 @@ CREATE_FIELDS = {
     "sample_id": "sample-123",
     "run_name": "run-456",
 }
-CSV_CREATE_EMPTY_FILE = "sample_id,run_name\n"
-TSV_CREATE_EMPTY_FILE = "sample_id\trun_name\n"
-CSV_CREATE_SINGLE_FILE = "sample_id,run_name\nsample-123,run-456"
-TSV_CREATE_SINGLE_FILE = "sample_id\trun_name\nsample-123\trun-456"
-CSV_CREATE_MULTI_FILE = "sample_id,run_name\nsample-123,run-456\nsample-123,run-456"
-TSV_CREATE_MULTI_FILE = "sample_id\trun_name\nsample-123\trun-456\nsample-123\trun-456"
+CSV_CREATE_EMPTY_FILE = "sample_id, run_name\n"
+TSV_CREATE_EMPTY_FILE = "sample_id\t run_name\n"
+CSV_CREATE_SINGLE_FILE = "sample_id, run_name\nsample-123, run-456"
+TSV_CREATE_SINGLE_FILE = "sample_id\t run_name\nsample-123\t run-456"
+CSV_CREATE_MULTI_FILE = "sample_id, run_name\nsample-123, run-456\nsample-123, run-456"
+TSV_CREATE_MULTI_FILE = "sample_id\t run_name\nsample-123\t run-456\nsample-123\t run-456"
 CSV_CREATE_SINGLE_MISSING_FILE = "sample_id\nsample-123"
 TSV_CREATE_SINGLE_MISSING_FILE = "sample_id\nsample-123"
 CSV_CREATE_MULTI_MISSING_FILE = "sample_id\nsample-123\nsample-123"
@@ -460,23 +460,23 @@ UPDATE_FIELDS = {
     "country": "England",
     "source_type": "humanoid",
 }
-CSV_UPDATE_EMPTY_FILE = "cid,country,source_type\n"
-TSV_UPDATE_EMPTY_FILE = "cid\tcountry\tsource_type\n"
-CSV_UPDATE_SINGLE_FILE = f"cid,country,source_type\n{CID},England,humanoid"
-TSV_UPDATE_SINGLE_FILE = f"cid\tcountry\tsource_type\n{CID}\tEngland\thumanoid"
+CSV_UPDATE_EMPTY_FILE = "cid, country, source_type\n"
+TSV_UPDATE_EMPTY_FILE = "cid\t country\t source_type\n"
+CSV_UPDATE_SINGLE_FILE = f"cid, country, source_type\n{CID}, England, humanoid"
+TSV_UPDATE_SINGLE_FILE = f"cid\t country\t source_type\n{CID}\t England\t humanoid"
 CSV_UPDATE_MULTI_FILE = (
-    f"cid,country,source_type\n{CID},England,humanoid\n{CID},England,humanoid"
+    f"cid, country, source_type\n{CID}, England, humanoid\n{CID}, England, humanoid"
 )
 TSV_UPDATE_MULTI_FILE = (
-    f"cid\tcountry\tsource_type\n{CID}\tEngland\thumanoid\n{CID}\tEngland\thumanoid"
+    f"cid\t country\t source_type\n{CID}\t England\t humanoid\n{CID}\t England\t humanoid"
 )
-CSV_UPDATE_SINGLE_MISSING_FILE = "country,source_type\nEngland,humanoid"
-TSV_UPDATE_SINGLE_MISSING_FILE = "country\tsource_type\nEngland\thumanoid"
+CSV_UPDATE_SINGLE_MISSING_FILE = "country, source_type\nEngland, humanoid"
+TSV_UPDATE_SINGLE_MISSING_FILE = "country\t source_type\nEngland\t humanoid"
 CSV_UPDATE_MULTI_MISSING_FILE = (
-    "country,source_type\nEngland,humanoid\nEngland,humanoid"
+    "country, source_type\nEngland, humanoid\nEngland, humanoid"
 )
 TSV_UPDATE_MULTI_MISSING_FILE = (
-    "country\tsource_type\nEngland\thumanoid\nEngland\thumanoid"
+    "country\t source_type\nEngland\t humanoid\nEngland\t humanoid"
 )
 MISSING_UPDATE_FIELDS = {"cid": CID}
 UPDATE_DATA = {
