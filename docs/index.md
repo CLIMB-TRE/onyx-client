@@ -1,7 +1,7 @@
 ![Onyx](img/onyx.png)
 
-# Onyx
+# `onyx-client`
 
-This website documents usage of the Onyx client program, designed for interaction with the Onyx database. 
+This site documents usage of the Onyx client program, designed for interacting with the Onyx database.
 
-The source code for the Onyx client can be found [here](https://github.com/CLIMB-TRE/onyx-client).
+Both the Onyx client and the Onyx database are being developed as part of the CLIMB-TRE project. For more information about CLIMB-TRE, click [here](https://climb-tre.github.io/onyx-client/).

@@ -8,6 +8,8 @@ theme:
   palette:
     primary: black
     accent: black
+  features:
+    - content.code.copy
 
 plugins:
   - search
@@ -34,10 +36,10 @@ nav:
   - Home: index.md
   - Getting started: getting_started.md
   - Documentation:
-    - Command-line interface: cli.md
+    - Command-line interface: documentation/cli.md
     - Python API: 
-      - OnyxConfig: api/config.md
-      - OnyxClient: api/client.md
-      - OnyxField: api/field.md
-      - Examples: api/examples.md
+      - OnyxConfig: documentation/api/config.md
+      - OnyxClient: documentation/api/client.md
+      - OnyxField: documentation/api/field.md
+    - Examples: documentation/examples.md
   - CLIMB-TRE: https://climb-tre.github.io
