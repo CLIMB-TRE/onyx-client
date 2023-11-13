@@ -15,10 +15,21 @@ plugins:
       default_handler: python
       handlers:
         python:
+          paths: [src]
           options:
             docstring_style: sphinx
             docstring_section_style: spacy
             show_source: false
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+
 nav:
   - Home: index.md
   - Getting started: getting_started.md
@@ -27,5 +38,6 @@ nav:
     - Python API: 
       - OnyxConfig: api/config.md
       - OnyxClient: api/client.md
-  - Further Guidance:
-    - Examples: examples.md
+      - OnyxField: api/field.md
+      - Examples: api/examples.md
+  - CLIMB-TRE: https://climb-tre.github.io

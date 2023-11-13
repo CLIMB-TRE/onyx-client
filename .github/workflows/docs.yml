@@ -26,8 +26,11 @@ jobs:
             mkdocs-material-
       - name: Install dependencies
         run: |
-          pip install climb-onyx-client
+          pip install .
+          pip install typer-cli
           pip install mkdocs-material
           pip install mkdocstrings[python]
       - name: Deploy site
-        run: mkdocs gh-deploy --force
+        run: |
+          typer onyx.cli utils docs --output docs/cli.md
+          mkdocs gh-deploy --force
