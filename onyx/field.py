@@ -17,6 +17,15 @@ class OnyxField:
     __slots__ = "query"
 
     def __init__(self, **kwargs) -> None:
+        """
+        Initialise a field.
+
+        Takes a single key-value argument as input, where:
+
+        * Key: The field (and optional lookup) to use for filtering.
+        * Value: The field value(s) that are being matched against.
+        """
+
         if len(kwargs) != 1:
             raise OnyxFieldError(
                 f"Expected exactly one field-value pair as a keyword argument. Received: {len(kwargs)}"

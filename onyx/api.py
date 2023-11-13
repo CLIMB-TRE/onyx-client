@@ -1031,7 +1031,6 @@ class OnyxClient(OnyxClientBase):
 
         :param project: Name of the project.
         :param csv_file: File object for the CSV file being used for record upload.
-        :param fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
         :param delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
         :param multiline: If True, allows processing of CSV files with more than one record. Default: False
         """
