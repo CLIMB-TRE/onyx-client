@@ -222,32 +222,27 @@ class OnyxClientBase:
     @classmethod
     def _handle_endpoint(cls, endpoint, **kwargs):
         for name, val in kwargs.items():
-            if val is None:
+            if val is None or not str(val).strip():
                 raise OnyxClientError(f"Argument '{name}' was not provided.")
 
             val = str(val).strip()
 
-            if not val:
-                raise OnyxClientError(f"Argument '{name}' was not provided.")
-
-            elif val.startswith("/"):
-                raise OnyxClientError(
-                    f"Argument '{name}' cannot have a value starting with '/'."
-                )
-
-            # Crude but effective
-            # Prevents calling other endpoints from the get() function with a cid equal to the endpoint name
-            # Its not the end of the world if that did happen, but to the user it would be quite confusing
-            if name == "cid":
-                for clash in ["test", "query", "fields", "lookups", "choices"]:
-                    if val == clash:
+            if name != "domain":
+                for char in "/?":
+                    if char in val:
                         raise OnyxClientError(
-                            f"Argument '{name}' cannot have value '{val}'. This resolves to a different endpoint."
+                            f"Argument '{name}' contains invalid character: '{char}'."
                         )
-                    elif val.startswith(f"{clash}/"):
-                        raise OnyxClientError(
-                            f"Argument '{name}' cannot start with value '{val}'. This resolves to a different endpoint."
-                        )
+
+                # Crude but effective
+                # Prevents calling other endpoints from the get() function with a cid equal to the endpoint name
+                # Its not the end of the world if that did happen, but to the user it would be quite confusing
+                if name == "cid":
+                    for clash in ["test", "query", "fields", "lookups", "choices"]:
+                        if val == clash:
+                            raise OnyxClientError(
+                                f"Argument '{name}' cannot have value '{val}'. This creates a URL that resolves to a different endpoint."
+                            )
 
         return endpoint()
 
@@ -298,9 +293,16 @@ class OnyxClientBase:
 
         # Create CSV reader
         if delimiter is None:
-            reader = csv.DictReader(csv_file)
+            reader = csv.DictReader(
+                csv_file,
+                skipinitialspace=True,
+            )
         else:
-            reader = csv.DictReader(csv_file, delimiter=delimiter)
+            reader = csv.DictReader(
+                csv_file,
+                delimiter=delimiter,
+                skipinitialspace=True,
+            )
 
         # Read the first two records (if they exist) and store in 'records' list
         # This is done to protect against two scenarios:
