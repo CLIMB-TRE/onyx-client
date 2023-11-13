@@ -1,6 +1,7 @@
-site_name: Onyx
+site_name: Onyx-client
 site_url: https://climb-tre.github.io/onyx-client/
 repo_url: https://github.com/CLIMB-TRE/onyx-client/
+repo_name: CLIMB-TRE/onyx-client
 site_author: CLIMB-TRE
 
 theme:
@@ -9,6 +10,11 @@ theme:
     primary: black
     accent: black
   features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - toc.integrate
     - content.code.copy
 
 plugins:
@@ -32,13 +38,13 @@ markdown_extensions:
   - pymdownx.superfences
 
 nav:
-  - Home: index.md
-  - Getting started: getting_started.md
+  - Overview: index.md
+  - Getting started: getting-started.md
   - Documentation:
     - Command-line interface: documentation/cli.md
     - Python API: 
       - OnyxConfig: documentation/api/config.md
       - OnyxClient: documentation/api/client.md
       - OnyxField: documentation/api/field.md
-    - Examples: documentation/examples.md
+  - Examples: examples.md
   - CLIMB-TRE: https://climb-tre.github.io
