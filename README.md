@@ -54,4 +54,4 @@ $ onyx
 ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
-For more information, check out the documentation on how to use the [CLI](docs/cli.md) and the [Python API](docs/api.md).
+For more information, check out the [documentation](https://climb-tre.github.io/onyx-client/).
