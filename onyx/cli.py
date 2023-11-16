@@ -154,6 +154,10 @@ def parse_fields_option(fields_option: List[str]) -> Dict[str, str]:
     return fields
 
 
+def parse_include_exclude_option(include_exclude_option: List[str]) -> List[str]:
+    return [field.replace(".", "__") for field in include_exclude_option]
+
+
 class HelpText(enum.Enum):
     FIELD = "Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax."
     INCLUDE = "Specify which fields to include in the output."
@@ -328,6 +332,12 @@ def get(
         else:
             fields = {}
 
+        if include:
+            include = parse_include_exclude_option(include)
+
+        if exclude:
+            exclude = parse_include_exclude_option(exclude)
+
         record = api.client.get(
             project,
             cid,
@@ -387,6 +397,12 @@ def filter(
             fields = parse_fields_option(field)
         else:
             fields = {}
+
+        if include:
+            include = parse_include_exclude_option(include)
+
+        if exclude:
+            exclude = parse_include_exclude_option(exclude)
 
         if format == DataFormats.JSON:
             # ...nobody needs to know
