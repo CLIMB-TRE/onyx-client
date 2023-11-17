@@ -177,6 +177,13 @@ class InfoFormats(enum.Enum):
     JSON = "json"
 
 
+class FieldFormats(enum.Enum):
+    TABLE = "table"
+    JSON = "json"
+    CSV = "csv"
+    TSV = "tsv"
+
+
 class Messages(enum.Enum):
     SUCCESS = "[bold green][SUCCESS][/]"
     NOTE = "[bold cyan][NOTE][/]"
@@ -223,7 +230,7 @@ def projects(
         handle_error(e)
 
 
-def add_fields(
+def add_fields_table(
     table: Table, data: Dict[str, Any], prefix: Optional[str] = None
 ) -> None:
     for field, field_info in data.items():
@@ -238,8 +245,41 @@ def add_fields(
         )
 
         if field_info["type"] == "relation":
-            add_fields(
+            add_fields_table(
                 table,
+                field_info["fields"],
+                prefix=f"{prefix}.{field}" if prefix else field,
+            )
+
+
+def add_fields_writer(
+    writer: csv.DictWriter,
+    columns: List[str],
+    data: Dict[str, Any],
+    prefix: Optional[str] = None,
+) -> None:
+    for field, field_info in data.items():
+        writer.writerow(
+            dict(
+                zip(
+                    columns,
+                    [
+                        f"{prefix}.{field}" if prefix else field,
+                        "required" if field_info["required"] else "optional",
+                        field_info["type"],
+                        field_info.get("description", ""),
+                        ", ".join(field_info.get("values"))
+                        if field_info.get("values")
+                        else "",
+                    ],
+                )
+            )
+        )
+
+        if field_info["type"] == "relation":
+            add_fields_writer(
+                writer,
+                columns,
                 field_info["fields"],
                 prefix=f"{prefix}.{field}" if prefix else field,
             )
@@ -255,8 +295,8 @@ def fields(
         "--scope",
         help=HelpText.SCOPE.value,
     ),
-    format: Optional[InfoFormats] = typer.Option(
-        InfoFormats.TABLE.value,
+    format: Optional[FieldFormats] = typer.Option(
+        FieldFormats.TABLE.value,
         "-F",
         "--format",
         help=HelpText.FORMAT.value,
@@ -272,18 +312,33 @@ def fields(
             project,
             scope=scope,
         )
-        if format == InfoFormats.TABLE:
-            table = Table(
-                caption=f"Fields specification for the '{project}' project. Version: {fields['version']}",
-                show_lines=True,
-            )
-            for column in ["Field", "Status", "Type", "Description", "Values"]:
-                table.add_column(column, overflow="fold")
-
-            add_fields(table, fields["fields"])
-            console.print(table)
-        else:
+        if format == FieldFormats.JSON:
             typer.echo(json_dump_pretty(fields))
+        else:
+            columns = ["Field", "Status", "Type", "Description", "Values"]
+            if format == FieldFormats.TABLE:
+                table = Table(
+                    caption=f"Fields specification for the '{project}' project. Version: {fields['version']}",
+                    show_lines=True,
+                )
+                for column in columns:
+                    table.add_column(column, overflow="fold")
+                add_fields_table(table, fields["fields"])
+                console.print(table)
+
+            else:
+                if format == FieldFormats.TSV:
+                    delimiter = "\t"
+                else:
+                    delimiter = ","
+
+                writer = csv.DictWriter(
+                    sys.stdout,
+                    delimiter=delimiter,
+                    fieldnames=columns,
+                )
+                writer.writeheader()
+                add_fields_writer(writer, columns, fields["fields"])
     except Exception as e:
         handle_error(e)
 
