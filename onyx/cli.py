@@ -158,11 +158,16 @@ def parse_include_exclude_option(include_exclude_option: List[str]) -> List[str]
     return [field.replace(".", "__") for field in include_exclude_option]
 
 
+def parse_summarise_option(summarise_option: str) -> str:
+    return summarise_option.replace(".", "__")
+
+
 class HelpText(enum.Enum):
     FIELD = "Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax."
     INCLUDE = "Specify which fields to include in the output."
     EXCLUDE = "Specify which fields to exclude from the output."
     SCOPE = "Access additional fields beyond the 'base' group of fields."
+    SUMMARISE = "For a given field in the filtered data, return the frequency of each of its values."
     FORMAT = "Set the file format of the returned data."
 
 
@@ -434,6 +439,12 @@ def filter(
         "--scope",
         help=HelpText.SCOPE.value,
     ),
+    summarise: Optional[str] = typer.Option(
+        None,
+        "-S",
+        "--summarise",
+        help=HelpText.SUMMARISE.value,
+    ),
     format: Optional[DataFormats] = typer.Option(
         DataFormats.JSON.value,
         "-F",
@@ -459,6 +470,9 @@ def filter(
         if exclude:
             exclude = parse_include_exclude_option(exclude)
 
+        if summarise:
+            summarise = parse_summarise_option(summarise)
+
         if format == DataFormats.JSON:
             # ...nobody needs to know
             results = onyx_errors(super(OnyxClient, api.client).filter)(
@@ -467,6 +481,7 @@ def filter(
                 include=include,
                 exclude=exclude,
                 scope=scope,
+                summarise=summarise,
             )
 
             for result in results:
@@ -478,14 +493,14 @@ def filter(
 
                     rendered_response = json_dump_pretty(result_json["data"])
 
-                    if result_json["previous"]:
+                    if result_json.get("previous"):
                         if not rendered_response.startswith("[\n"):
                             raise Exception(
                                 "Response JSON has invalid start character(s)."
                             )
                         rendered_response = rendered_response.removeprefix("[\n")
 
-                    if result_json["next"]:
+                    if result_json.get("next"):
                         if not rendered_response.endswith("}\n]"):
                             raise Exception(
                                 "Response JSON has invalid end character(s)."
@@ -504,6 +519,7 @@ def filter(
                 include=include,
                 exclude=exclude,
                 scope=scope,
+                summarise=summarise,
             )
 
             record = next(records, None)
