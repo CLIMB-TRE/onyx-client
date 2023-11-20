@@ -275,6 +275,42 @@ class OnyxClientBase:
 
         return method_response
 
+    @classmethod
+    def to_csv(
+        cls,
+        csv_file: TextIO,
+        data: Union[List[Dict[str, Any]], Generator[Dict[str, Any], Any, None]],
+        delimiter: Optional[str] = None,
+    ):
+        # Ensure data is an iterator
+        if inspect.isgenerator(data):
+            data_iterator = data
+        else:
+            data_iterator = iter(data)
+
+        row = next(data_iterator, None)
+        if row:
+            fields = row.keys()
+
+            # Create CSV writer
+            if delimiter is None:
+                writer = csv.DictWriter(
+                    csv_file,
+                    fieldnames=fields,
+                )
+            else:
+                writer = csv.DictWriter(
+                    csv_file,
+                    fieldnames=fields,
+                    delimiter=delimiter,
+                )
+
+            # Write data
+            writer.writeheader()
+            writer.writerow(row)
+            for row in data_iterator:
+                writer.writerow(row)
+
     def _csv_upload(
         self,
         method: str,
@@ -433,11 +469,17 @@ class OnyxClientBase:
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         scope: Union[List[str], str, None] = None,
+        summarise: Optional[str] = None,
     ) -> Generator[requests.Response, Any, None]:
         if fields is None:
             fields = {}
 
-        fields = fields | {"include": include, "exclude": exclude, "scope": scope}
+        fields = fields | {
+            "include": include,
+            "exclude": exclude,
+            "scope": scope,
+            "summarise": summarise,
+        }
         _next = OnyxClient.ENDPOINTS["filter"](self.config.domain, project)
 
         while _next is not None:
@@ -450,7 +492,7 @@ class OnyxClientBase:
 
             fields = None
             if response.ok:
-                _next = response.json()["next"]
+                _next = response.json().get("next")
             else:
                 _next = None
 
@@ -461,6 +503,7 @@ class OnyxClientBase:
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         scope: Union[List[str], str, None] = None,
+        summarise: Optional[str] = None,
     ) -> Generator[requests.Response, Any, None]:
         if query:
             if not isinstance(query, OnyxField):
@@ -472,7 +515,12 @@ class OnyxClientBase:
         else:
             query_json = None
 
-        fields = {"include": include, "exclude": exclude, "scope": scope}
+        fields = {
+            "include": include,
+            "exclude": exclude,
+            "scope": scope,
+            "summarise": summarise,
+        }
         _next = OnyxClient.ENDPOINTS["query"](self.config.domain, project)
 
         while _next is not None:
@@ -486,7 +534,7 @@ class OnyxClientBase:
 
             fields = None
             if response.ok:
-                _next = response.json()["next"]
+                _next = response.json().get("next")
             else:
                 _next = None
 
@@ -739,6 +787,27 @@ class OnyxClient(OnyxClientBase):
         """
         super().__init__(config)
 
+    @classmethod
+    @onyx_errors
+    def to_csv(
+        cls,
+        csv_file: TextIO,
+        data: Union[List[Dict[str, Any]], Generator[Dict[str, Any], Any, None]],
+        delimiter: Optional[str] = None,
+    ):
+        """
+        Write a set of records to a CSV file.
+
+        :param csv_file: File object for the CSV file being written to.
+        :param data: The data being written to the CSV file. Must be either a list / generator of dict records.
+        :param delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
+        """
+        super().to_csv(
+            csv_file=csv_file,
+            data=data,
+            delimiter=delimiter,
+        )
+
     @onyx_errors
     def projects(self) -> List[Dict[str, str]]:
         """
@@ -866,6 +935,7 @@ class OnyxClient(OnyxClientBase):
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         scope: Union[List[str], str, None] = None,
+        summarise: Optional[str] = None,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
         Filter records from a project.
@@ -875,6 +945,7 @@ class OnyxClient(OnyxClientBase):
         :param include: Fields to include in the output.
         :param exclude: Fields to exclude from the output.
         :param scope: Additional named group(s) of fields to include in the output.
+        :param summarise: For a given field in the filtered data, return the frequency of each of its values.
         """
 
         responses = super().filter(
@@ -883,6 +954,7 @@ class OnyxClient(OnyxClientBase):
             include=include,
             exclude=exclude,
             scope=scope,
+            summarise=summarise,
         )
         for response in responses:
             response.raise_for_status()
@@ -897,6 +969,7 @@ class OnyxClient(OnyxClientBase):
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         scope: Union[List[str], str, None] = None,
+        summarise: Optional[str] = None,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
         Query records from a project.
@@ -906,6 +979,7 @@ class OnyxClient(OnyxClientBase):
         :param include: Fields to include in the output.
         :param exclude: Fields to exclude from the output.
         :param scope: Additional named group(s) of fields to include in the output.
+        :param summarise: For a given field in the filtered data, return the frequency of each of its values.
         """
 
         responses = super().query(
@@ -914,6 +988,7 @@ class OnyxClient(OnyxClientBase):
             include=include,
             exclude=exclude,
             scope=scope,
+            summarise=summarise,
         )
         for response in responses:
             response.raise_for_status()

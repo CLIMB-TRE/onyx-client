@@ -158,11 +158,16 @@ def parse_include_exclude_option(include_exclude_option: List[str]) -> List[str]
     return [field.replace(".", "__") for field in include_exclude_option]
 
 
+def parse_summarise_option(summarise_option: str) -> str:
+    return summarise_option.replace(".", "__")
+
+
 class HelpText(enum.Enum):
     FIELD = "Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax."
     INCLUDE = "Specify which fields to include in the output."
     EXCLUDE = "Specify which fields to exclude from the output."
     SCOPE = "Access additional fields beyond the 'base' group of fields."
+    SUMMARISE = "For a given field in the filtered data, return the frequency of each of its values."
     FORMAT = "Set the file format of the returned data."
 
 
@@ -175,6 +180,13 @@ class DataFormats(enum.Enum):
 class InfoFormats(enum.Enum):
     TABLE = "table"
     JSON = "json"
+
+
+class FieldFormats(enum.Enum):
+    TABLE = "table"
+    JSON = "json"
+    CSV = "csv"
+    TSV = "tsv"
 
 
 class Messages(enum.Enum):
@@ -223,7 +235,7 @@ def projects(
         handle_error(e)
 
 
-def add_fields(
+def add_fields_table(
     table: Table, data: Dict[str, Any], prefix: Optional[str] = None
 ) -> None:
     for field, field_info in data.items():
@@ -238,8 +250,41 @@ def add_fields(
         )
 
         if field_info["type"] == "relation":
-            add_fields(
+            add_fields_table(
                 table,
+                field_info["fields"],
+                prefix=f"{prefix}.{field}" if prefix else field,
+            )
+
+
+def add_fields_writer(
+    writer: csv.DictWriter,
+    columns: List[str],
+    data: Dict[str, Any],
+    prefix: Optional[str] = None,
+) -> None:
+    for field, field_info in data.items():
+        writer.writerow(
+            dict(
+                zip(
+                    columns,
+                    [
+                        f"{prefix}.{field}" if prefix else field,
+                        "required" if field_info["required"] else "optional",
+                        field_info["type"],
+                        field_info.get("description", ""),
+                        ", ".join(field_info.get("values"))
+                        if field_info.get("values")
+                        else "",
+                    ],
+                )
+            )
+        )
+
+        if field_info["type"] == "relation":
+            add_fields_writer(
+                writer,
+                columns,
                 field_info["fields"],
                 prefix=f"{prefix}.{field}" if prefix else field,
             )
@@ -255,8 +300,8 @@ def fields(
         "--scope",
         help=HelpText.SCOPE.value,
     ),
-    format: Optional[InfoFormats] = typer.Option(
-        InfoFormats.TABLE.value,
+    format: Optional[FieldFormats] = typer.Option(
+        FieldFormats.TABLE.value,
         "-F",
         "--format",
         help=HelpText.FORMAT.value,
@@ -272,18 +317,33 @@ def fields(
             project,
             scope=scope,
         )
-        if format == InfoFormats.TABLE:
-            table = Table(
-                caption=f"Fields specification for the '{project}' project. Version: {fields['version']}",
-                show_lines=True,
-            )
-            for column in ["Field", "Status", "Type", "Description", "Values"]:
-                table.add_column(column, overflow="fold")
-
-            add_fields(table, fields["fields"])
-            console.print(table)
-        else:
+        if format == FieldFormats.JSON:
             typer.echo(json_dump_pretty(fields))
+        else:
+            columns = ["Field", "Status", "Type", "Description", "Values"]
+            if format == FieldFormats.TABLE:
+                table = Table(
+                    caption=f"Fields specification for the '{project}' project. Version: {fields['version']}",
+                    show_lines=True,
+                )
+                for column in columns:
+                    table.add_column(column, overflow="fold")
+                add_fields_table(table, fields["fields"])
+                console.print(table)
+
+            else:
+                if format == FieldFormats.TSV:
+                    delimiter = "\t"
+                else:
+                    delimiter = ","
+
+                writer = csv.DictWriter(
+                    sys.stdout,
+                    delimiter=delimiter,
+                    fieldnames=columns,
+                )
+                writer.writeheader()
+                add_fields_writer(writer, columns, fields["fields"])
     except Exception as e:
         handle_error(e)
 
@@ -379,6 +439,12 @@ def filter(
         "--scope",
         help=HelpText.SCOPE.value,
     ),
+    summarise: Optional[str] = typer.Option(
+        None,
+        "-S",
+        "--summarise",
+        help=HelpText.SUMMARISE.value,
+    ),
     format: Optional[DataFormats] = typer.Option(
         DataFormats.JSON.value,
         "-F",
@@ -404,6 +470,9 @@ def filter(
         if exclude:
             exclude = parse_include_exclude_option(exclude)
 
+        if summarise:
+            summarise = parse_summarise_option(summarise)
+
         if format == DataFormats.JSON:
             # ...nobody needs to know
             results = onyx_errors(super(OnyxClient, api.client).filter)(
@@ -412,6 +481,7 @@ def filter(
                 include=include,
                 exclude=exclude,
                 scope=scope,
+                summarise=summarise,
             )
 
             for result in results:
@@ -423,14 +493,14 @@ def filter(
 
                     rendered_response = json_dump_pretty(result_json["data"])
 
-                    if result_json["previous"]:
+                    if result_json.get("previous"):
                         if not rendered_response.startswith("[\n"):
                             raise Exception(
                                 "Response JSON has invalid start character(s)."
                             )
                         rendered_response = rendered_response.removeprefix("[\n")
 
-                    if result_json["next"]:
+                    if result_json.get("next"):
                         if not rendered_response.endswith("}\n]"):
                             raise Exception(
                                 "Response JSON has invalid end character(s)."
@@ -449,6 +519,7 @@ def filter(
                 include=include,
                 exclude=exclude,
                 scope=scope,
+                summarise=summarise,
             )
 
             record = next(records, None)
