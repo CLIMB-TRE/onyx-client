@@ -50,10 +50,33 @@ class OnyxConfig:
 
         A domain must be provided, alongside an API token and/or the username + password.
 
-        :param domain: Domain for connecting to Onyx.
-        :param token: Token for authenticating with Onyx.
-        :param username: Username for authenticating with Onyx.
-        :param password: Password for authenticating with Onyx.
+        Args:
+            domain: Domain for connecting to Onyx.
+            token: Token for authenticating with Onyx.
+            username: Username for authenticating with Onyx.
+            password: Password for authenticating with Onyx.
+
+        Examples:
+            Create a config using environment variables for the domain and an API token:
+            >>> import os
+            >>> from onyx import OnyxConfig, OnyxEnv
+            >>> config = OnyxConfig(
+            ...     domain=os.environ[OnyxEnv.DOMAIN],
+            ...     token=os.environ[OnyxEnv.TOKEN],
+            ... )
+            >>> config
+            <onyx.config.OnyxConfig object at 0x1027f9a80>
+
+            Or using environment variables for the domain and login credentials:
+            >>> import os
+            >>> from onyx import OnyxConfig, OnyxEnv
+            >>> config = OnyxConfig(
+            ...     domain=os.environ[OnyxEnv.DOMAIN],
+            ...     username=os.environ[OnyxEnv.USERNAME],
+            ...     password=os.environ[OnyxEnv.PASSWORD],
+            ... )
+            >>> config
+            <onyx.config.OnyxConfig object at 0x1027fa600>
         """
 
         self._validate_domain(domain)

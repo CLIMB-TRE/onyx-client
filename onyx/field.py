@@ -20,10 +20,33 @@ class OnyxField:
         """
         Initialise a field.
 
-        Takes a single key-value argument as input, where:
+        Args:
+            **kwargs: Keyword arguments containing a single key-value pair.
 
-        * Key: The field (and optional lookup) to use for filtering.
-        * Value: The field value(s) that are being matched against.
+        Notes:
+            - Takes a single key-value argument as input.
+            - The key corresponds to a field (and optional lookup) to use for filtering.
+            - The value corresponds to the field value(s) that are being matched against.
+            - OnyxField objects can be combined using the python bitwise operators to create more complex expressions.
+
+        Examples:
+            >>> from onyx import OnyxField
+            >>> field1 = OnyxField(field1="value1")
+            >>> field1
+            <onyx.field.OnyxField object at 0x1028eb850>
+            >>> field1.query
+            {'field1': 'value1'}
+            >>> field2 = OnyxField(field2__contains="value2")
+            >>> field2
+            <onyx.field.OnyxField object at 0x1028eb850>
+            >>> field2.query
+            {'field2__contains': 'value2'}
+            >>> # OnyxField objects can be combined using the python bitwise operators
+            >>> expression = field1 & ~field2
+            >>> expression
+            <onyx.field.OnyxField object at 0x103b6fc40>
+            >>> expression.query
+            {'&': [{'field1': 'value1'}, {'~': {'field2__contains': 'value2'}}]}
         """
 
         if len(kwargs) != 1:
