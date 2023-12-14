@@ -24,9 +24,10 @@ plugins:
       handlers:
         python:
           options:
-            docstring_style: sphinx
+            docstring_style: google
             docstring_section_style: spacy
             show_source: false
+            members_order: source
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -39,12 +40,9 @@ markdown_extensions:
 
 nav:
   - Overview: index.md
-  - Getting started: getting-started.md
-  - Documentation:
-    - Command-line interface: documentation/cli.md
-    - Python API: 
-      - OnyxConfig: documentation/api/config.md
-      - OnyxClient: documentation/api/client.md
-      - OnyxField: documentation/api/field.md
-  - Examples: examples.md
+  - Command-line interface: cli.md
+  - Python API: 
+    - OnyxConfig: api/config.md
+    - OnyxClient: api/client.md
+    - OnyxField: api/field.md
   - CLIMB-TRE: https://climb-tre.github.io

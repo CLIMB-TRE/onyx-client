@@ -779,39 +779,83 @@ class OnyxClient(OnyxClientBase):
     Class for querying and manipulating data within Onyx.
     """
 
-    def __init__(self, config: OnyxConfig):
+    def __init__(self, config: OnyxConfig) -> None:
         """
         Initialise a client.
 
-        :param config: Object that stores information for connecting and authenticating with Onyx.
+        Args:
+            config: Object that stores information for connecting and authenticating with Onyx.
+
+        Examples:
+            The recommended way to initialise a client (as a context manager):
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                pass # Do something with the client here
+            ```
+
+            Alternatively, the client can be initialised as follows:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            client = OnyxClient(config)
+            # Do something with the client here
+            ```
+
+        Tips:
+            - When making multiple requests, using the client as a context manager can improve performance.
+            - This is due to the fact that the client will re-use the same session for all requests, rather than creating a new session for each request.
+            - For more information, see: https://requests.readthedocs.io/en/master/user/advanced/#session-objects
         """
         super().__init__(config)
-
-    @classmethod
-    @onyx_errors
-    def to_csv(
-        cls,
-        csv_file: TextIO,
-        data: Union[List[Dict[str, Any]], Generator[Dict[str, Any], Any, None]],
-        delimiter: Optional[str] = None,
-    ):
-        """
-        Write a set of records to a CSV file.
-
-        :param csv_file: File object for the CSV file being written to.
-        :param data: The data being written to the CSV file. Must be either a list / generator of dict records.
-        :param delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
-        """
-        super().to_csv(
-            csv_file=csv_file,
-            data=data,
-            delimiter=delimiter,
-        )
 
     @onyx_errors
     def projects(self) -> List[Dict[str, str]]:
         """
         View available projects.
+
+        Returns:
+            List of projects.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                projects = client.projects()
+            ```
+            >>> projects
+            [
+                {
+                    "project": "project",
+                    "action": "add",
+                    "scope": "base",
+                },
+                {
+                    "project": "project",
+                    "action": "view",
+                    "scope": "base",
+                },
+            ]
         """
 
         response = super().projects()
@@ -827,8 +871,53 @@ class OnyxClient(OnyxClientBase):
         """
         View fields for a project.
 
-        :param project: Name of the project.
-        :param scope: Additional named group(s) of fields to include in the output.
+        Args:
+            project: Name of the project.
+            scope: Additional named group(s) of fields to include in the output.
+
+        Returns:
+            Dict of fields.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                fields = client.fields("project")
+            ```
+            >>> fields
+            {
+                "version": "0.1.0",
+                "fields": {
+                    "cid": {
+                        "description": "Unique identifier for a project record.",
+                        "type": "text",
+                        "required": True,
+                    },
+                    "published_date": {
+                        "description": "Date the record was published.",
+                        "type": "date (YYYY-MM-DD)",
+                        "required": True,
+                    },
+                    "country": {
+                        "description": "Country of origin.",
+                        "type": "choice",
+                        "required": False,
+                        "values": [
+                            "ENG",
+                            "WALES",
+                            "SCOT",
+                            "NI",
+                        ],
+                    },
+                },
+            }
         """
 
         response = super().fields(project, scope=scope)
@@ -840,30 +929,31 @@ class OnyxClient(OnyxClientBase):
         """
         View choices for a field.
 
-        :param project: Name of the project.
-        :param field: Choice field on the project.
+        Args:
+            project: Name of the project.
+            field: Choice field on the project.
+
+        Returns:
+            List of choices for the field.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                choices = client.choices("project", "country")
+            ```
+            >>> choices
+            ["ENG", "WALES", "SCOT", "NI"]
         """
 
         response = super().choices(project, field)
-        response.raise_for_status()
-        return response.json()["data"]
-
-    @onyx_errors
-    def create(
-        self,
-        project: str,
-        fields: Dict[str, Any],
-        test: bool = False,
-    ) -> Dict[str, Any]:
-        """
-        Create a record in a project.
-
-        :param project: Name of the project.
-        :param fields: Object representing the record to be created.
-        :param test: If True, runs the command as a test. Default: False
-        """
-
-        response = super().create(project, fields, test=test)
         response.raise_for_status()
         return response.json()["data"]
 
@@ -880,12 +970,116 @@ class OnyxClient(OnyxClientBase):
         """
         Get a record from a project.
 
-        :param project: Name of the project.
-        :param cid: Unique identifier for the record in the project.
-        :param fields: Series of conditions on fields, used to uniquely identify a record.
-        :param include: Fields to include in the output.
-        :param exclude: Fields to exclude from the output.
-        :param scope: Additional named group(s) of fields to include in the output.
+        Args:
+            project: Name of the project.
+            cid: Unique identifier for the record in the project.
+            fields: Series of conditions on fields, used to filter the data.
+            include: Fields to include in the output.
+            exclude: Fields to exclude from the output.
+            scope: Additional named group(s) of fields to include in the output.
+
+        Returns:
+            Dict containing the record.
+
+        Examples:
+            Get a record by CID:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                record = client.get("project", "C-1234567890")
+            ```
+            >>> record
+            {
+                "cid": "C-1234567890",
+                "published_date": "2023-01-01",
+                "field1": "value1",
+                "field2": "value2",
+            }
+
+            Get a record by fields that uniquely identify it:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                record = client.get(
+                    "project",
+                    fields={
+                        "field1": "value1",
+                        "field2": "value2",
+                    },
+                )
+            ```
+            >>> record
+            {
+                "cid": "C-1234567890",
+                "published_date": "2023-01-01",
+                "field1": "value1",
+                "field2": "value2",
+            }
+
+            The `include`, `exclude`, and `scope` arguments can be used to control the fields returned:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                record_v1 = client.get(
+                    "project",
+                    cid="C-1234567890",
+                    include=["cid", "published_date"],
+                )
+                record_v2 = client.get(
+                    "project",
+                    cid="C-1234567890",
+                    exclude=["field2"],
+                )
+                record_v3 = client.get(
+                    "project",
+                    cid="C-1234567890",
+                    scope="extra_fields",
+                )
+            ```
+            >>> record_v1
+            {
+                "cid": "C-1234567890",
+                "published_date": "2023-01-01",
+            }
+            >>> record_v2
+            {
+                "cid": "C-1234567890",
+                "published_date": "2023-01-01",
+                "field1": "value1",
+            }
+            >>> record_v3
+            {
+                "cid": "C-1234567890",
+                "published_date": "2023-01-01",
+                "field1": "value1",
+                "field2": "value2",
+                "extra_field1": "extra_value1",
+                "extra_field2": "extra_value2",
+            }
+
+        Tips:
+            - Including/excluding fields to reduce the size of the returned data can improve performance.
         """
 
         if cid and fields:
@@ -940,12 +1134,94 @@ class OnyxClient(OnyxClientBase):
         """
         Filter records from a project.
 
-        :param project: Name of the project.
-        :param fields: Series of conditions on fields, used to filter the data.
-        :param include: Fields to include in the output.
-        :param exclude: Fields to exclude from the output.
-        :param scope: Additional named group(s) of fields to include in the output.
-        :param summarise: For a given field in the filtered data, return the frequency of each of its values.
+        Args:
+            project: Name of the project.
+            fields: Series of conditions on fields, used to filter the data.
+            include: Fields to include in the output.
+            exclude: Fields to exclude from the output.
+            scope: Additional named group(s) of fields to include in the output.
+            summarise: For a given field in the filtered data, return the frequency of each of its values.
+
+        Returns:
+            Generator of records. If a summarise field is provided, each record will be a dict containing a value of the field and its frequency.
+
+        Notes:
+            - The fields argument must be a dict of field conditions. Each of these specifies a requirement that the returned data must match.
+            - These conditions can be a simple match on a value (e.g. `"published_date" : "2023-01-01"`).
+            - Or, they can use a 'lookup' for more complex matching conditions (e.g. `"published_date__year" : "2023"`).
+            - Multi-value lookups must be provided as a comma-separated string of values (e.g. `"published_date__range" : "2023-01-01, 2023-01-02"`).
+
+        Examples:
+            Retrieve all records that match a set of field requirements:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                records = list(
+                    client.filter(
+                        project="project",
+                        fields={
+                            "field1": "abcd",
+                            "published_date__range" : "2023-01-01, 2023-01-02",
+                        },
+                    )
+                )
+            ```
+            >>> records
+            [
+                {
+                    "cid": "C-1234567890",
+                    "published_date": "2023-01-01",
+                    "field1": "abcd",
+                    "field2": 123,
+                },
+                {
+                    "cid": "C-1234567891",
+                    "published_date": "2023-01-02",
+                    "field1": "abcd",
+                    "field2": 456,
+                },
+            ]
+
+            The `summarise` argument can be used to return the frequency of each value for a given field:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                records = list(
+                    client.filter(
+                        project="project",
+                        fields={
+                            "field1": "abcd",
+                            "published_date__range" : "2023-01-01, 2023-01-02",
+                        },
+                        summarise="published_date",
+                    )
+                )
+            ```
+            >>> records
+            [
+                {
+                    "published_date": "2023-01-01",
+                    "count": 1,
+                },
+                {
+                    "published_date": "2023-01-02",
+                    "count": 1,
+                },
+            ]
         """
 
         responses = super().filter(
@@ -974,12 +1250,59 @@ class OnyxClient(OnyxClientBase):
         """
         Query records from a project.
 
-        :param project: Name of the project.
-        :param query: Arbitrarily complex expression on fields, used to filter the data.
-        :param include: Fields to include in the output.
-        :param exclude: Fields to exclude from the output.
-        :param scope: Additional named group(s) of fields to include in the output.
-        :param summarise: For a given field in the filtered data, return the frequency of each of its values.
+        Args:
+            project: Name of the project.
+            query: OnyxField object representing the query being made.
+            include: Fields to include in the output.
+            exclude: Fields to exclude from the output.
+            scope: Additional named group(s) of fields to include in the output.
+            summarise: For a given field in the filtered data, return the frequency of each of its values.
+
+        Returns:
+            Generator of records. If a summarise field is provided, each record will be a dict containing a value of the field and its frequency.
+
+        Notes:
+            - The query argument must be an instance of OnyxField.
+            - OnyxField instances can be combined into complex expressions using Python's bitwise operators: `&` (AND), `|` (OR), `^` (XOR), and `~` (NOT).
+            - Multi-value lookups (e.g. 'in', 'range') support passing a Python list as the value. These are coerced into comma-separated strings internally.
+
+        Examples:
+            Retrieve all records that match the query provided by an OnyxField object:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient, OnyxField
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                records = list(
+                    client.query(
+                        project="project",
+                        query=(
+                            OnyxField(field1="abcd")
+                            & OnyxField(published_date__range=["2023-01-01", "2023-01-02"])
+                        ),
+                    )
+                )
+            ```
+            >>> records
+            [
+                {
+                    "cid": "C-1234567890",
+                    "published_date": "2023-01-01",
+                    "field1": "abcd",
+                    "field2": 123,
+                },
+                {
+                    "cid": "C-1234567891",
+                    "published_date": "2023-01-02",
+                    "field1": "abcd",
+                    "field2": 456,
+                },
+            ]
         """
 
         responses = super().query(
@@ -995,6 +1318,95 @@ class OnyxClient(OnyxClientBase):
             for result in response.json()["data"]:
                 yield result
 
+    @classmethod
+    @onyx_errors
+    def to_csv(
+        cls,
+        csv_file: TextIO,
+        data: Union[List[Dict[str, Any]], Generator[Dict[str, Any], Any, None]],
+        delimiter: Optional[str] = None,
+    ):
+        """
+        Write a set of records to a CSV file.
+
+        Args:
+            csv_file: File object for the CSV file being written to.
+            data: The data being written to the CSV file. Must be either a list / generator of dict records.
+            delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client, open("/path/to/file.csv") as csv_file:
+                client.to_csv(
+                    csv_file=csv_file,
+                    data=client.filter(
+                        "project",
+                        fields={
+                            "field1": "value1",
+                            "field2": "value2",
+                        },
+                )
+            ```
+        """
+        super().to_csv(
+            csv_file=csv_file,
+            data=data,
+            delimiter=delimiter,
+        )
+
+    @onyx_errors
+    def create(
+        self,
+        project: str,
+        fields: Dict[str, Any],
+        test: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Create a record in a project.
+
+        Args:
+            project: Name of the project.
+            fields: Object representing the record to be created.
+            test: If True, runs the command as a test. Default: False
+
+        Returns:
+            Dict containing the CID of the created record.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                result = client.create(
+                    "project",
+                    fields={
+                        "field1": "value1",
+                        "field2": "value2",
+                    },
+                )
+            ```
+            >>> result
+            {"cid": "C-1234567890"}
+        """
+
+        response = super().create(project, fields, test=test)
+        response.raise_for_status()
+        return response.json()["data"]
+
     @onyx_errors
     def update(
         self,
@@ -1006,10 +1418,37 @@ class OnyxClient(OnyxClientBase):
         """
         Update a record in a project.
 
-        :param project: Name of the project.
-        :param cid: Unique identifier for the record in the project.
-        :param fields: Object representing the updates being made to the record.
-        :param test: If True, runs the command as a test. Default: False
+        Args:
+            project: Name of the project.
+            cid: Unique identifier for the record in the project.
+            fields: Object representing the record to be updated.
+            test: If True, runs the command as a test. Default: False
+
+        Returns:
+            Dict containing the CID of the updated record.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                result = client.update(
+                    project="project",
+                    cid="C-1234567890",
+                    fields={
+                        "field1": "value1",
+                        "field2": "value2",
+                    },
+                )
+            ```
+            >>> result
+            {"cid": "C-1234567890"}
         """
 
         response = super().update(project, cid, fields=fields, test=test)
@@ -1025,8 +1464,31 @@ class OnyxClient(OnyxClientBase):
         """
         Delete a record in a project.
 
-        :param project: Name of the project.
-        :param cid: Unique identifier for the record in the project.
+        Args:
+            project: Name of the project.
+            cid: Unique identifier for the record in the project.
+
+        Returns:
+            Dict containing the CID of the deleted record.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                result = client.delete(
+                    project="project",
+                    cid="C-1234567890",
+                )
+            ```
+            >>> result
+            {"cid": "C-1234567890"}
         """
 
         response = super().delete(project, cid)
@@ -1046,12 +1508,60 @@ class OnyxClient(OnyxClientBase):
         """
         Use a CSV file to create record(s) in a project.
 
-        :param project: Name of the project.
-        :param csv_file: File object for the CSV file being used for record upload.
-        :param fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
-        :param delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
-        :param multiline: If True, allows processing of CSV files with more than one record. Default: False
-        :param test: If True, runs the command as a test. Default: False
+        Args:
+            project: Name of the project.
+            csv_file: File object for the CSV file being used for record upload.
+            fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
+            delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
+            multiline: If True, allows processing of CSV files with more than one record. Default: False
+            test: If True, runs the command as a test. Default: False
+
+        Returns:
+            Dict containing the CID of the created record. If multiline = True, returns a list of dicts containing the CID of each created record.
+
+        Examples:
+            Create a single record:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client, open("/path/to/file.csv") as csv_file:
+                result = client.csv_create(
+                    project="project",
+                    csv_file=csv_file,
+                )
+            ```
+            >>> result
+            {"cid": "C-1234567890"}
+
+            Create multiple records:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client, open("/path/to/file.csv") as csv_file:
+                results = client.csv_create(
+                    project="project",
+                    csv_file=csv_file,
+                    multiline=True,
+                )
+            ```
+            >>> results
+            [
+                {"cid": "C-1234567890"},
+                {"cid": "C-1234567891"},
+                {"cid": "C-1234567892"},
+            ]
         """
 
         responses = super().csv_create(
@@ -1077,12 +1587,60 @@ class OnyxClient(OnyxClientBase):
         """
         Use a CSV file to update record(s) in a project.
 
-        :param project: Name of the project.
-        :param csv_file: File object for the CSV file being used for record upload.
-        :param fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
-        :param delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
-        :param multiline: If True, allows processing of CSV files with more than one record. Default: False
-        :param test: If True, runs the command as a test. Default: False
+        Args:
+            project: Name of the project.
+            csv_file: File object for the CSV file being used for record upload.
+            fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
+            delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
+            multiline: If True, allows processing of CSV files with more than one record. Default: False
+            test: If True, runs the command as a test. Default: False
+
+        Returns:
+            Dict containing the CID of the updated record. If multiline = True, returns a list of dicts containing the CID of each updated record.
+
+        Examples:
+            Update a single record:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client, open("/path/to/file.csv") as csv_file:
+                result = client.csv_update(
+                    project="project",
+                    csv_file=csv_file,
+                )
+            ```
+            >>> result
+            {"cid": "C-1234567890"}
+
+            Update multiple records:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client, open("/path/to/file.csv") as csv_file:
+                results = client.csv_update(
+                    project="project",
+                    csv_file=csv_file,
+                    multiline=True,
+                )
+            ```
+            >>> results
+            [
+                {"cid": "C-1234567890"},
+                {"cid": "C-1234567891"},
+                {"cid": "C-1234567892"},
+            ]
         """
 
         responses = super().csv_update(
@@ -1106,10 +1664,58 @@ class OnyxClient(OnyxClientBase):
         """
         Use a CSV file to delete record(s) in a project.
 
-        :param project: Name of the project.
-        :param csv_file: File object for the CSV file being used for record upload.
-        :param delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
-        :param multiline: If True, allows processing of CSV files with more than one record. Default: False
+        Args:
+            project: Name of the project.
+            csv_file: File object for the CSV file being used for record upload.
+            delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
+            multiline: If True, allows processing of CSV files with more than one record. Default: False
+
+        Returns:
+            Dict containing the CID of the deleted record. If multiline = True, returns a list of dicts containing the CID of each deleted record.
+
+        Examples:
+            Delete a single record:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client, open("/path/to/file.csv") as csv_file:
+                result = client.csv_delete(
+                    project="project",
+                    csv_file=csv_file,
+                )
+            ```
+            >>> result
+            {"cid": "C-1234567890"}
+
+            Delete multiple records:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client, open("/path/to/file.csv") as csv_file:
+                results = client.csv_delete(
+                    project="project",
+                    csv_file=csv_file,
+                    multiline=True,
+                )
+            ```
+            >>> results
+            [
+                {"cid": "C-1234567890"},
+                {"cid": "C-1234567891"},
+                {"cid": "C-1234567892"},
+            ]
         """
 
         responses = super().csv_delete(
@@ -1134,12 +1740,39 @@ class OnyxClient(OnyxClientBase):
         """
         Create a new user.
 
-        :param domain: Domain name for connecting to Onyx.
-        :param first_name: First name of the registering user.
-        :param last_name: Last name of the registering user.
-        :param email: Email of the registering user.
-        :param site: Site code of the registering user.
-        :param password: Password of the registering user.
+        Args:
+            domain: Name of the domain.
+            first_name: First name of the user.
+            last_name: Last name of the user.
+            email: Email address of the user.
+            site: Name of the site.
+            password: Password for the user.
+
+        Returns:
+            Dict containing the user's information.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxClient, OnyxEnv
+
+            registration = OnyxClient.register(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                first_name="Bill",
+                last_name="Will",
+                email="bill@email.com",
+                site="site",
+                password="pass123",
+            )
+            ```
+            >>> registration
+            {
+                "username": "onyx-willb",
+                "site": "site",
+                "email": "bill@email.com",
+                "first_name": "Bill",
+                "last_name": "Will",
+            }
         """
         response = super().register(
             domain,
@@ -1156,6 +1789,29 @@ class OnyxClient(OnyxClientBase):
     def login(self) -> Dict[str, Any]:
         """
         Log in the user.
+
+        Returns:
+            Dict containing the user's authentication token and it's expiry.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                username=os.environ[OnyxEnv.USERNAME],
+                password=os.environ[OnyxEnv.PASSWORD],
+            )
+
+            with OnyxClient(config) as client:
+                token = client.login()
+            ```
+            >>> token
+            {
+                "expiry": "2024-01-01T00:00:00.000000Z",
+                "token": "abc123",
+            }
         """
 
         response = super().login()
@@ -1166,6 +1822,20 @@ class OnyxClient(OnyxClientBase):
     def logout(self) -> None:
         """
         Log out the user.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                client.logout()
+            ```
         """
 
         response = super().logout()
@@ -1175,6 +1845,20 @@ class OnyxClient(OnyxClientBase):
     def logoutall(self) -> None:
         """
         Log out the user in all clients.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                client.logoutall()
+            ```
         """
 
         response = super().logoutall()
@@ -1184,6 +1868,29 @@ class OnyxClient(OnyxClientBase):
     def profile(self) -> Dict[str, str]:
         """
         View the user's information.
+
+        Returns:
+            Dict containing the user's information.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                profile = client.profile()
+            ```
+            >>> profile
+            {
+                "username": "user",
+                "site": "site",
+                "email": "user@email.com",
+            }
         """
 
         response = super().profile()
@@ -1195,7 +1902,30 @@ class OnyxClient(OnyxClientBase):
         """
         Approve another user.
 
-        :param username: Name of the user being approved.
+        Args:
+            username: Username of the user to be approved.
+
+        Returns:
+            Dict confirming user approval success.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                approval = client.approve("waiting_user")
+            ```
+            >>> approval
+            {
+                "username": "waiting_user",
+                "is_approved": True,
+            }
         """
 
         response = super().approve(username)
@@ -1206,6 +1936,32 @@ class OnyxClient(OnyxClientBase):
     def waiting(self) -> List[Dict[str, Any]]:
         """
         Get users waiting for approval.
+
+        Returns:
+            List of users waiting for approval.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                users = client.waiting()
+            ```
+            >>> users
+            [
+                {
+                    "username": "waiting_user",
+                    "site": "site",
+                    "email": "waiting_user@email.com",
+                    "date_joined": "2023-01-01T00:00:00.000000Z",
+                }
+            ]
         """
 
         response = super().waiting()
@@ -1216,6 +1972,31 @@ class OnyxClient(OnyxClientBase):
     def site_users(self) -> List[Dict[str, Any]]:
         """
         Get users within the site of the requesting user.
+
+        Returns:
+            List of users within the site of the requesting user.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config):
+                users = client.site_users()
+            ```
+            >>> users
+            [
+                {
+                    "username": "user",
+                    "site": "site",
+                    "email": "user@email.com",
+                }
+            ]
         """
 
         response = super().site_users()
@@ -1226,6 +2007,36 @@ class OnyxClient(OnyxClientBase):
     def all_users(self) -> List[Dict[str, Any]]:
         """
         Get all users.
+
+        Returns:
+            List of all users.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                users = client.all_users()
+            ```
+            >>> users
+            [
+                {
+                    "username": "user",
+                    "site": "site",
+                    "email": "user@email.com",
+                },
+                {
+                    "username": "another_user",
+                    "site": "another_site",
+                    "email": "another_user@email.com",
+                },
+            ]
         """
 
         response = super().all_users()

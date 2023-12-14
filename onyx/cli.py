@@ -349,6 +349,39 @@ def fields(
 
 
 @app.command()
+def choices(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    field: str = typer.Argument(...),
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View options for a choice field.
+    """
+
+    try:
+        api = setup_onyx_api(context.obj)
+        choices = api.client.choices(project, field)
+        if format == InfoFormats.TABLE:
+            table = Table(
+                show_lines=True,
+            )
+            table.add_column("Field")
+            table.add_column("Values")
+            table.add_row(field, ", ".join(choices))
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(choices))
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command()
 def get(
     context: typer.Context,
     project: str = typer.Argument(...),
@@ -534,39 +567,6 @@ def filter(
 
                 for record in records:
                     writer.writerow(record)
-    except Exception as e:
-        handle_error(e)
-
-
-@app.command()
-def choices(
-    context: typer.Context,
-    project: str = typer.Argument(...),
-    field: str = typer.Argument(...),
-    format: Optional[InfoFormats] = typer.Option(
-        InfoFormats.TABLE.value,
-        "-F",
-        "--format",
-        help=HelpText.FORMAT.value,
-    ),
-):
-    """
-    View options for a choice field.
-    """
-
-    try:
-        api = setup_onyx_api(context.obj)
-        choices = api.client.choices(project, field)
-        if format == InfoFormats.TABLE:
-            table = Table(
-                show_lines=True,
-            )
-            table.add_column("Field")
-            table.add_column("Values")
-            table.add_row(field, ", ".join(choices))
-            console.print(table)
-        else:
-            typer.echo(json_dump_pretty(choices))
     except Exception as e:
         handle_error(e)
 
@@ -828,7 +828,7 @@ def version_callback(value: bool):
         raise typer.Exit()
 
 
-@app.callback(name="onyx", help=f"Client Version: {__version__}")
+@app.callback(name="onyx", help=f"API for pathogen metadata.")
 def common(
     context: typer.Context,
     domain: Optional[str] = typer.Option(

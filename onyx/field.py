@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any
 from .exceptions import OnyxFieldError
 
 
@@ -16,14 +17,49 @@ class OnyxField:
 
     __slots__ = "query"
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         """
         Initialise a field.
 
-        Takes a single key-value argument as input, where:
+        Args:
+            **kwargs: Keyword arguments containing a single key-value pair.
 
-        * Key: The field (and optional lookup) to use for filtering.
-        * Value: The field value(s) that are being matched against.
+        Notes:
+            - Takes a single key-value argument as input.
+            - The key corresponds to a field (and optional lookup) to use for filtering.
+            - The value corresponds to the field value(s) that are being matched against.
+            - OnyxField instances can be combined into complex expressions using Python's bitwise operators: `&` (AND), `|` (OR), `^` (XOR), and `~` (NOT).
+            - Multi-value lookups (e.g. 'in', 'range') support passing a Python list as the value. These are coerced into comma-separated strings internally.
+
+        Examples:
+            Create OnyxField objects and combine them using Python bitwise operators:
+            ```python
+            from onyx import OnyxField
+
+            field1 = OnyxField(field1="value1")
+            field2 = OnyxField(field2__contains="value2")
+
+            expression = (field1 | field2) & OnyxField(
+                published_date__range=["2023-01-01", "2023-01-02"]
+            )
+            ```
+            >>> field1
+            <onyx.field.OnyxField object at 0x1028eb850>
+            >>> field2
+            <onyx.field.OnyxField object at 0x1028eb850>
+            >>> expression
+            <onyx.field.OnyxField object at 0x103b6fc40>
+            >>> field1.query
+            {"field1": "value1"}
+            >>> field2.query
+            {"field2__contains": "value2"}
+            >>> expression.query
+            {
+                "&": [
+                    {"|": [{"field1": "value1"}, {"field2__contains": "value2"}]},
+                    {"published_date__range": "2023-01-01,2023-01-02"},
+                ]
+            }
         """
 
         if len(kwargs) != 1:
