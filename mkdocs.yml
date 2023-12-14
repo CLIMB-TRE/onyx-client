@@ -40,7 +40,6 @@ markdown_extensions:
 
 nav:
   - Overview: index.md
-  - Getting started: getting-started.md
   - Command-line interface: cli.md
   - Python API: 
     - OnyxConfig: api/config.md

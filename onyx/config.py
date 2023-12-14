@@ -58,25 +58,27 @@ class OnyxConfig:
 
         Examples:
             Create a config using environment variables for the domain and an API token:
-            >>> import os
-            >>> from onyx import OnyxConfig, OnyxEnv
-            >>> config = OnyxConfig(
-            ...     domain=os.environ[OnyxEnv.DOMAIN],
-            ...     token=os.environ[OnyxEnv.TOKEN],
-            ... )
-            >>> config
-            <onyx.config.OnyxConfig object at 0x1027f9a80>
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+            ```
 
             Or using environment variables for the domain and login credentials:
-            >>> import os
-            >>> from onyx import OnyxConfig, OnyxEnv
-            >>> config = OnyxConfig(
-            ...     domain=os.environ[OnyxEnv.DOMAIN],
-            ...     username=os.environ[OnyxEnv.USERNAME],
-            ...     password=os.environ[OnyxEnv.PASSWORD],
-            ... )
-            >>> config
-            <onyx.config.OnyxConfig object at 0x1027fa600>
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                username=os.environ[OnyxEnv.USERNAME],
+                password=os.environ[OnyxEnv.PASSWORD],
+            )
+            ```
         """
 
         self._validate_domain(domain)
