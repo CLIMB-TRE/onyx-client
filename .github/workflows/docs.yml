@@ -32,5 +32,5 @@ jobs:
           pip install mkdocstrings[python]
       - name: Deploy site
         run: |
-          typer onyx.cli utils docs --output docs/cli.md
+          typer onyx.cli utils docs --output docs/cli/documentation.md
           mkdocs gh-deploy --force
