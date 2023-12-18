@@ -6,15 +6,33 @@ site_author: CLIMB-TRE
 
 theme:
   name: material
+  icon:
+    repo: fontawesome/brands/github
   palette:
-    primary: black
-    accent: black
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: purple
+      accent: purple
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+      
   features:
     - navigation.tabs
     - navigation.tabs.sticky
-    - navigation.sections
-    - navigation.top
-    - toc.integrate
+    # - navigation.sections
+    # - navigation.top
+    # - toc.integrate
     - content.code.copy
 
 plugins:
@@ -37,12 +55,17 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
+  - toc:
+      permalink: true
 
 nav:
   - Overview: index.md
-  - Command-line interface: cli.md
+  - Command-line interface: 
+    - Getting started: cli/getting-started.md
+    - Documentation: cli/documentation.md
   - Python API: 
-    - OnyxConfig: api/config.md
-    - OnyxClient: api/client.md
-    - OnyxField: api/field.md
+    - Documentation:
+      - OnyxConfig: api/documentation/config.md
+      - OnyxClient: api/documentation/client.md
+      - OnyxField: api/documentation/field.md
   - CLIMB-TRE: https://climb-tre.github.io
