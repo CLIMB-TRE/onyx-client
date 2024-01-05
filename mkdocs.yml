@@ -65,7 +65,8 @@ nav:
     - Documentation: cli/documentation.md
   - Python API: 
     - Documentation:
-      - OnyxConfig: api/documentation/config.md
       - OnyxClient: api/documentation/client.md
+      - OnyxConfig: api/documentation/config.md
+      - OnyxEnv: api/documentation/env.md
       - OnyxField: api/documentation/field.md
   - CLIMB-TRE: https://climb-tre.github.io

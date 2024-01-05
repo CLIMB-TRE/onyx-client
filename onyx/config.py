@@ -3,6 +3,42 @@ from .exceptions import OnyxConfigError
 
 
 class OnyxEnv:
+    """
+    Class containing recommended environment variable names for Onyx.
+
+    If environment variables are created with these recommended names, then the attributes of this class can be used to access them.
+
+    These attributes and the recommended environment variable names are:
+    ```python
+    OnyxEnv.DOMAIN = "ONYX_DOMAIN"
+    OnyxEnv.TOKEN = "ONYX_TOKEN"
+    OnyxEnv.USERNAME = "ONYX_USERNAME"
+    OnyxEnv.PASSWORD = "ONYX_PASSWORD"
+    ```
+
+    Examples:
+        In the shell, create the following environment variables with your credentials:
+        ```
+        $ export ONYX_DOMAIN="https://onyx.example.domain"
+        $ export ONYX_TOKEN="example-onyx-token"
+        $ export ONYX_USERNAME="example-onyx-username"
+        $ export ONYX_PASSWORD="example-onyx-password"
+        ```
+
+        Then access them in Python to create an OnyxConfig object:
+        ```python
+        import os
+        from onyx import OnyxEnv, OnyxConfig
+
+        config = OnyxConfig(
+            domain=os.environ[OnyxEnv.DOMAIN],
+            token=os.environ[OnyxEnv.TOKEN],
+            username=os.environ[OnyxEnv.USERNAME],
+            password=os.environ[OnyxEnv.PASSWORD],
+        )
+        ```
+    """
+
     DOMAIN = "ONYX_DOMAIN"
     TOKEN = "ONYX_TOKEN"
     USERNAME = "ONYX_USERNAME"
