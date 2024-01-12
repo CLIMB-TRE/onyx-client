@@ -35,9 +35,9 @@ theme:
     # - toc.integrate
     - content.code.copy
 
-extra:
-  version:
-    provider: mike
+# extra:
+#   version:
+#     provider: mike
 
 plugins:
   - search
