@@ -35,6 +35,10 @@ theme:
     # - toc.integrate
     - content.code.copy
 
+extra:
+  version:
+    provider: mike
+
 plugins:
   - search
   - mkdocstrings:
