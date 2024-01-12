@@ -46,6 +46,9 @@ plugins:
             docstring_section_style: spacy
             show_source: false
             members_order: source
+  - with-pdf:
+      output_path: onyx-client.pdf
+      cover_subtitle: ""
 
 markdown_extensions:
   - pymdownx.highlight:

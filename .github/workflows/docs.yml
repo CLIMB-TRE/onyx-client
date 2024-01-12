@@ -30,6 +30,7 @@ jobs:
           pip install typer-cli
           pip install mkdocs-material
           pip install mkdocstrings[python]
+          pip install mkdocs-with-pdf
       - name: Deploy site
         run: |
           typer onyx.cli utils docs --output docs/cli/documentation.md
