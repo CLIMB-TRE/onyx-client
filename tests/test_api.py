@@ -45,7 +45,7 @@ FIELDS_DATA = {
     "data": {
         "version": "0.1.0",
         "fields": {
-            "cid": {
+            "climb_id": {
                 "type": "text",
                 "required": True,
                 "description": "Unique identifier for a project. Set by Onyx.",
@@ -74,7 +74,7 @@ FIELDS_ADMIN_DATA = {
     "data": {
         "version": "0.1.0",
         "fields": {
-            "cid": {
+            "climb_id": {
                 "type": "text",
                 "required": True,
                 "description": "Unique identifier for a project. Set by Onyx.",
@@ -133,7 +133,7 @@ CHOICES_DATA = {
         "Wales",
     ],
 }
-CID = "C-0123456789"
+CLIMB_ID = "C-0123456789"
 CREATE_FIELDS = {
     "sample_id": "sample-123",
     "run_name": "run-456",
@@ -143,7 +143,9 @@ TSV_CREATE_EMPTY_FILE = "sample_id\t run_name\n"
 CSV_CREATE_SINGLE_FILE = "sample_id, run_name\nsample-123, run-456"
 TSV_CREATE_SINGLE_FILE = "sample_id\t run_name\nsample-123\t run-456"
 CSV_CREATE_MULTI_FILE = "sample_id, run_name\nsample-123, run-456\nsample-123, run-456"
-TSV_CREATE_MULTI_FILE = "sample_id\t run_name\nsample-123\t run-456\nsample-123\t run-456"
+TSV_CREATE_MULTI_FILE = (
+    "sample_id\t run_name\nsample-123\t run-456\nsample-123\t run-456"
+)
 CSV_CREATE_SINGLE_MISSING_FILE = "sample_id\nsample-123"
 TSV_CREATE_SINGLE_MISSING_FILE = "sample_id\nsample-123"
 CSV_CREATE_MULTI_MISSING_FILE = "sample_id\nsample-123\nsample-123"
@@ -153,21 +155,21 @@ CREATE_DATA = {
     "status": "success",
     "code": 201,
     "data": {
-        "cid": CID,
+        "climb_id": CLIMB_ID,
     },
 }
 TESTCREATE_DATA = {
     "status": "success",
     "code": 201,
     "data": {
-        "cid": None,
+        "climb_id": None,
     },
 }
 GET_DATA = {
     "status": "success",
     "code": 200,
     "data": {
-        "cid": CID,
+        "climb_id": CLIMB_ID,
         "published_date": "2023-09-18",
         "sample_id": "sample-123",
         "run_name": "run-456",
@@ -177,7 +179,7 @@ GET_ADMIN_DATA = {
     "status": "success",
     "code": 200,
     "data": {
-        "cid": CID,
+        "climb_id": CLIMB_ID,
         "published_date": "2023-09-18",
         "sample_id": "sample-123",
         "run_name": "run-456",
@@ -193,19 +195,19 @@ FILTER_PAGE_1_DATA = {
     "previous": None,
     "data": [
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
@@ -219,19 +221,19 @@ FILTER_PAGE_2_DATA = {
     "previous": FILTER_PAGE_1_URL,
     "data": [
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
@@ -247,14 +249,14 @@ FILTER_SPECIFIC_DATA = {
     "previous": None,
     "data": [
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-abc",
             "run_name": "run-def",
         },
     ],
 }
-INCLUDE_FIELDS = ["cid", "published_date"]
+INCLUDE_FIELDS = ["climb_id", "published_date"]
 FILTER_SPECIFIC_INCLUDE_DATA = {
     "status": "success",
     "code": 200,
@@ -262,7 +264,7 @@ FILTER_SPECIFIC_INCLUDE_DATA = {
     "previous": None,
     "data": [
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
         },
     ],
@@ -275,7 +277,7 @@ FILTER_SPECIFIC_EXCLUDE_DATA = {
     "previous": None,
     "data": [
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-abc",
         },
@@ -290,21 +292,21 @@ FILTER_PAGE_1_ADMIN_DATA = {
     "previous": None,
     "data": [
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
             "country": "England",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
             "country": "England",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
@@ -319,21 +321,21 @@ FILTER_PAGE_2_ADMIN_DATA = {
     "previous": FILTER_PAGE_1_ADMIN_URL,
     "data": [
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
             "country": "England",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
             "country": "England",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
@@ -350,19 +352,19 @@ QUERY_PAGE_1_DATA = {
     "previous": None,
     "data": [
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
@@ -376,19 +378,19 @@ QUERY_PAGE_2_DATA = {
     "previous": QUERY_PAGE_1_URL,
     "data": [
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
@@ -405,21 +407,21 @@ QUERY_PAGE_1_ADMIN_DATA = {
     "previous": None,
     "data": [
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
             "country": "England",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
             "country": "England",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
@@ -434,21 +436,21 @@ QUERY_PAGE_2_ADMIN_DATA = {
     "previous": QUERY_PAGE_1_ADMIN_URL,
     "data": [
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
             "country": "England",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
             "country": "England",
         },
         {
-            "cid": CID,
+            "climb_id": CLIMB_ID,
             "published_date": "2023-09-18",
             "sample_id": "sample-123",
             "run_name": "run-456",
@@ -460,16 +462,16 @@ UPDATE_FIELDS = {
     "country": "England",
     "source_type": "humanoid",
 }
-CSV_UPDATE_EMPTY_FILE = "cid, country, source_type\n"
-TSV_UPDATE_EMPTY_FILE = "cid\t country\t source_type\n"
-CSV_UPDATE_SINGLE_FILE = f"cid, country, source_type\n{CID}, England, humanoid"
-TSV_UPDATE_SINGLE_FILE = f"cid\t country\t source_type\n{CID}\t England\t humanoid"
-CSV_UPDATE_MULTI_FILE = (
-    f"cid, country, source_type\n{CID}, England, humanoid\n{CID}, England, humanoid"
+CSV_UPDATE_EMPTY_FILE = "climb_id, country, source_type\n"
+TSV_UPDATE_EMPTY_FILE = "climb_id\t country\t source_type\n"
+CSV_UPDATE_SINGLE_FILE = (
+    f"climb_id, country, source_type\n{CLIMB_ID}, England, humanoid"
 )
-TSV_UPDATE_MULTI_FILE = (
-    f"cid\t country\t source_type\n{CID}\t England\t humanoid\n{CID}\t England\t humanoid"
+TSV_UPDATE_SINGLE_FILE = (
+    f"climb_id\t country\t source_type\n{CLIMB_ID}\t England\t humanoid"
 )
+CSV_UPDATE_MULTI_FILE = f"climb_id, country, source_type\n{CLIMB_ID}, England, humanoid\n{CLIMB_ID}, England, humanoid"
+TSV_UPDATE_MULTI_FILE = f"climb_id\t country\t source_type\n{CLIMB_ID}\t England\t humanoid\n{CLIMB_ID}\t England\t humanoid"
 CSV_UPDATE_SINGLE_MISSING_FILE = "country, source_type\nEngland, humanoid"
 TSV_UPDATE_SINGLE_MISSING_FILE = "country\t source_type\nEngland\t humanoid"
 CSV_UPDATE_MULTI_MISSING_FILE = (
@@ -478,32 +480,32 @@ CSV_UPDATE_MULTI_MISSING_FILE = (
 TSV_UPDATE_MULTI_MISSING_FILE = (
     "country\t source_type\nEngland\t humanoid\nEngland\t humanoid"
 )
-MISSING_UPDATE_FIELDS = {"cid": CID}
+MISSING_UPDATE_FIELDS = {"climb_id": CLIMB_ID}
 UPDATE_DATA = {
     "status": "success",
     "code": 200,
     "data": {
-        "cid": CID,
+        "climb_id": CLIMB_ID,
     },
 }
 TESTUPDATE_DATA = {
     "status": "success",
     "code": 200,
     "data": {
-        "cid": CID,
+        "climb_id": CLIMB_ID,
     },
 }
-CSV_DELETE_EMPTY_FILE = f"cid\n"
-TSV_DELETE_EMPTY_FILE = f"cid\n"
-CSV_DELETE_SINGLE_FILE = f"cid\n{CID}"
-TSV_DELETE_SINGLE_FILE = f"cid\n{CID}"
-CSV_DELETE_MULTI_FILE = f"cid\n{CID}\n{CID}"
-TSV_DELETE_MULTI_FILE = f"cid\n{CID}\n{CID}"
+CSV_DELETE_EMPTY_FILE = f"climb_id\n"
+TSV_DELETE_EMPTY_FILE = f"climb_id\n"
+CSV_DELETE_SINGLE_FILE = f"climb_id\n{CLIMB_ID}"
+TSV_DELETE_SINGLE_FILE = f"climb_id\n{CLIMB_ID}"
+CSV_DELETE_MULTI_FILE = f"climb_id\n{CLIMB_ID}\n{CLIMB_ID}"
+TSV_DELETE_MULTI_FILE = f"climb_id\n{CLIMB_ID}\n{CLIMB_ID}"
 DELETE_DATA = {
     "status": "success",
     "code": 200,
     "data": {
-        "cid": CID,
+        "climb_id": CLIMB_ID,
     },
 }
 REGISTER_FIELDS = {
@@ -711,7 +713,7 @@ def mock_request(
         elif url == OnyxClient.ENDPOINTS["choices"](DOMAIN, PROJECT, CHOICE_FIELD):
             return MockResponse(CHOICES_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["get"](DOMAIN, PROJECT, CID):
+        elif url == OnyxClient.ENDPOINTS["get"](DOMAIN, PROJECT, CLIMB_ID):
             if params.get("scope") == None:
                 return MockResponse(GET_DATA)
 
@@ -756,13 +758,13 @@ def mock_request(
 
     elif method == "patch":
         if (
-            url == OnyxClient.ENDPOINTS["update"](DOMAIN, PROJECT, CID)
+            url == OnyxClient.ENDPOINTS["update"](DOMAIN, PROJECT, CLIMB_ID)
             and json == UPDATE_FIELDS
         ):
             return MockResponse(UPDATE_DATA)
 
         elif (
-            url == OnyxClient.ENDPOINTS["testupdate"](DOMAIN, PROJECT, CID)
+            url == OnyxClient.ENDPOINTS["testupdate"](DOMAIN, PROJECT, CLIMB_ID)
             and json == UPDATE_FIELDS
         ):
             return MockResponse(TESTUPDATE_DATA)
@@ -771,7 +773,7 @@ def mock_request(
             return MockResponse(APPROVE_DATA)
 
     elif method == "delete":
-        if url == OnyxClient.ENDPOINTS["delete"](DOMAIN, PROJECT, CID):
+        if url == OnyxClient.ENDPOINTS["delete"](DOMAIN, PROJECT, CLIMB_ID):
             return MockResponse(DELETE_DATA)
 
     return MockResponse(
@@ -883,9 +885,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_get(self, mock_request):
-        self.assertEqual(self.client.get(PROJECT, CID), GET_DATA["data"])
+        self.assertEqual(self.client.get(PROJECT, CLIMB_ID), GET_DATA["data"])
         self.assertEqual(
-            self.client.get(PROJECT, CID, scope=ADMIN_SCOPE), GET_ADMIN_DATA["data"]
+            self.client.get(PROJECT, CLIMB_ID, scope=ADMIN_SCOPE),
+            GET_ADMIN_DATA["data"],
         )
         self.assertEqual(
             self.client.get(
@@ -911,7 +914,7 @@ class OnyxClientTestCase(TestCase):
         )
         self.assertEqual(self.config.token, TOKEN)
 
-        # At least one of CID and fields is required
+        # At least one of CLIMB_ID and fields is required
         with pytest.raises(exceptions.OnyxClientError):
             self.client.get(PROJECT)
 
@@ -923,7 +926,7 @@ class OnyxClientTestCase(TestCase):
 
         for empty in ["", " ", None]:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.get(empty, CID)
+                self.client.get(empty, CLIMB_ID)
 
             with pytest.raises(exceptions.OnyxClientError):
                 self.client.get(PROJECT, empty)
@@ -1026,20 +1029,20 @@ class OnyxClientTestCase(TestCase):
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_update(self, mock_request):
         self.assertEqual(
-            self.client.update(PROJECT, CID, UPDATE_FIELDS), UPDATE_DATA["data"]
+            self.client.update(PROJECT, CLIMB_ID, UPDATE_FIELDS), UPDATE_DATA["data"]
         )
         self.assertEqual(
-            self.client.update(PROJECT, CID, UPDATE_FIELDS, test=True),
+            self.client.update(PROJECT, CLIMB_ID, UPDATE_FIELDS, test=True),
             TESTUPDATE_DATA["data"],
         )
         self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.update(empty, CID, UPDATE_FIELDS)
+                self.client.update(empty, CLIMB_ID, UPDATE_FIELDS)
 
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.update(empty, CID, UPDATE_FIELDS, test=True)
+                self.client.update(empty, CLIMB_ID, UPDATE_FIELDS, test=True)
 
             with pytest.raises(exceptions.OnyxClientError):
                 self.client.update(PROJECT, empty, UPDATE_FIELDS)
@@ -1049,12 +1052,12 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_delete(self, mock_request):
-        self.assertEqual(self.client.delete(PROJECT, CID), DELETE_DATA["data"])
+        self.assertEqual(self.client.delete(PROJECT, CLIMB_ID), DELETE_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.delete(empty, CID)
+                self.client.delete(empty, CLIMB_ID)
 
             with pytest.raises(exceptions.OnyxClientError):
                 self.client.delete(PROJECT, empty)
@@ -1279,7 +1282,7 @@ class OnyxClientTestCase(TestCase):
                 delimiter="\t",
             )
 
-        # Testing lack of CID for update
+        # Testing lack of CLIMB_ID for update
         with pytest.raises(exceptions.OnyxClientError):
             self.client.csv_update(
                 PROJECT,
