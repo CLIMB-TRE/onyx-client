@@ -43,6 +43,7 @@ class OnyxField:
                 published_date__range=["2023-01-01", "2023-01-02"]
             )
             ```
+            ```python
             >>> field1
             <onyx.field.OnyxField object at 0x1028eb850>
             >>> field2
@@ -60,6 +61,7 @@ class OnyxField:
                     {"published_date__range": "2023-01-01,2023-01-02"},
                 ]
             }
+            ```
         """
 
         if len(kwargs) != 1:

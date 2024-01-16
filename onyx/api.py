@@ -133,41 +133,41 @@ class OnyxClientBase:
             domain=domain,
             project=project,
         ),
-        "get": lambda domain, project, cid: OnyxClient._handle_endpoint(
+        "get": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
             lambda: os.path.join(
                 str(domain),
                 "projects",
                 str(project),
-                str(cid),
+                str(climb_id),
                 "",
             ),
             domain=domain,
             project=project,
-            cid=cid,
+            climb_id=climb_id,
         ),
-        "update": lambda domain, project, cid: OnyxClient._handle_endpoint(
+        "update": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
             lambda: os.path.join(
                 str(domain),
                 "projects",
                 str(project),
-                str(cid),
+                str(climb_id),
                 "",
             ),
             domain=domain,
             project=project,
-            cid=cid,
+            climb_id=climb_id,
         ),
-        "delete": lambda domain, project, cid: OnyxClient._handle_endpoint(
+        "delete": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
             lambda: os.path.join(
                 str(domain),
                 "projects",
                 str(project),
-                str(cid),
+                str(climb_id),
                 "",
             ),
             domain=domain,
             project=project,
-            cid=cid,
+            climb_id=climb_id,
         ),
         "query": lambda domain, project: OnyxClient._handle_endpoint(
             lambda: os.path.join(
@@ -189,18 +189,18 @@ class OnyxClientBase:
             domain=domain,
             project=project,
         ),
-        "testupdate": lambda domain, project, cid: OnyxClient._handle_endpoint(
+        "testupdate": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
             lambda: os.path.join(
                 str(domain),
                 "projects",
                 str(project),
                 "test",
-                str(cid),
+                str(climb_id),
                 "",
             ),
             domain=domain,
             project=project,
-            cid=cid,
+            climb_id=climb_id,
         ),
     }
 
@@ -235,9 +235,9 @@ class OnyxClientBase:
                         )
 
                 # Crude but effective
-                # Prevents calling other endpoints from the get() function with a cid equal to the endpoint name
+                # Prevents calling other endpoints from the get() function with a climb_id equal to the endpoint name
                 # Its not the end of the world if that did happen, but to the user it would be quite confusing
-                if name == "cid":
+                if name == "climb_id":
                     for clash in ["test", "query", "fields", "lookups", "choices"]:
                         if val == clash:
                             raise OnyxClientError(
@@ -321,7 +321,7 @@ class OnyxClientBase:
         delimiter: Optional[str] = None,
         multiline: bool = False,
         test: bool = False,
-        cid_required: bool = False,
+        climb_id_required: bool = False,
     ) -> Generator[requests.Response, Any, None]:
         # Get appropriate endpoint for test/prod
         if test:
@@ -366,13 +366,15 @@ class OnyxClientBase:
                 if fields:
                     record = record | fields
 
-                if cid_required:
-                    # Grab the cid, if required for the URL
-                    cid = record.pop("cid", None)
-                    if not cid:
-                        raise OnyxClientError("Record requires a 'cid' for upload.")
+                if climb_id_required:
+                    # Grab the climb_id, if required for the URL
+                    climb_id = record.pop("climb_id", None)
+                    if not climb_id:
+                        raise OnyxClientError(
+                            "Record requires a 'climb_id' for upload."
+                        )
                     url = OnyxClient.ENDPOINTS[endpoint](
-                        self.config.domain, project, cid
+                        self.config.domain, project, climb_id
                     )
                 else:
                     url = OnyxClient.ENDPOINTS[endpoint](self.config.domain, project)
@@ -450,14 +452,14 @@ class OnyxClientBase:
     def get(
         self,
         project: str,
-        cid: str,
+        climb_id: str,
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         scope: Union[List[str], str, None] = None,
     ) -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClient.ENDPOINTS["get"](self.config.domain, project, cid),
+            url=OnyxClient.ENDPOINTS["get"](self.config.domain, project, climb_id),
             params={"include": include, "exclude": exclude, "scope": scope},
         )
         return response
@@ -469,7 +471,7 @@ class OnyxClientBase:
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         scope: Union[List[str], str, None] = None,
-        summarise: Optional[str] = None,
+        summarise: Union[List[str], str, None] = None,
     ) -> Generator[requests.Response, Any, None]:
         if fields is None:
             fields = {}
@@ -503,7 +505,7 @@ class OnyxClientBase:
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         scope: Union[List[str], str, None] = None,
-        summarise: Optional[str] = None,
+        summarise: Union[List[str], str, None] = None,
     ) -> Generator[requests.Response, Any, None]:
         if query:
             if not isinstance(query, OnyxField):
@@ -541,7 +543,7 @@ class OnyxClientBase:
     def update(
         self,
         project: str,
-        cid: str,
+        climb_id: str,
         fields: Optional[Dict[str, Any]] = None,
         test: bool = False,
     ) -> requests.Response:
@@ -552,7 +554,7 @@ class OnyxClientBase:
 
         response = self._request(
             method="patch",
-            url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project, cid),
+            url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project, climb_id),
             json=fields,
         )
         return response
@@ -560,11 +562,11 @@ class OnyxClientBase:
     def delete(
         self,
         project: str,
-        cid: str,
+        climb_id: str,
     ) -> requests.Response:
         response = self._request(
             method="delete",
-            url=OnyxClient.ENDPOINTS["delete"](self.config.domain, project, cid),
+            url=OnyxClient.ENDPOINTS["delete"](self.config.domain, project, climb_id),
         )
         return response
 
@@ -606,7 +608,7 @@ class OnyxClientBase:
             delimiter=delimiter,
             multiline=multiline,
             test=test,
-            cid_required=True,
+            climb_id_required=True,
         )
 
     def csv_delete(
@@ -623,7 +625,7 @@ class OnyxClientBase:
             csv_file=csv_file,
             delimiter=delimiter,
             multiline=multiline,
-            cid_required=True,
+            climb_id_required=True,
         )
 
     @classmethod
@@ -843,6 +845,7 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config) as client:
                 projects = client.projects()
             ```
+            ```python
             >>> projects
             [
                 {
@@ -856,6 +859,7 @@ class OnyxClient(OnyxClientBase):
                     "scope": "base",
                 },
             ]
+            ```
         """
 
         response = super().projects()
@@ -891,11 +895,12 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config) as client:
                 fields = client.fields("project")
             ```
+            ```python
             >>> fields
             {
                 "version": "0.1.0",
                 "fields": {
-                    "cid": {
+                    "climb_id": {
                         "description": "Unique identifier for a project record.",
                         "type": "text",
                         "required": True,
@@ -918,6 +923,7 @@ class OnyxClient(OnyxClientBase):
                     },
                 },
             }
+            ```
         """
 
         response = super().fields(project, scope=scope)
@@ -949,8 +955,10 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config) as client:
                 choices = client.choices("project", "country")
             ```
+            ```python
             >>> choices
             ["ENG", "WALES", "SCOT", "NI"]
+            ```
         """
 
         response = super().choices(project, field)
@@ -961,7 +969,7 @@ class OnyxClient(OnyxClientBase):
     def get(
         self,
         project: str,
-        cid: Optional[str] = None,
+        climb_id: Optional[str] = None,
         fields: Optional[Dict[str, Any]] = None,
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
@@ -972,7 +980,7 @@ class OnyxClient(OnyxClientBase):
 
         Args:
             project: Name of the project.
-            cid: Unique identifier for the record in the project.
+            climb_id: Unique identifier for the record in the project.
             fields: Series of conditions on fields, used to filter the data.
             include: Fields to include in the output.
             exclude: Fields to exclude from the output.
@@ -982,7 +990,7 @@ class OnyxClient(OnyxClientBase):
             Dict containing the record.
 
         Examples:
-            Get a record by CID:
+            Get a record by CLIMB ID:
             ```python
             import os
             from onyx import OnyxConfig, OnyxEnv, OnyxClient
@@ -995,13 +1003,15 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config) as client:
                 record = client.get("project", "C-1234567890")
             ```
+            ```python
             >>> record
             {
-                "cid": "C-1234567890",
+                "climb_id": "C-1234567890",
                 "published_date": "2023-01-01",
                 "field1": "value1",
                 "field2": "value2",
             }
+            ```
 
             Get a record by fields that uniquely identify it:
             ```python
@@ -1022,13 +1032,15 @@ class OnyxClient(OnyxClientBase):
                     },
                 )
             ```
+            ```python
             >>> record
             {
-                "cid": "C-1234567890",
+                "climb_id": "C-1234567890",
                 "published_date": "2023-01-01",
                 "field1": "value1",
                 "field2": "value2",
             }
+            ```
 
             The `include`, `exclude`, and `scope` arguments can be used to control the fields returned:
             ```python
@@ -1043,55 +1055,57 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config) as client:
                 record_v1 = client.get(
                     "project",
-                    cid="C-1234567890",
-                    include=["cid", "published_date"],
+                    climb_id="C-1234567890",
+                    include=["climb_id", "published_date"],
                 )
                 record_v2 = client.get(
                     "project",
-                    cid="C-1234567890",
+                    climb_id="C-1234567890",
                     exclude=["field2"],
                 )
                 record_v3 = client.get(
                     "project",
-                    cid="C-1234567890",
+                    climb_id="C-1234567890",
                     scope="extra_fields",
                 )
             ```
+            ```python
             >>> record_v1
             {
-                "cid": "C-1234567890",
+                "climb_id": "C-1234567890",
                 "published_date": "2023-01-01",
             }
             >>> record_v2
             {
-                "cid": "C-1234567890",
+                "climb_id": "C-1234567890",
                 "published_date": "2023-01-01",
                 "field1": "value1",
             }
             >>> record_v3
             {
-                "cid": "C-1234567890",
+                "climb_id": "C-1234567890",
                 "published_date": "2023-01-01",
                 "field1": "value1",
                 "field2": "value2",
                 "extra_field1": "extra_value1",
                 "extra_field2": "extra_value2",
             }
+            ```
 
         Tips:
             - Including/excluding fields to reduce the size of the returned data can improve performance.
         """
 
-        if cid and fields:
-            raise OnyxClientError("Cannot provide both 'cid' and 'fields'.")
+        if climb_id and fields:
+            raise OnyxClientError("Cannot provide both 'climb_id' and 'fields'.")
 
-        if not (cid or fields):
-            raise OnyxClientError("Must provide either 'cid' or 'fields'.")
+        if not (climb_id or fields):
+            raise OnyxClientError("Must provide either 'climb_id' or 'fields'.")
 
-        if cid:
+        if climb_id:
             response = super().get(
                 project,
-                cid,
+                climb_id,
                 include=include,
                 exclude=exclude,
                 scope=scope,
@@ -1129,7 +1143,7 @@ class OnyxClient(OnyxClientBase):
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         scope: Union[List[str], str, None] = None,
-        summarise: Optional[str] = None,
+        summarise: Union[List[str], str, None] = None,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
         Filter records from a project.
@@ -1140,10 +1154,10 @@ class OnyxClient(OnyxClientBase):
             include: Fields to include in the output.
             exclude: Fields to exclude from the output.
             scope: Additional named group(s) of fields to include in the output.
-            summarise: For a given field in the filtered data, return the frequency of each of its values.
+            summarise: For a given field (or group of fields), return the frequency of each unique value (or unique group of values).
 
         Returns:
-            Generator of records. If a summarise field is provided, each record will be a dict containing a value of the field and its frequency.
+            Generator of records. If a summarise argument is provided, each record will be a dict containing values of the summary fields and a count for the frequency.
 
         Notes:
             - The fields argument must be a dict of field conditions. Each of these specifies a requirement that the returned data must match.
@@ -1173,23 +1187,25 @@ class OnyxClient(OnyxClientBase):
                     )
                 )
             ```
+            ```python
             >>> records
             [
                 {
-                    "cid": "C-1234567890",
+                    "climb_id": "C-1234567890",
                     "published_date": "2023-01-01",
                     "field1": "abcd",
                     "field2": 123,
                 },
                 {
-                    "cid": "C-1234567891",
+                    "climb_id": "C-1234567891",
                     "published_date": "2023-01-02",
                     "field1": "abcd",
                     "field2": 456,
                 },
             ]
+            ```
 
-            The `summarise` argument can be used to return the frequency of each value for a given field:
+            The `summarise` argument can be used to return the frequency of each unique value for a given field, or the frequency of each unique set of values for a group of fields:
             ```python
             import os
             from onyx import OnyxConfig, OnyxEnv, OnyxClient
@@ -1200,7 +1216,7 @@ class OnyxClient(OnyxClientBase):
             )
 
             with OnyxClient(config) as client:
-                records = list(
+                records_v1 = list(
                     client.filter(
                         project="project",
                         fields={
@@ -1210,8 +1226,20 @@ class OnyxClient(OnyxClientBase):
                         summarise="published_date",
                     )
                 )
+
+                records_v2 = list(
+                    client.filter(
+                        project="project",
+                        fields={
+                            "field1": "abcd",
+                            "published_date__range" : "2023-01-01, 2023-01-02",
+                        },
+                        summarise=["published_date", "field2"],
+                    )
+                )
             ```
-            >>> records
+            ```python
+            >>> records_v1
             [
                 {
                     "published_date": "2023-01-01",
@@ -1222,6 +1250,21 @@ class OnyxClient(OnyxClientBase):
                     "count": 1,
                 },
             ]
+            >>> records_v2
+            [
+                {
+                    "published_date": "2023-01-01",
+                    "field2": 123,
+                    "count": 1,
+                },
+                {
+                    "published_date": "2023-01-02",
+                    "field2": 456,
+                    "count": 1,
+                },
+            ]
+            ```
+
         """
 
         responses = super().filter(
@@ -1245,7 +1288,7 @@ class OnyxClient(OnyxClientBase):
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         scope: Union[List[str], str, None] = None,
-        summarise: Optional[str] = None,
+        summarise: Union[List[str], str, None] = None,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
         Query records from a project.
@@ -1256,10 +1299,10 @@ class OnyxClient(OnyxClientBase):
             include: Fields to include in the output.
             exclude: Fields to exclude from the output.
             scope: Additional named group(s) of fields to include in the output.
-            summarise: For a given field in the filtered data, return the frequency of each of its values.
+            summarise: For a given field (or group of fields), return the frequency of each unique value (or unique group of values).
 
         Returns:
-            Generator of records. If a summarise field is provided, each record will be a dict containing a value of the field and its frequency.
+            Generator of records. If a summarise argument is provided, each record will be a dict containing values of the summary fields and a count for the frequency.
 
         Notes:
             - The query argument must be an instance of OnyxField.
@@ -1288,21 +1331,23 @@ class OnyxClient(OnyxClientBase):
                     )
                 )
             ```
+            ```python
             >>> records
             [
                 {
-                    "cid": "C-1234567890",
+                    "climb_id": "C-1234567890",
                     "published_date": "2023-01-01",
                     "field1": "abcd",
                     "field2": 123,
                 },
                 {
-                    "cid": "C-1234567891",
+                    "climb_id": "C-1234567891",
                     "published_date": "2023-01-02",
                     "field1": "abcd",
                     "field2": 456,
                 },
             ]
+            ```
         """
 
         responses = super().query(
@@ -1378,7 +1423,7 @@ class OnyxClient(OnyxClientBase):
             test: If True, runs the command as a test. Default: False
 
         Returns:
-            Dict containing the CID of the created record.
+            Dict containing the CLIMB ID of the created record.
 
         Examples:
             ```python
@@ -1399,8 +1444,10 @@ class OnyxClient(OnyxClientBase):
                     },
                 )
             ```
+            ```python
             >>> result
-            {"cid": "C-1234567890"}
+            {"climb_id": "C-1234567890"}
+            ```
         """
 
         response = super().create(project, fields, test=test)
@@ -1411,7 +1458,7 @@ class OnyxClient(OnyxClientBase):
     def update(
         self,
         project: str,
-        cid: str,
+        climb_id: str,
         fields: Optional[Dict[str, Any]] = None,
         test: bool = False,
     ) -> Dict[str, Any]:
@@ -1420,12 +1467,12 @@ class OnyxClient(OnyxClientBase):
 
         Args:
             project: Name of the project.
-            cid: Unique identifier for the record in the project.
+            climb_id: Unique identifier for the record in the project.
             fields: Object representing the record to be updated.
             test: If True, runs the command as a test. Default: False
 
         Returns:
-            Dict containing the CID of the updated record.
+            Dict containing the CLIMB ID of the updated record.
 
         Examples:
             ```python
@@ -1440,18 +1487,20 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config) as client:
                 result = client.update(
                     project="project",
-                    cid="C-1234567890",
+                    climb_id="C-1234567890",
                     fields={
                         "field1": "value1",
                         "field2": "value2",
                     },
                 )
             ```
+            ```python
             >>> result
-            {"cid": "C-1234567890"}
+            {"climb_id": "C-1234567890"}
+            ```
         """
 
-        response = super().update(project, cid, fields=fields, test=test)
+        response = super().update(project, climb_id, fields=fields, test=test)
         response.raise_for_status()
         return response.json()["data"]
 
@@ -1459,17 +1508,17 @@ class OnyxClient(OnyxClientBase):
     def delete(
         self,
         project: str,
-        cid: str,
+        climb_id: str,
     ) -> Dict[str, Any]:
         """
         Delete a record in a project.
 
         Args:
             project: Name of the project.
-            cid: Unique identifier for the record in the project.
+            climb_id: Unique identifier for the record in the project.
 
         Returns:
-            Dict containing the CID of the deleted record.
+            Dict containing the CLIMB ID of the deleted record.
 
         Examples:
             ```python
@@ -1484,14 +1533,16 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config) as client:
                 result = client.delete(
                     project="project",
-                    cid="C-1234567890",
+                    climb_id="C-1234567890",
                 )
             ```
+            ```python
             >>> result
-            {"cid": "C-1234567890"}
+            {"climb_id": "C-1234567890"}
+            ```
         """
 
-        response = super().delete(project, cid)
+        response = super().delete(project, climb_id)
         response.raise_for_status()
         return response.json()["data"]
 
@@ -1517,7 +1568,7 @@ class OnyxClient(OnyxClientBase):
             test: If True, runs the command as a test. Default: False
 
         Returns:
-            Dict containing the CID of the created record. If multiline = True, returns a list of dicts containing the CID of each created record.
+            Dict containing the CLIMB ID of the created record. If multiline = True, returns a list of dicts containing the CLIMB ID of each created record.
 
         Examples:
             Create a single record:
@@ -1536,8 +1587,10 @@ class OnyxClient(OnyxClientBase):
                     csv_file=csv_file,
                 )
             ```
+            ```python
             >>> result
-            {"cid": "C-1234567890"}
+            {"climb_id": "C-1234567890"}
+            ```
 
             Create multiple records:
             ```python
@@ -1556,12 +1609,14 @@ class OnyxClient(OnyxClientBase):
                     multiline=True,
                 )
             ```
+            ```python
             >>> results
             [
-                {"cid": "C-1234567890"},
-                {"cid": "C-1234567891"},
-                {"cid": "C-1234567892"},
+                {"climb_id": "C-1234567890"},
+                {"climb_id": "C-1234567891"},
+                {"climb_id": "C-1234567892"},
             ]
+            ```
         """
 
         responses = super().csv_create(
@@ -1596,7 +1651,7 @@ class OnyxClient(OnyxClientBase):
             test: If True, runs the command as a test. Default: False
 
         Returns:
-            Dict containing the CID of the updated record. If multiline = True, returns a list of dicts containing the CID of each updated record.
+            Dict containing the CLIMB ID of the updated record. If multiline = True, returns a list of dicts containing the CLIMB ID of each updated record.
 
         Examples:
             Update a single record:
@@ -1615,8 +1670,10 @@ class OnyxClient(OnyxClientBase):
                     csv_file=csv_file,
                 )
             ```
+            ```python
             >>> result
-            {"cid": "C-1234567890"}
+            {"climb_id": "C-1234567890"}
+            ```
 
             Update multiple records:
             ```python
@@ -1635,12 +1692,14 @@ class OnyxClient(OnyxClientBase):
                     multiline=True,
                 )
             ```
+            ```python
             >>> results
             [
-                {"cid": "C-1234567890"},
-                {"cid": "C-1234567891"},
-                {"cid": "C-1234567892"},
+                {"climb_id": "C-1234567890"},
+                {"climb_id": "C-1234567891"},
+                {"climb_id": "C-1234567892"},
             ]
+            ```
         """
 
         responses = super().csv_update(
@@ -1671,7 +1730,7 @@ class OnyxClient(OnyxClientBase):
             multiline: If True, allows processing of CSV files with more than one record. Default: False
 
         Returns:
-            Dict containing the CID of the deleted record. If multiline = True, returns a list of dicts containing the CID of each deleted record.
+            Dict containing the CLIMB ID of the deleted record. If multiline = True, returns a list of dicts containing the CLIMB ID of each deleted record.
 
         Examples:
             Delete a single record:
@@ -1690,8 +1749,10 @@ class OnyxClient(OnyxClientBase):
                     csv_file=csv_file,
                 )
             ```
+            ```python
             >>> result
-            {"cid": "C-1234567890"}
+            {"climb_id": "C-1234567890"}
+            ```
 
             Delete multiple records:
             ```python
@@ -1710,12 +1771,14 @@ class OnyxClient(OnyxClientBase):
                     multiline=True,
                 )
             ```
+            ```python
             >>> results
             [
-                {"cid": "C-1234567890"},
-                {"cid": "C-1234567891"},
-                {"cid": "C-1234567892"},
+                {"climb_id": "C-1234567890"},
+                {"climb_id": "C-1234567891"},
+                {"climb_id": "C-1234567892"},
             ]
+            ```
         """
 
         responses = super().csv_delete(
@@ -1765,6 +1828,7 @@ class OnyxClient(OnyxClientBase):
                 password="pass123",
             )
             ```
+            ```python
             >>> registration
             {
                 "username": "onyx-willb",
@@ -1773,6 +1837,7 @@ class OnyxClient(OnyxClientBase):
                 "first_name": "Bill",
                 "last_name": "Will",
             }
+            ```
         """
         response = super().register(
             domain,
@@ -1807,11 +1872,13 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config) as client:
                 token = client.login()
             ```
+            ```python
             >>> token
             {
                 "expiry": "2024-01-01T00:00:00.000000Z",
                 "token": "abc123",
             }
+            ```
         """
 
         response = super().login()
@@ -1885,12 +1952,14 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config) as client:
                 profile = client.profile()
             ```
+            ```python
             >>> profile
             {
                 "username": "user",
                 "site": "site",
                 "email": "user@email.com",
             }
+            ```
         """
 
         response = super().profile()
@@ -1921,11 +1990,13 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config) as client:
                 approval = client.approve("waiting_user")
             ```
+            ```python
             >>> approval
             {
                 "username": "waiting_user",
                 "is_approved": True,
             }
+            ```
         """
 
         response = super().approve(username)
@@ -1953,6 +2024,7 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config) as client:
                 users = client.waiting()
             ```
+            ```python
             >>> users
             [
                 {
@@ -1962,6 +2034,7 @@ class OnyxClient(OnyxClientBase):
                     "date_joined": "2023-01-01T00:00:00.000000Z",
                 }
             ]
+            ```
         """
 
         response = super().waiting()
@@ -1989,6 +2062,7 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config):
                 users = client.site_users()
             ```
+            ```python
             >>> users
             [
                 {
@@ -1997,6 +2071,7 @@ class OnyxClient(OnyxClientBase):
                     "email": "user@email.com",
                 }
             ]
+            ```
         """
 
         response = super().site_users()
@@ -2024,6 +2099,7 @@ class OnyxClient(OnyxClientBase):
             with OnyxClient(config) as client:
                 users = client.all_users()
             ```
+            ```python
             >>> users
             [
                 {
@@ -2037,6 +2113,7 @@ class OnyxClient(OnyxClientBase):
                     "email": "another_user@email.com",
                 },
             ]
+            ```
         """
 
         response = super().all_users()

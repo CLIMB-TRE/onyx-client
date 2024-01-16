@@ -154,12 +154,8 @@ def parse_fields_option(fields_option: List[str]) -> Dict[str, str]:
     return fields
 
 
-def parse_include_exclude_option(include_exclude_option: List[str]) -> List[str]:
-    return [field.replace(".", "__") for field in include_exclude_option]
-
-
-def parse_summarise_option(summarise_option: str) -> str:
-    return summarise_option.replace(".", "__")
+def parse_extra_option(extra_option: List[str]) -> List[str]:
+    return [field.replace(".", "__") for field in extra_option]
 
 
 class HelpText(enum.Enum):
@@ -167,7 +163,7 @@ class HelpText(enum.Enum):
     INCLUDE = "Specify which fields to include in the output."
     EXCLUDE = "Specify which fields to exclude from the output."
     SCOPE = "Access additional fields beyond the 'base' group of fields."
-    SUMMARISE = "For a given field in the filtered data, return the frequency of each of its values."
+    SUMMARISE = "For a given field (or group of fields), return the frequency of each unique value (or unique group of values)."
     FORMAT = "Set the file format of the returned data."
 
 
@@ -321,9 +317,14 @@ def fields(
             typer.echo(json_dump_pretty(fields))
         else:
             columns = ["Field", "Status", "Type", "Description", "Values"]
+            caption = f"Fields specification for the {fields['name']} project. Version: {fields['version']}"
+
+            if fields.get("description"):
+                caption += "\n" + fields["description"]
+
             if format == FieldFormats.TABLE:
                 table = Table(
-                    caption=f"Fields specification for the '{project}' project. Version: {fields['version']}",
+                    caption=caption,
                     show_lines=True,
                 )
                 for column in columns:
@@ -385,7 +386,7 @@ def choices(
 def get(
     context: typer.Context,
     project: str = typer.Argument(...),
-    cid: Optional[str] = typer.Argument(
+    climb_id: Optional[str] = typer.Argument(
         None,
     ),
     field: Optional[List[str]] = typer.Option(
@@ -426,14 +427,14 @@ def get(
             fields = {}
 
         if include:
-            include = parse_include_exclude_option(include)
+            include = parse_extra_option(include)
 
         if exclude:
-            exclude = parse_include_exclude_option(exclude)
+            exclude = parse_extra_option(exclude)
 
         record = api.client.get(
             project,
-            cid,
+            climb_id,
             fields=fields,
             include=include,
             exclude=exclude,
@@ -472,7 +473,7 @@ def filter(
         "--scope",
         help=HelpText.SCOPE.value,
     ),
-    summarise: Optional[str] = typer.Option(
+    summarise: Optional[List[str]] = typer.Option(
         None,
         "-S",
         "--summarise",
@@ -498,13 +499,13 @@ def filter(
             fields = {}
 
         if include:
-            include = parse_include_exclude_option(include)
+            include = parse_extra_option(include)
 
         if exclude:
-            exclude = parse_include_exclude_option(exclude)
+            exclude = parse_extra_option(exclude)
 
         if summarise:
-            summarise = parse_summarise_option(summarise)
+            summarise = parse_extra_option(summarise)
 
         if format == DataFormats.JSON:
             # ...nobody needs to know
