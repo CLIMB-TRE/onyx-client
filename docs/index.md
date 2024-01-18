@@ -7,8 +7,6 @@ hide:
 
 ## Introduction
 
-{{ version }}.
-
 This site documents usage of [Onyx-client](https://github.com/CLIMB-TRE/onyx-client), a program designed for interacting with the [Onyx](https://github.com/CLIMB-TRE/onyx/) database. 
 
 Onyx-client and Onyx are being developed as part of the [CLIMB-TRE](https://climb-tre.github.io/) project. 
