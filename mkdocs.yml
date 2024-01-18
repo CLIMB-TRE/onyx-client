@@ -41,6 +41,7 @@ theme:
 
 plugins:
   - search
+  - autorefs
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -76,4 +77,8 @@ nav:
       - OnyxConfig: api/documentation/config.md
       - OnyxEnv: api/documentation/env.md
       - OnyxField: api/documentation/field.md
+      - Exceptions: api/documentation/exceptions.md
+  - Fields Reference: 
+      - Types: fields/types.md
+      - Lookups: fields/lookups.md
   - CLIMB-TRE: https://climb-tre.github.io
