@@ -155,7 +155,11 @@ def parse_fields_option(fields_option: List[str]) -> Dict[str, str]:
 
 
 def parse_extra_option(extra_option: List[str]) -> List[str]:
-    return [field.replace(".", "__") for field in extra_option]
+    return [
+        field.replace(".", "__")
+        for fields in extra_option
+        for field in fields.split(",")
+    ]
 
 
 class HelpText(enum.Enum):
