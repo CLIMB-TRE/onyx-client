@@ -313,6 +313,10 @@ def fields(
 
     try:
         api = setup_onyx_api(context.obj)
+
+        if scope:
+            scope = parse_extra_option(scope)
+
         fields = api.client.fields(
             project,
             scope=scope,
@@ -436,6 +440,9 @@ def get(
         if exclude:
             exclude = parse_extra_option(exclude)
 
+        if scope:
+            scope = parse_extra_option(scope)
+
         record = api.client.get(
             project,
             climb_id,
@@ -507,6 +514,9 @@ def filter(
 
         if exclude:
             exclude = parse_extra_option(exclude)
+
+        if scope:
+            scope = parse_extra_option(scope)
 
         if summarise:
             summarise = parse_extra_option(summarise)
