@@ -17,6 +17,138 @@ from .exceptions import (
 class OnyxClientBase:
     __slots__ = "config", "_request_handler", "_session"
     ENDPOINTS = {
+        "projects": lambda domain: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects/",
+            ),
+            domain=domain,
+        ),
+        "fields": lambda domain, project: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "fields/",
+            ),
+            domain=domain,
+            project=project,
+        ),
+        "choices": lambda domain, project, field: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "choices",
+                str(field),
+                "",
+            ),
+            domain=domain,
+            project=project,
+            field=field,
+        ),
+        "get": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                str(climb_id),
+                "",
+            ),
+            domain=domain,
+            project=project,
+            climb_id=climb_id,
+        ),
+        "filter": lambda domain, project: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "",
+            ),
+            domain=domain,
+            project=project,
+        ),
+        "query": lambda domain, project: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "query/",
+            ),
+            domain=domain,
+            project=project,
+        ),
+        "identify": lambda domain, project, field: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "identify",
+                str(field),
+                "",
+            ),
+            domain=domain,
+            project=project,
+            field=field,
+        ),
+        "create": lambda domain, project: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "",
+            ),
+            domain=domain,
+            project=project,
+        ),
+        "testcreate": lambda domain, project: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "test/",
+            ),
+            domain=domain,
+            project=project,
+        ),
+        "update": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                str(climb_id),
+                "",
+            ),
+            domain=domain,
+            project=project,
+            climb_id=climb_id,
+        ),
+        "testupdate": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "test",
+                str(climb_id),
+                "",
+            ),
+            domain=domain,
+            project=project,
+            climb_id=climb_id,
+        ),
+        "delete": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                str(climb_id),
+                "",
+            ),
+            domain=domain,
+            project=project,
+            climb_id=climb_id,
+        ),
         "register": lambda domain: OnyxClient._handle_endpoint(
             lambda: os.path.join(
                 str(domain),
@@ -82,125 +214,6 @@ class OnyxClientBase:
                 "accounts/all/",
             ),
             domain=domain,
-        ),
-        "projects": lambda domain: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
-                str(domain),
-                "projects/",
-            ),
-            domain=domain,
-        ),
-        "fields": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
-                str(domain),
-                "projects",
-                str(project),
-                "fields/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "choices": lambda domain, project, field: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
-                str(domain),
-                "projects",
-                str(project),
-                "choices",
-                str(field),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            field=field,
-        ),
-        "create": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
-                str(domain),
-                "projects",
-                str(project),
-                "",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "filter": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
-                str(domain),
-                "projects",
-                str(project),
-                "",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "get": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
-                str(domain),
-                "projects",
-                str(project),
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "update": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
-                str(domain),
-                "projects",
-                str(project),
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "delete": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
-                str(domain),
-                "projects",
-                str(project),
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "query": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
-                str(domain),
-                "projects",
-                str(project),
-                "query/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "testcreate": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
-                str(domain),
-                "projects",
-                str(project),
-                "test/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "testupdate": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
-                str(domain),
-                "projects",
-                str(project),
-                "test",
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
         ),
     }
 
@@ -274,42 +287,6 @@ class OnyxClientBase:
             return self._request(method, retries=retries - 1, **kwargs)
 
         return method_response
-
-    @classmethod
-    def to_csv(
-        cls,
-        csv_file: TextIO,
-        data: Union[List[Dict[str, Any]], Generator[Dict[str, Any], Any, None]],
-        delimiter: Optional[str] = None,
-    ):
-        # Ensure data is an iterator
-        if inspect.isgenerator(data):
-            data_iterator = data
-        else:
-            data_iterator = iter(data)
-
-        row = next(data_iterator, None)
-        if row:
-            fields = row.keys()
-
-            # Create CSV writer
-            if delimiter is None:
-                writer = csv.DictWriter(
-                    csv_file,
-                    fieldnames=fields,
-                )
-            else:
-                writer = csv.DictWriter(
-                    csv_file,
-                    fieldnames=fields,
-                    delimiter=delimiter,
-                )
-
-            # Write data
-            writer.writeheader()
-            writer.writerow(row)
-            for row in data_iterator:
-                writer.writerow(row)
 
     def _csv_upload(
         self,
@@ -431,24 +408,6 @@ class OnyxClientBase:
         )
         return response
 
-    def create(
-        self,
-        project: str,
-        fields: Dict[str, Any],
-        test: bool = False,
-    ) -> requests.Response:
-        if test:
-            endpoint = "testcreate"
-        else:
-            endpoint = "create"
-
-        response = self._request(
-            method="post",
-            url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project),
-            json=fields,
-        )
-        return response
-
     def get(
         self,
         project: str,
@@ -539,6 +498,68 @@ class OnyxClientBase:
                 _next = response.json().get("next")
             else:
                 _next = None
+
+    @classmethod
+    def to_csv(
+        cls,
+        csv_file: TextIO,
+        data: Union[List[Dict[str, Any]], Generator[Dict[str, Any], Any, None]],
+        delimiter: Optional[str] = None,
+    ):
+        # Ensure data is an iterator
+        if inspect.isgenerator(data):
+            data_iterator = data
+        else:
+            data_iterator = iter(data)
+
+        row = next(data_iterator, None)
+        if row:
+            fields = row.keys()
+
+            # Create CSV writer
+            if delimiter is None:
+                writer = csv.DictWriter(
+                    csv_file,
+                    fieldnames=fields,
+                )
+            else:
+                writer = csv.DictWriter(
+                    csv_file,
+                    fieldnames=fields,
+                    delimiter=delimiter,
+                )
+
+            # Write data
+            writer.writeheader()
+            writer.writerow(row)
+            for row in data_iterator:
+                writer.writerow(row)
+
+    def identify(self, project: str, field: str, value: str) -> requests.Response:
+        response = self._request(
+            method="post",
+            url=OnyxClient.ENDPOINTS["identify"](self.config.domain, project, field),
+            json={"value": value},
+        )
+        return response
+
+    def create(
+        self,
+        project: str,
+        fields: Dict[str, Any],
+        test: bool = False,
+    ) -> requests.Response:
+        if test:
+            endpoint = "testcreate"
+        else:
+            endpoint = "create"
+
+        response = self._request(
+            method="post",
+            url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project),
+            json=fields,
+        )
+        return response
 
     def update(
         self,
@@ -1406,6 +1427,46 @@ class OnyxClient(OnyxClientBase):
             data=data,
             delimiter=delimiter,
         )
+
+    @onyx_errors
+    def identify(self, project: str, field: str, value: str) -> Dict[str, str]:
+        """
+        Get the anonymised identifier for a value on a field.
+
+        Args:
+            project: Name of the project.
+            field: Field on the project.
+            value: Value to identify.
+
+        Returns:
+            Dict containing the field, value and anonymised identifier.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                identification = client.identify("project", "sample_id", "hidden-value")
+            ```
+            ```python
+            >>> identification
+            {
+                "field": "sample_id",
+                "value": "hidden-value",
+                "identifier": "S-1234567890",
+            }
+            ```
+        """
+
+        response = super().identify(project, field, value)
+        response.raise_for_status()
+        return response.json()["data"]
 
     @onyx_errors
     def create(
