@@ -42,15 +42,16 @@ $ onyx
 │ --help      -h            Show this message and exit.                                     │
 ╰───────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ────────────────────────────────────────────────────────────────────────────────╮
-│ projects          View available projects.                                                │
-│ fields            View the field specification for a project.                             │
-│ get               Get a record from a project.                                            │
-│ filter            Filter multiple records from a project.                                 │
-│ choices           View options for a choice field.                                        │
-│ profile           View profile information.                                               │
-│ siteusers         View users from the same site.                                          │
-│ auth              Authentication commands.                                                │
-│ admin             Admin commands.                                                         │
+│ projects       View available projects.                                                   │
+│ fields         View the field specification for a project.                                │
+│ choices        View options for a choice field.                                           │
+│ get            Get a record from a project.                                               │
+│ filter         Filter multiple records from a project.                                    │
+│ identify       Get the anonymised identifier for a value on a field.                      │
+│ profile        View profile information.                                                  │
+│ siteusers      View users from the same site.                                             │
+│ auth           Authentication commands.                                                   │
+│ admin          Admin commands.                                                            │
 ╰───────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
