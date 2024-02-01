@@ -587,6 +587,45 @@ def filter(
 
 
 @app.command()
+def identify(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    field: str = typer.Argument(...),
+    value: str = typer.Argument(...),
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    Get the anonymised identifier for a value on a field.
+    """
+
+    try:
+        api = setup_onyx_api(context.obj)
+        identified = api.client.identify(project, field, value)
+        if format == InfoFormats.TABLE:
+            table = Table(
+                show_lines=True,
+            )
+            table.add_column("Field")
+            table.add_column("Value")
+            table.add_column("Identifier")
+            table.add_row(
+                identified["field"],
+                identified["value"],
+                identified["identifier"],
+            )
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(identified))
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command()
 def profile(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
