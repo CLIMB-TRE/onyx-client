@@ -129,9 +129,13 @@ def create_table(
     for row in data:
         table.add_row(
             *(
-                row[key]
-                if (not styles) or (key not in styles) or (row[key] not in styles[key])
-                else f"[{styles[key][row[key]]}]{row[key]}[/]"
+                (
+                    row[key]
+                    if (not styles)
+                    or (key not in styles)
+                    or (row[key] not in styles[key])
+                    else f"[{styles[key][row[key]]}]{row[key]}[/]"
+                )
                 for key in map.values()
             )
         )
@@ -239,14 +243,26 @@ def add_fields_table(
     table: Table, data: Dict[str, Any], prefix: Optional[str] = None
 ) -> None:
     for field, field_info in data.items():
+        restrictions = []
+        if field_info.get("values"):
+            restrictions.append("• Choices: " + ", ".join(field_info["values"]))
+        if field_info.get("default") is not None:
+            restrictions.append(f"• Default: {field_info['default']}")
+        if field_info.get("restrictions"):
+            restrictions.extend(
+                f"• {restriction}" for restriction in field_info["restrictions"]
+            )
+
         table.add_row(
             f"[dim]{prefix}.{field}[/dim]" if prefix else field,
-            "[bold red]required[/]"
-            if field_info["required"]
-            else "[bold cyan]optional[/]",
+            (
+                "[bold red]required[/]"
+                if field_info["required"]
+                else "[bold cyan]optional[/]"
+            ),
             field_info["type"],
             field_info.get("description", ""),
-            ", ".join(field_info.get("values")) if field_info.get("values") else "",
+            "\n".join(restrictions),
         )
 
         if field_info["type"] == "relation":
@@ -273,9 +289,9 @@ def add_fields_writer(
                         "required" if field_info["required"] else "optional",
                         field_info["type"],
                         field_info.get("description", ""),
-                        ", ".join(field_info.get("values"))
-                        if field_info.get("values")
-                        else "",
+                        ", ".join(field_info.get("values", "")),
+                        field_info.get("default", ""),
+                        ", ".join(field_info.get("restrictions", "")),
                     ],
                 )
             )
@@ -323,36 +339,43 @@ def fields(
         )
         if format == FieldFormats.JSON:
             typer.echo(json_dump_pretty(fields))
-        else:
-            columns = ["Field", "Status", "Type", "Description", "Values"]
+        elif format == FieldFormats.TABLE:
+            columns = ["Field", "Status", "Type", "Description", "Restrictions"]
             caption = f"Fields specification for the {fields['name']} project. Version: {fields['version']}"
 
             if fields.get("description"):
                 caption += "\n" + fields["description"]
 
-            if format == FieldFormats.TABLE:
-                table = Table(
-                    caption=caption,
-                    show_lines=True,
-                )
-                for column in columns:
-                    table.add_column(column, overflow="fold")
-                add_fields_table(table, fields["fields"])
-                console.print(table)
-
+            table = Table(
+                caption=caption,
+                show_lines=True,
+            )
+            for column in columns:
+                table.add_column(column, overflow="fold")
+            add_fields_table(table, fields["fields"])
+            console.print(table)
+        else:
+            columns = [
+                "Field",
+                "Status",
+                "Type",
+                "Description",
+                "Choices",
+                "Default",
+                "Restrictions",
+            ]
+            if format == FieldFormats.TSV:
+                delimiter = "\t"
             else:
-                if format == FieldFormats.TSV:
-                    delimiter = "\t"
-                else:
-                    delimiter = ","
+                delimiter = ","
 
-                writer = csv.DictWriter(
-                    sys.stdout,
-                    delimiter=delimiter,
-                    fieldnames=columns,
-                )
-                writer.writeheader()
-                add_fields_writer(writer, columns, fields["fields"])
+            writer = csv.DictWriter(
+                sys.stdout,
+                delimiter=delimiter,
+                fieldnames=columns,
+            )
+            writer.writeheader()
+            add_fields_writer(writer, columns, fields["fields"])
     except Exception as e:
         handle_error(e)
 
