@@ -117,7 +117,6 @@ def handle_error(e: Exception):
 def create_table(
     data: List[Dict[str, Any]],
     map: Dict[str, str],
-    styles: Optional[Dict[str, Dict[str, str]]] = None,
 ) -> Table:
     table = Table(
         show_lines=True,
@@ -127,18 +126,7 @@ def create_table(
         table.add_column(column)
 
     for row in data:
-        table.add_row(
-            *(
-                (
-                    row[key]
-                    if (not styles)
-                    or (key not in styles)
-                    or (row[key] not in styles[key])
-                    else f"[{styles[key][row[key]]}]{row[key]}[/]"
-                )
-                for key in map.values()
-            )
-        )
+        table.add_row(*(row[key] for key in map.values()))
 
     return table
 
@@ -198,6 +186,41 @@ class Messages(enum.Enum):
     NOTE = "[bold cyan][NOTE][/]"
 
 
+class Status(enum.Enum):
+    REQUIRED = "[bold red]required[/]"
+    OPTIONAL = "[bold cyan]optional[/]"
+
+
+class Actions(enum.Enum):
+    GET = "[bold cyan]get[/]"
+    LIST = "[bold blue]list[/]"
+    FILTER = "[bold magenta]filter[/]"
+    IDENTIFY = "[bold white]identify[/]"
+    ADD = "[bold green]add[/]"
+    CHANGE = "[bold yellow]change[/]"
+    DELETE = "[bold red]delete[/]"
+
+
+def format_action(action: str) -> str:
+    match action:
+        case "get":
+            return Actions.GET.value
+        case "list":
+            return Actions.LIST.value
+        case "filter":
+            return Actions.FILTER.value
+        case "identify":
+            return Actions.IDENTIFY.value
+        case "add":
+            return Actions.ADD.value
+        case "change":
+            return Actions.CHANGE.value
+        case "delete":
+            return Actions.DELETE.value
+        case _:
+            return action
+
+
 @app.command()
 def projects(
     context: typer.Context,
@@ -216,22 +239,27 @@ def projects(
         api = setup_onyx_api(context.obj)
         projects = api.client.projects()
         if format == InfoFormats.TABLE:
-            table = create_table(
-                data=projects,
-                map={
-                    "Project": "project",
-                    "Action": "action",
-                    "Scope": "scope",
-                },
-                styles={
-                    "action": {
-                        "view": "bold cyan",
-                        "add": "bold green",
-                        "change": "bold yellow",
-                        "delete": "bold red",
-                    }
-                },
+            columns = [
+                "Project",
+                "Scope",
+                "Actions",
+            ]
+
+            table = Table(
+                show_lines=True,
             )
+            for column in columns:
+                table.add_column(column)
+
+            for project in projects:
+                table.add_row(
+                    project["project"],
+                    project["scope"],
+                    " | ".join(
+                        [format_action(action) for action in project.get("actions", [])]
+                    ),
+                )
+
             console.print(table)
         else:
             typer.echo(json_dump_pretty(projects))
@@ -256,12 +284,15 @@ def add_fields_table(
         table.add_row(
             f"[dim]{prefix}.{field}[/dim]" if prefix else field,
             (
-                "[bold red]required[/]"
+                Status.REQUIRED.value
                 if field_info["required"]
-                else "[bold cyan]optional[/]"
+                else Status.OPTIONAL.value
             ),
             field_info["type"],
             field_info.get("description", ""),
+            " | ".join(
+                [format_action(action) for action in field_info.get("actions", [])]
+            ),
             "\n".join(restrictions),
         )
 
@@ -289,6 +320,7 @@ def add_fields_writer(
                         "required" if field_info["required"] else "optional",
                         field_info["type"],
                         field_info.get("description", ""),
+                        ", ".join(field_info.get("actions", "")),
                         ", ".join(field_info.get("values", "")),
                         field_info.get("default", ""),
                         ", ".join(field_info.get("restrictions", "")),
@@ -340,7 +372,14 @@ def fields(
         if format == FieldFormats.JSON:
             typer.echo(json_dump_pretty(fields))
         elif format == FieldFormats.TABLE:
-            columns = ["Field", "Status", "Type", "Description", "Restrictions"]
+            columns = [
+                "Field",
+                "Status",
+                "Type",
+                "Description",
+                "Actions",
+                "Restrictions",
+            ]
             caption = f"Fields specification for the {fields['name']} project. Version: {fields['version']}"
 
             if fields.get("description"):
@@ -360,6 +399,7 @@ def fields(
                 "Status",
                 "Type",
                 "Description",
+                "Actions",
                 "Choices",
                 "Default",
                 "Restrictions",
