@@ -78,6 +78,16 @@ class OnyxAPI:
 
 
 def setup_onyx_api(options: OnyxConfigOptions) -> OnyxAPI:
+    """
+    Set up the Onyx API.
+
+    Args:
+        options: The config options for the Onyx API.
+
+    Returns:
+        The Onyx API object containing a config and client.
+    """
+
     config = OnyxConfig(
         domain=options.domain if options.domain else "",
         username=options.username,
@@ -88,11 +98,32 @@ def setup_onyx_api(options: OnyxConfigOptions) -> OnyxAPI:
     return OnyxAPI(config, client)
 
 
-def json_dump_pretty(obj: Any):
+def json_dump_pretty(obj: Any) -> str:
+    """
+    Pretty print a JSON object.
+
+    Args:
+        obj: The JSON object to pretty print.
+
+    Returns:
+        The pretty printed JSON object.
+    """
+
     return json.dumps(obj, indent=4)
 
 
-def handle_error(e: Exception):
+def handle_error(e: Exception) -> None:
+    """
+    Handle an Onyx exception, coercing into a CLI-friendly format if possible.
+
+    Args:
+        e: The exception to handle.
+
+    Raises:
+        click.exceptions.ClickException: If the exception is an OnyxHTTPError or OnyxError.
+        Exception: If the exception is not an OnyxHTTPError or OnyxError.
+    """
+
     if isinstance(e, exceptions.OnyxHTTPError):
         try:
             messages = e.response.json()["messages"]
@@ -118,6 +149,17 @@ def create_table(
     data: List[Dict[str, Any]],
     map: Dict[str, str],
 ) -> Table:
+    """
+    Create a table from a list of dictionaries.
+
+    Args:
+        data: List of dictionaries.
+        map: Dictionary mapping the column names to the dictionary keys.
+
+    Returns:
+        A rich Table object.
+    """
+
     table = Table(
         show_lines=True,
     )
@@ -132,6 +174,16 @@ def create_table(
 
 
 def parse_fields_option(fields_option: List[str]) -> Dict[str, str]:
+    """
+    Parse the fields option into a dictionary that maps field names to values.
+
+    Args:
+        fields_option: List of unparsed 'field=value' pairs.
+
+    Returns:
+        The parsed dictionary of field names mapped to their values.
+    """
+
     fields = {}
     for name_value in fields_option:
         try:
@@ -147,6 +199,18 @@ def parse_fields_option(fields_option: List[str]) -> Dict[str, str]:
 
 
 def parse_extra_option(extra_option: List[str]) -> List[str]:
+    """
+    Parse the extra option into a list of valid field names.
+
+    Replaces '.' with '__' to match the API's field naming convention.
+
+    Args:
+        extra_option: List of unparsed field names.
+
+    Returns:
+        The parsed list of field names.
+    """
+
     return [
         field.replace(".", "__")
         for fields in extra_option
@@ -158,7 +222,6 @@ class HelpText(enum.Enum):
     FIELD = "Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax."
     INCLUDE = "Specify which fields to include in the output."
     EXCLUDE = "Specify which fields to exclude from the output."
-    SCOPE = "Access additional fields beyond the 'base' group of fields."
     SUMMARISE = "For a given field (or group of fields), return the frequency of each unique value (or unique group of values)."
     FORMAT = "Set the file format of the returned data."
 
@@ -202,6 +265,16 @@ class Actions(enum.Enum):
 
 
 def format_action(action: str) -> str:
+    """
+    Format an action and apply its colour.
+
+    Args:
+        action: The action to format.
+
+    Returns:
+        The formatted action.
+    """
+
     match action:
         case "get":
             return Actions.GET.value
@@ -238,16 +311,13 @@ def projects(
     try:
         api = setup_onyx_api(context.obj)
         projects = api.client.projects()
-        if format == InfoFormats.TABLE:
-            columns = [
-                "Project",
-                "Scope",
-                "Actions",
-            ]
 
+        if format == InfoFormats.TABLE:
+            columns = ["Project", "Scope", "Actions"]
             table = Table(
                 show_lines=True,
             )
+
             for column in columns:
                 table.add_column(column)
 
@@ -270,36 +340,53 @@ def projects(
 def add_fields_table(
     table: Table, data: Dict[str, Any], prefix: Optional[str] = None
 ) -> None:
-    for field, field_info in data.items():
+    """
+    Add fields from the field specification data to the input table.
+
+    Works recursively for nested fields.
+
+    Args:
+        table: The table object to add the fields to.
+        data: The fields data.
+        prefix: The prefix for the fields (if nested).
+    """
+
+    for field, field_spec in data.items():
         restrictions = []
-        if field_info.get("values"):
-            restrictions.append("• Choices: " + ", ".join(field_info["values"]))
-        if field_info.get("default") is not None:
-            restrictions.append(f"• Default: {field_info['default']}")
-        if field_info.get("restrictions"):
+        if field_spec.get("values"):
+            restrictions.append("• Choices: " + ", ".join(field_spec["values"]))
+        if field_spec.get("default") is not None:
+            restrictions.append(f"• Default: {field_spec['default']}")
+        if field_spec.get("restrictions"):
             restrictions.extend(
-                f"• {restriction}" for restriction in field_info["restrictions"]
+                f"• {restriction}" for restriction in field_spec["restrictions"]
             )
 
         table.add_row(
+            # Field
             f"[dim]{prefix}.{field}[/dim]" if prefix else field,
+            # Status
             (
                 Status.REQUIRED.value
-                if field_info["required"]
+                if field_spec["required"]
                 else Status.OPTIONAL.value
             ),
-            field_info["type"],
-            field_info.get("description", ""),
+            # Type
+            field_spec["type"],
+            # Description
+            field_spec.get("description", ""),
+            # Actions
             " | ".join(
-                [format_action(action) for action in field_info.get("actions", [])]
+                [format_action(action) for action in field_spec.get("actions", [])]
             ),
+            # Restrictions (choices, default value, additional restrictions)
             "\n".join(restrictions),
         )
 
-        if field_info["type"] == "relation":
+        if field_spec["type"] == "relation":
             add_fields_table(
                 table,
-                field_info["fields"],
+                field_spec["fields"],
                 prefix=f"{prefix}.{field}" if prefix else field,
             )
 
@@ -310,30 +397,50 @@ def add_fields_writer(
     data: Dict[str, Any],
     prefix: Optional[str] = None,
 ) -> None:
-    for field, field_info in data.items():
+    """
+    Add fields from the field specification data to the input CSV writer.
+
+    Works recursively for nested fields.
+
+    Args:
+        writer: The CSV writer object to add the fields to.
+        columns: The column names for the CSV writer.
+        data: The fields data.
+        prefix: The prefix for the fields (if nested).
+    """
+
+    for field, field_spec in data.items():
         writer.writerow(
             dict(
                 zip(
                     columns,
                     [
+                        # Field
                         f"{prefix}.{field}" if prefix else field,
-                        "required" if field_info["required"] else "optional",
-                        field_info["type"],
-                        field_info.get("description", ""),
-                        ", ".join(field_info.get("actions", "")),
-                        ", ".join(field_info.get("values", "")),
-                        field_info.get("default", ""),
-                        ", ".join(field_info.get("restrictions", "")),
+                        # Status
+                        "required" if field_spec["required"] else "optional",
+                        # Type
+                        field_spec["type"],
+                        # Description
+                        field_spec.get("description", ""),
+                        # Actions
+                        ", ".join(field_spec.get("actions", "")),
+                        # Choices
+                        ", ".join(field_spec.get("values", "")),
+                        # Default
+                        field_spec.get("default", ""),
+                        # Restrictions
+                        ", ".join(field_spec.get("restrictions", "")),
                     ],
                 )
             )
         )
 
-        if field_info["type"] == "relation":
+        if field_spec["type"] == "relation":
             add_fields_writer(
                 writer,
                 columns,
-                field_info["fields"],
+                field_spec["fields"],
                 prefix=f"{prefix}.{field}" if prefix else field,
             )
 
@@ -342,12 +449,6 @@ def add_fields_writer(
 def fields(
     context: typer.Context,
     project: str = typer.Argument(...),
-    scope: Optional[List[str]] = typer.Option(
-        None,
-        "-s",
-        "--scope",
-        help=HelpText.SCOPE.value,
-    ),
     format: Optional[FieldFormats] = typer.Option(
         FieldFormats.TABLE.value,
         "-F",
@@ -361,14 +462,8 @@ def fields(
 
     try:
         api = setup_onyx_api(context.obj)
+        fields = api.client.fields(project)
 
-        if scope:
-            scope = parse_extra_option(scope)
-
-        fields = api.client.fields(
-            project,
-            scope=scope,
-        )
         if format == FieldFormats.JSON:
             typer.echo(json_dump_pretty(fields))
         elif format == FieldFormats.TABLE:
@@ -439,6 +534,7 @@ def choices(
     try:
         api = setup_onyx_api(context.obj)
         choices = api.client.choices(project, field)
+
         if format == InfoFormats.TABLE:
             table = Table(
                 show_lines=True,
@@ -478,12 +574,6 @@ def get(
         "--exclude",
         help=HelpText.EXCLUDE.value,
     ),
-    scope: Optional[List[str]] = typer.Option(
-        None,
-        "-s",
-        "--scope",
-        help=HelpText.SCOPE.value,
-    ),
 ):
     """
     Get a record from a project.
@@ -503,17 +593,14 @@ def get(
         if exclude:
             exclude = parse_extra_option(exclude)
 
-        if scope:
-            scope = parse_extra_option(scope)
-
         record = api.client.get(
             project,
             climb_id,
             fields=fields,
             include=include,
             exclude=exclude,
-            scope=scope,
         )
+
         typer.echo(json_dump_pretty(record))
     except Exception as e:
         handle_error(e)
@@ -541,15 +628,9 @@ def filter(
         "--exclude",
         help=HelpText.EXCLUDE.value,
     ),
-    scope: Optional[List[str]] = typer.Option(
-        None,
-        "-s",
-        "--scope",
-        help=HelpText.SCOPE.value,
-    ),
     summarise: Optional[List[str]] = typer.Option(
         None,
-        "-S",
+        "-s",
         "--summarise",
         help=HelpText.SUMMARISE.value,
     ),
@@ -578,9 +659,6 @@ def filter(
         if exclude:
             exclude = parse_extra_option(exclude)
 
-        if scope:
-            scope = parse_extra_option(scope)
-
         if summarise:
             summarise = parse_extra_option(summarise)
 
@@ -591,7 +669,6 @@ def filter(
                 fields,
                 include=include,
                 exclude=exclude,
-                scope=scope,
                 summarise=summarise,
             )
 
@@ -629,7 +706,6 @@ def filter(
                 fields,
                 include=include,
                 exclude=exclude,
-                scope=scope,
                 summarise=summarise,
             )
 
@@ -669,6 +745,7 @@ def identify(
     try:
         api = setup_onyx_api(context.obj)
         identified = api.client.identify(project, field, value)
+
         if format == InfoFormats.TABLE:
             table = Table(
                 show_lines=True,
@@ -705,6 +782,7 @@ def profile(
     try:
         api = setup_onyx_api(context.obj)
         user = api.client.profile()
+
         if format == InfoFormats.TABLE:
             table = create_table(
                 data=[user],
@@ -738,6 +816,7 @@ def siteusers(
     try:
         api = setup_onyx_api(context.obj)
         users = api.client.site_users()
+
         if format == InfoFormats.TABLE:
             table = create_table(
                 data=users,
@@ -812,6 +891,7 @@ def login(
 
         # Log in
         auth = api.client.login()
+
         console.print(
             f"{Messages.SUCCESS.value} Logged in as user: '{api.config.username}'"
         )
@@ -834,6 +914,7 @@ def logout(
     try:
         api = setup_onyx_api(context.obj)
         api.client.logout()
+
         console.print(f"{Messages.SUCCESS.value} Logged out.")
     except Exception as e:
         handle_error(e)
@@ -850,6 +931,7 @@ def logoutall(
     try:
         api = setup_onyx_api(context.obj)
         api.client.logoutall()
+
         console.print(f"{Messages.SUCCESS.value} Logged out across all clients.")
     except Exception as e:
         handle_error(e)
@@ -872,6 +954,7 @@ def waiting(
     try:
         api = setup_onyx_api(context.obj)
         waiting = api.client.waiting()
+
         if format == InfoFormats.TABLE:
             table = create_table(
                 data=waiting,
@@ -901,6 +984,7 @@ def approve(
     try:
         api = setup_onyx_api(context.obj)
         approval = api.client.approve(username)
+
         console.print(f"{Messages.SUCCESS.value} Approved user: {approval['username']}")
     except Exception as e:
         handle_error(e)
@@ -923,6 +1007,7 @@ def allusers(
     try:
         api = setup_onyx_api(context.obj)
         users = api.client.all_users()
+
         if format == InfoFormats.TABLE:
             table = create_table(
                 data=users,

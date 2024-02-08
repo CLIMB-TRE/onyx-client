@@ -128,7 +128,7 @@ class OnyxRequestError(OnyxHTTPError):
         - Invalid field names or field values (`400 Bad Request`).
         - Invalid authentication credentials (`401 Unauthorized`).
         - A request was made for something which the user has insufficient permissions for (`403 Forbidden`).
-        - An invalid project / scope / CLIMB ID was provided (`404 Not Found`).
+        - An invalid project / CLIMB ID / anonymised value was provided (`404 Not Found`).
         - An invalid HTTP method was used (`405 Method Not Allowed`).
     """
 
