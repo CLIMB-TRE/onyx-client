@@ -424,15 +424,20 @@ class OnyxClientBase:
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         summarise: Union[List[str], str, None] = None,
+        **kwargs: Any,
     ) -> Generator[requests.Response, Any, None]:
         if fields is None:
             fields = {}
 
-        fields = fields | {
-            "include": include,
-            "exclude": exclude,
-            "summarise": summarise,
-        }
+        fields = (
+            fields
+            | kwargs
+            | {
+                "include": include,
+                "exclude": exclude,
+                "summarise": summarise,
+            }
+        )
         _next = OnyxClient.ENDPOINTS["filter"](self.config.domain, project)
 
         while _next is not None:
@@ -1142,6 +1147,7 @@ class OnyxClient(OnyxClientBase):
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         summarise: Union[List[str], str, None] = None,
+        **kwargs: Any,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
         Filter records from a project.
@@ -1152,6 +1158,7 @@ class OnyxClient(OnyxClientBase):
             include: Fields to include in the output.
             exclude: Fields to exclude from the output.
             summarise: For a given field (or group of fields), return the frequency of each unique value (or unique group of values).
+            **kwargs: Additional conditions on fields, used to filter the data. Takes precedence over the fields argument.
 
         Returns:
             Generator of records. If a summarise argument is provided, each record will be a dict containing values of the summary fields and a count for the frequency.
@@ -1270,6 +1277,7 @@ class OnyxClient(OnyxClientBase):
             include=include,
             exclude=exclude,
             summarise=summarise,
+            **kwargs,
         )
         for response in responses:
             response.raise_for_status()
