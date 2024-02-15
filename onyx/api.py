@@ -389,15 +389,10 @@ class OnyxClientBase:
         )
         return response
 
-    def fields(
-        self,
-        project: str,
-        scope: Union[List[str], str, None] = None,
-    ) -> requests.Response:
+    def fields(self, project: str) -> requests.Response:
         response = self._request(
             method="get",
             url=OnyxClient.ENDPOINTS["fields"](self.config.domain, project),
-            params={"scope": scope},
         )
         return response
 
@@ -414,12 +409,11 @@ class OnyxClientBase:
         climb_id: str,
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
-        scope: Union[List[str], str, None] = None,
     ) -> requests.Response:
         response = self._request(
             method="get",
             url=OnyxClient.ENDPOINTS["get"](self.config.domain, project, climb_id),
-            params={"include": include, "exclude": exclude, "scope": scope},
+            params={"include": include, "exclude": exclude},
         )
         return response
 
@@ -429,7 +423,6 @@ class OnyxClientBase:
         fields: Optional[Dict[str, Any]] = None,
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
-        scope: Union[List[str], str, None] = None,
         summarise: Union[List[str], str, None] = None,
     ) -> Generator[requests.Response, Any, None]:
         if fields is None:
@@ -438,7 +431,6 @@ class OnyxClientBase:
         fields = fields | {
             "include": include,
             "exclude": exclude,
-            "scope": scope,
             "summarise": summarise,
         }
         _next = OnyxClient.ENDPOINTS["filter"](self.config.domain, project)
@@ -463,7 +455,6 @@ class OnyxClientBase:
         query: Optional[OnyxField] = None,
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
-        scope: Union[List[str], str, None] = None,
         summarise: Union[List[str], str, None] = None,
     ) -> Generator[requests.Response, Any, None]:
         if query:
@@ -479,7 +470,6 @@ class OnyxClientBase:
         fields = {
             "include": include,
             "exclude": exclude,
-            "scope": scope,
             "summarise": summarise,
         }
         _next = OnyxClient.ENDPOINTS["query"](self.config.domain, project)
@@ -870,14 +860,25 @@ class OnyxClient(OnyxClientBase):
             >>> projects
             [
                 {
-                    "project": "project",
-                    "action": "add",
-                    "scope": "base",
+                    "project": "project_1",
+                    "scope": "admin",
+                    "actions": [
+                        "get",
+                        "list",
+                        "filter",
+                        "add",
+                        "change",
+                        "delete",
+                    ],
                 },
                 {
-                    "project": "project",
-                    "action": "view",
-                    "scope": "base",
+                    "project": "project_2",
+                    "scope": "analyst",
+                    "actions": [
+                        "get",
+                        "list",
+                        "filter",
+                    ],
                 },
             ]
             ```
@@ -888,17 +889,12 @@ class OnyxClient(OnyxClientBase):
         return response.json()["data"]
 
     @onyx_errors
-    def fields(
-        self,
-        project: str,
-        scope: Union[List[str], str, None] = None,
-    ) -> Dict[str, Any]:
+    def fields(self, project: str) -> Dict[str, Any]:
         """
         View fields for a project.
 
         Args:
             project: Name of the project.
-            scope: Additional named group(s) of fields to include in the output.
 
         Returns:
             Dict of fields.
@@ -947,7 +943,7 @@ class OnyxClient(OnyxClientBase):
             ```
         """
 
-        response = super().fields(project, scope=scope)
+        response = super().fields(project)
         response.raise_for_status()
         return response.json()["data"]
 
@@ -994,7 +990,6 @@ class OnyxClient(OnyxClientBase):
         fields: Optional[Dict[str, Any]] = None,
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
-        scope: Union[List[str], str, None] = None,
     ) -> Dict[str, Any]:
         """
         Get a record from a project.
@@ -1005,7 +1000,6 @@ class OnyxClient(OnyxClientBase):
             fields: Series of conditions on fields, used to filter the data.
             include: Fields to include in the output.
             exclude: Fields to exclude from the output.
-            scope: Additional named group(s) of fields to include in the output.
 
         Returns:
             Dict containing the record.
@@ -1063,7 +1057,7 @@ class OnyxClient(OnyxClientBase):
             }
             ```
 
-            The `include`, `exclude`, and `scope` arguments can be used to control the fields returned:
+            The `include` and `exclude` arguments can be used to control the fields returned:
             ```python
             import os
             from onyx import OnyxConfig, OnyxEnv, OnyxClient
@@ -1084,11 +1078,6 @@ class OnyxClient(OnyxClientBase):
                     climb_id="C-1234567890",
                     exclude=["field2"],
                 )
-                record_v3 = client.get(
-                    "project",
-                    climb_id="C-1234567890",
-                    scope="extra_fields",
-                )
             ```
             ```python
             >>> record_v1
@@ -1101,15 +1090,6 @@ class OnyxClient(OnyxClientBase):
                 "climb_id": "C-1234567890",
                 "published_date": "2023-01-01",
                 "field1": "value1",
-            }
-            >>> record_v3
-            {
-                "climb_id": "C-1234567890",
-                "published_date": "2023-01-01",
-                "field1": "value1",
-                "field2": "value2",
-                "extra_field1": "extra_value1",
-                "extra_field2": "extra_value2",
             }
             ```
 
@@ -1129,7 +1109,6 @@ class OnyxClient(OnyxClientBase):
                 climb_id,
                 include=include,
                 exclude=exclude,
-                scope=scope,
             )
             response.raise_for_status()
             return response.json()["data"]
@@ -1139,7 +1118,6 @@ class OnyxClient(OnyxClientBase):
                 fields=fields,
                 include=include,
                 exclude=exclude,
-                scope=scope,
             )
             response = next(responses, None)
             if response is None:
@@ -1163,7 +1141,6 @@ class OnyxClient(OnyxClientBase):
         fields: Optional[Dict[str, Any]] = None,
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
-        scope: Union[List[str], str, None] = None,
         summarise: Union[List[str], str, None] = None,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
@@ -1174,7 +1151,6 @@ class OnyxClient(OnyxClientBase):
             fields: Series of conditions on fields, used to filter the data.
             include: Fields to include in the output.
             exclude: Fields to exclude from the output.
-            scope: Additional named group(s) of fields to include in the output.
             summarise: For a given field (or group of fields), return the frequency of each unique value (or unique group of values).
 
         Returns:
@@ -1293,7 +1269,6 @@ class OnyxClient(OnyxClientBase):
             fields=fields,
             include=include,
             exclude=exclude,
-            scope=scope,
             summarise=summarise,
         )
         for response in responses:
@@ -1308,7 +1283,6 @@ class OnyxClient(OnyxClientBase):
         query: Optional[OnyxField] = None,
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
-        scope: Union[List[str], str, None] = None,
         summarise: Union[List[str], str, None] = None,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
@@ -1319,7 +1293,6 @@ class OnyxClient(OnyxClientBase):
             query: OnyxField object representing the query being made.
             include: Fields to include in the output.
             exclude: Fields to exclude from the output.
-            scope: Additional named group(s) of fields to include in the output.
             summarise: For a given field (or group of fields), return the frequency of each unique value (or unique group of values).
 
         Returns:
@@ -1376,7 +1349,6 @@ class OnyxClient(OnyxClientBase):
             query=query,
             include=include,
             exclude=exclude,
-            scope=scope,
             summarise=summarise,
         )
         for response in responses:
