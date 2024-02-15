@@ -27,7 +27,6 @@ INVALID_AUTH_DATA = {
 PROJECT = "project"
 NOT_PROJECT = "not_project"
 ERROR_CAUSING_PROJECT = "error_causing_project"
-ADMIN_SCOPE = "admin"
 PROJECT_DATA = {
     "status": "success",
     "code": 200,
@@ -64,46 +63,6 @@ FIELDS_DATA = {
                 "type": "text",
                 "required": True,
                 "description": "Where was the sample sourced. Is it human, animal... or something else...",
-            },
-        },
-    },
-}
-FIELDS_ADMIN_DATA = {
-    "status": "success",
-    "code": 200,
-    "data": {
-        "version": "0.1.0",
-        "fields": {
-            "climb_id": {
-                "type": "text",
-                "required": True,
-                "description": "Unique identifier for a project. Set by Onyx.",
-            },
-            "sample_id": {
-                "type": "text",
-                "required": True,
-                "description": "Unique identifier for a biological sample.",
-            },
-            "run_name": {
-                "type": "text",
-                "required": True,
-                "description": "Unique identifier for a sequencing run.",
-            },
-            "source_type": {
-                "type": "text",
-                "required": False,
-                "description": "Where was the sample sourced.",
-            },
-            "country": {
-                "type": "bool",
-                "required": False,
-                "description": "Country of origin for the sample.",
-                "values": [
-                    "England",
-                    "N. Ireland",
-                    "Scotland",
-                    "Wales",
-                ],
             },
         },
     },
@@ -173,17 +132,6 @@ GET_DATA = {
         "published_date": "2023-09-18",
         "sample_id": "sample-123",
         "run_name": "run-456",
-    },
-}
-GET_ADMIN_DATA = {
-    "status": "success",
-    "code": 200,
-    "data": {
-        "climb_id": CLIMB_ID,
-        "published_date": "2023-09-18",
-        "sample_id": "sample-123",
-        "run_name": "run-456",
-        "country": "England",
     },
 }
 FILTER_PAGE_1_URL = f"{OnyxClient.ENDPOINTS['filter'](DOMAIN, PROJECT)}?cursor=page_1"
@@ -283,66 +231,6 @@ FILTER_SPECIFIC_EXCLUDE_DATA = {
         },
     ],
 }
-FILTER_PAGE_1_ADMIN_URL = f"{OnyxClient.ENDPOINTS['filter'](DOMAIN, PROJECT)}?cursor=page_1&scope={ADMIN_SCOPE}"
-FILTER_PAGE_2_ADMIN_URL = f"{OnyxClient.ENDPOINTS['filter'](DOMAIN, PROJECT)}?cursor=page_2&scope={ADMIN_SCOPE}"
-FILTER_PAGE_1_ADMIN_DATA = {
-    "status": "success",
-    "code": 200,
-    "next": FILTER_PAGE_2_ADMIN_URL,
-    "previous": None,
-    "data": [
-        {
-            "climb_id": CLIMB_ID,
-            "published_date": "2023-09-18",
-            "sample_id": "sample-123",
-            "run_name": "run-456",
-            "country": "England",
-        },
-        {
-            "climb_id": CLIMB_ID,
-            "published_date": "2023-09-18",
-            "sample_id": "sample-123",
-            "run_name": "run-456",
-            "country": "England",
-        },
-        {
-            "climb_id": CLIMB_ID,
-            "published_date": "2023-09-18",
-            "sample_id": "sample-123",
-            "run_name": "run-456",
-            "country": "England",
-        },
-    ],
-}
-FILTER_PAGE_2_ADMIN_DATA = {
-    "status": "success",
-    "code": 200,
-    "next": None,
-    "previous": FILTER_PAGE_1_ADMIN_URL,
-    "data": [
-        {
-            "climb_id": CLIMB_ID,
-            "published_date": "2023-09-18",
-            "sample_id": "sample-123",
-            "run_name": "run-456",
-            "country": "England",
-        },
-        {
-            "climb_id": CLIMB_ID,
-            "published_date": "2023-09-18",
-            "sample_id": "sample-123",
-            "run_name": "run-456",
-            "country": "England",
-        },
-        {
-            "climb_id": CLIMB_ID,
-            "published_date": "2023-09-18",
-            "sample_id": "sample-123",
-            "run_name": "run-456",
-            "country": "England",
-        },
-    ],
-}
 QUERY_PAGE_1_URL = f"{OnyxClient.ENDPOINTS['query'](DOMAIN, PROJECT)}?cursor=page_1"
 QUERY_PAGE_2_URL = f"{OnyxClient.ENDPOINTS['query'](DOMAIN, PROJECT)}?cursor=page_2"
 QUERY_PAGE_1_DATA = {
@@ -398,66 +286,6 @@ QUERY_PAGE_2_DATA = {
     ],
 }
 QUERY_SPECIFIC_BODY = {"&": [{"sample_id": SAMPLE_ID}, {"run_name": RUN_NAME}]}
-QUERY_PAGE_1_ADMIN_URL = f"{OnyxClient.ENDPOINTS['query'](DOMAIN, PROJECT)}?cursor=page_1&scope={ADMIN_SCOPE}"
-QUERY_PAGE_2_ADMIN_URL = f"{OnyxClient.ENDPOINTS['query'](DOMAIN, PROJECT)}?cursor=page_2&scope={ADMIN_SCOPE}"
-QUERY_PAGE_1_ADMIN_DATA = {
-    "status": "success",
-    "code": 200,
-    "next": QUERY_PAGE_2_ADMIN_URL,
-    "previous": None,
-    "data": [
-        {
-            "climb_id": CLIMB_ID,
-            "published_date": "2023-09-18",
-            "sample_id": "sample-123",
-            "run_name": "run-456",
-            "country": "England",
-        },
-        {
-            "climb_id": CLIMB_ID,
-            "published_date": "2023-09-18",
-            "sample_id": "sample-123",
-            "run_name": "run-456",
-            "country": "England",
-        },
-        {
-            "climb_id": CLIMB_ID,
-            "published_date": "2023-09-18",
-            "sample_id": "sample-123",
-            "run_name": "run-456",
-            "country": "England",
-        },
-    ],
-}
-QUERY_PAGE_2_ADMIN_DATA = {
-    "status": "success",
-    "code": 200,
-    "next": None,
-    "previous": QUERY_PAGE_1_ADMIN_URL,
-    "data": [
-        {
-            "climb_id": CLIMB_ID,
-            "published_date": "2023-09-18",
-            "sample_id": "sample-123",
-            "run_name": "run-456",
-            "country": "England",
-        },
-        {
-            "climb_id": CLIMB_ID,
-            "published_date": "2023-09-18",
-            "sample_id": "sample-123",
-            "run_name": "run-456",
-            "country": "England",
-        },
-        {
-            "climb_id": CLIMB_ID,
-            "published_date": "2023-09-18",
-            "sample_id": "sample-123",
-            "run_name": "run-456",
-            "country": "England",
-        },
-    ],
-}
 UPDATE_FIELDS = {
     "country": "England",
     "source_type": "humanoid",
@@ -667,25 +495,18 @@ def mock_request(
             return MockResponse(TESTCREATE_DATA)
 
         elif url == OnyxClient.ENDPOINTS["query"](DOMAIN, PROJECT):
-            if params.get("scope") == None:
-                if json == QUERY_SPECIFIC_BODY:
-                    if params.get("include") == INCLUDE_FIELDS:
-                        return MockResponse(FILTER_SPECIFIC_INCLUDE_DATA)
-                    elif params.get("exclude") == EXCLUDE_FIELDS:
-                        return MockResponse(FILTER_SPECIFIC_EXCLUDE_DATA)
-                    else:
-                        return MockResponse(FILTER_SPECIFIC_DATA)
+            if json == QUERY_SPECIFIC_BODY:
+                if params.get("include") == INCLUDE_FIELDS:
+                    return MockResponse(FILTER_SPECIFIC_INCLUDE_DATA)
+                elif params.get("exclude") == EXCLUDE_FIELDS:
+                    return MockResponse(FILTER_SPECIFIC_EXCLUDE_DATA)
                 else:
-                    return MockResponse(QUERY_PAGE_1_DATA)
-
-            elif params.get("scope") == ADMIN_SCOPE:
-                return MockResponse(QUERY_PAGE_1_ADMIN_DATA)
+                    return MockResponse(FILTER_SPECIFIC_DATA)
+            else:
+                return MockResponse(QUERY_PAGE_1_DATA)
 
         elif url == QUERY_PAGE_2_URL:
             return MockResponse(QUERY_PAGE_2_DATA)
-
-        elif url == QUERY_PAGE_2_ADMIN_URL:
-            return MockResponse(QUERY_PAGE_2_ADMIN_DATA)
 
         elif url == OnyxClient.ENDPOINTS["logout"](DOMAIN):
             return MockResponse(LOGOUT_DATA)
@@ -698,11 +519,7 @@ def mock_request(
             return MockResponse(PROJECT_DATA)
 
         elif url == OnyxClient.ENDPOINTS["fields"](DOMAIN, PROJECT):
-            if params.get("scope") == None:
-                return MockResponse(FIELDS_DATA)
-
-            elif params.get("scope") == ADMIN_SCOPE:
-                return MockResponse(FIELDS_ADMIN_DATA)
+            return MockResponse(FIELDS_DATA)
 
         elif url == OnyxClient.ENDPOINTS["fields"](DOMAIN, NOT_PROJECT):
             return MockResponse(FIELDS_NOT_PROJECT_DATA)
@@ -714,35 +531,24 @@ def mock_request(
             return MockResponse(CHOICES_DATA)
 
         elif url == OnyxClient.ENDPOINTS["get"](DOMAIN, PROJECT, CLIMB_ID):
-            if params.get("scope") == None:
-                return MockResponse(GET_DATA)
-
-            elif params.get("scope") == ADMIN_SCOPE:
-                return MockResponse(GET_ADMIN_DATA)
+            return MockResponse(GET_DATA)
 
         elif url == OnyxClient.ENDPOINTS["filter"](DOMAIN, PROJECT):
-            if params.get("scope") == None:
-                if (
-                    params.get("sample_id") == SAMPLE_ID
-                    and params.get("run_name") == RUN_NAME
-                ):
-                    if params.get("include") == INCLUDE_FIELDS:
-                        return MockResponse(FILTER_SPECIFIC_INCLUDE_DATA)
-                    elif params.get("exclude") == EXCLUDE_FIELDS:
-                        return MockResponse(FILTER_SPECIFIC_EXCLUDE_DATA)
-                    else:
-                        return MockResponse(FILTER_SPECIFIC_DATA)
+            if (
+                params.get("sample_id") == SAMPLE_ID
+                and params.get("run_name") == RUN_NAME
+            ):
+                if params.get("include") == INCLUDE_FIELDS:
+                    return MockResponse(FILTER_SPECIFIC_INCLUDE_DATA)
+                elif params.get("exclude") == EXCLUDE_FIELDS:
+                    return MockResponse(FILTER_SPECIFIC_EXCLUDE_DATA)
                 else:
-                    return MockResponse(FILTER_PAGE_1_DATA)
-
-            elif params.get("scope") == ADMIN_SCOPE:
-                return MockResponse(FILTER_PAGE_1_ADMIN_DATA)
+                    return MockResponse(FILTER_SPECIFIC_DATA)
+            else:
+                return MockResponse(FILTER_PAGE_1_DATA)
 
         elif url == FILTER_PAGE_2_URL:
             return MockResponse(FILTER_PAGE_2_DATA)
-
-        elif url == FILTER_PAGE_2_ADMIN_URL:
-            return MockResponse(FILTER_PAGE_2_ADMIN_DATA)
 
         elif url == OnyxClient.ENDPOINTS["profile"](DOMAIN):
             return MockResponse(PROFILE_DATA)
@@ -842,9 +648,6 @@ class OnyxClientTestCase(TestCase):
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_fields(self, mock_request):
         self.assertEqual(self.client.fields(PROJECT), FIELDS_DATA["data"])
-        self.assertEqual(
-            self.client.fields(PROJECT, scope=ADMIN_SCOPE), FIELDS_ADMIN_DATA["data"]
-        )
         self.assertEqual(self.config.token, TOKEN)
 
         for empty in ["", " ", None]:
@@ -886,10 +689,6 @@ class OnyxClientTestCase(TestCase):
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_get(self, mock_request):
         self.assertEqual(self.client.get(PROJECT, CLIMB_ID), GET_DATA["data"])
-        self.assertEqual(
-            self.client.get(PROJECT, CLIMB_ID, scope=ADMIN_SCOPE),
-            GET_ADMIN_DATA["data"],
-        )
         self.assertEqual(
             self.client.get(
                 PROJECT, fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME}
@@ -938,10 +737,6 @@ class OnyxClientTestCase(TestCase):
             FILTER_PAGE_1_DATA["data"] + FILTER_PAGE_2_DATA["data"],
         )
         self.assertEqual(
-            [x for x in self.client.filter(PROJECT, scope=ADMIN_SCOPE)],
-            FILTER_PAGE_1_ADMIN_DATA["data"] + FILTER_PAGE_2_ADMIN_DATA["data"],
-        )
-        self.assertEqual(
             [
                 x
                 for x in self.client.filter(
@@ -983,10 +778,6 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(
             [x for x in self.client.query(PROJECT)],
             QUERY_PAGE_1_DATA["data"] + QUERY_PAGE_2_DATA["data"],
-        )
-        self.assertEqual(
-            [x for x in self.client.query(PROJECT, scope=ADMIN_SCOPE)],
-            QUERY_PAGE_1_ADMIN_DATA["data"] + QUERY_PAGE_2_ADMIN_DATA["data"],
         )
         self.assertEqual(
             [
