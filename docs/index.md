@@ -15,7 +15,13 @@ Onyx-client and Onyx are being developed as part of the [CLIMB-TRE](https://clim
 
 ## Installation
 
-### Install from PyPI (recommended)
+### Install from conda-forge (recommended)
+
+```
+$ conda create --name onyx --channel conda-forge climb-onyx-client
+```
+
+### Install from PyPI
 
 ```
 $ pip install climb-onyx-client
