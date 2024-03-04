@@ -2,7 +2,13 @@
 
 ## Setup
 
-#### Install via pip
+#### Install from conda-forge
+
+```
+$ conda create --name onyx --channel conda-forge climb-onyx-client
+```
+
+#### Install from PyPI
 
 ```
 $ pip install climb-onyx-client
@@ -15,8 +21,8 @@ Download and install the client into a Python virtual environment:
 ```
 $ git clone https://github.com/CLIMB-COVID/onyx-client.git
 $ cd onyx-client/
-$ python -m venv env
-$ source env/bin/activate
+$ python -m venv .venv
+$ source .venv/bin/activate
 $ pip install .
 ```
 
@@ -24,11 +30,11 @@ Check it works:
 
 ```
 $ onyx
-                                                                                             
- Usage: onyx [OPTIONS] COMMAND [ARGS]...                                                     
-                                                                                             
- API for pathogen metadata.                                                                  
-                                                                                             
+
+ Usage: onyx [OPTIONS] COMMAND [ARGS]...
+
+ API for pathogen metadata.
+
 ╭─ Options ─────────────────────────────────────────────────────────────────────────────────╮
 │ --domain    -d      TEXT  Domain name for connecting to Onyx. [env var: ONYX_DOMAIN]      │
 │                           [default: None]                                                 │
