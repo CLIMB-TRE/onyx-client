@@ -168,7 +168,7 @@ def create_table(
         table.add_column(column)
 
     for row in data:
-        table.add_row(*(row[key] for key in map.values()))
+        table.add_row(*(str(row.get(key, "")) for key in map.values()))
 
     return table
 
@@ -323,8 +323,8 @@ def projects(
 
             for project in projects:
                 table.add_row(
-                    project["project"],
-                    project["scope"],
+                    project.get("project"),
+                    project.get("scope"),
                     " | ".join(
                         [format_action(action) for action in project.get("actions", [])]
                     ),
@@ -353,14 +353,14 @@ def add_fields_table(
 
     for field, field_spec in data.items():
         restrictions = []
-        if field_spec.get("values"):
-            restrictions.append("• Choices: " + ", ".join(field_spec["values"]))
         if field_spec.get("default") is not None:
             restrictions.append(f"• Default: {field_spec['default']}")
         if field_spec.get("restrictions"):
             restrictions.extend(
                 f"• {restriction}" for restriction in field_spec["restrictions"]
             )
+        if field_spec.get("values"):
+            restrictions.append("• Choices: " + ", ".join(field_spec["values"]))
 
         table.add_row(
             # Field
@@ -533,6 +533,7 @@ def choices(
 
     try:
         api = setup_onyx_api(context.obj)
+        field = parse_extra_option([field])[0]
         choices = api.client.choices(project, field)
 
         if format == InfoFormats.TABLE:
@@ -731,6 +732,12 @@ def identify(
     project: str = typer.Argument(...),
     field: str = typer.Argument(...),
     value: str = typer.Argument(...),
+    site: Optional[str] = typer.Option(
+        None,
+        "-s",
+        "--site",
+        help="Site code for the value. If not provided, defaults to the user's site.",
+    ),
     format: Optional[InfoFormats] = typer.Option(
         InfoFormats.TABLE.value,
         "-F",
@@ -744,23 +751,27 @@ def identify(
 
     try:
         api = setup_onyx_api(context.obj)
-        identified = api.client.identify(project, field, value)
+        identifier = api.client.identify(
+            project,
+            field,
+            value,
+            site=site,
+        )
 
         if format == InfoFormats.TABLE:
-            table = Table(
-                show_lines=True,
-            )
-            table.add_column("Field")
-            table.add_column("Value")
-            table.add_column("Identifier")
-            table.add_row(
-                identified["field"],
-                identified["value"],
-                identified["identifier"],
+            table = create_table(
+                data=[identifier],
+                map={
+                    "Project": "project",
+                    "Site": "site",
+                    "Field": "field",
+                    "Value": "value",
+                    "Identifier": "identifier",
+                },
             )
             console.print(table)
         else:
-            typer.echo(json_dump_pretty(identified))
+            typer.echo(json_dump_pretty(identifier))
     except Exception as e:
         handle_error(e)
 

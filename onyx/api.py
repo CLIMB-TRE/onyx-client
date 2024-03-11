@@ -525,11 +525,21 @@ class OnyxClientBase:
             for row in data_iterator:
                 writer.writerow(row)
 
-    def identify(self, project: str, field: str, value: str) -> requests.Response:
+    def identify(
+        self,
+        project: str,
+        field: str,
+        value: str,
+        site: Optional[str] = None,
+    ) -> requests.Response:
+        identify_json = {"value": value}
+        if site:
+            identify_json = identify_json | {"site": site}
+
         response = self._request(
             method="post",
             url=OnyxClient.ENDPOINTS["identify"](self.config.domain, project, field),
-            json={"value": value},
+            json=identify_json,
         )
         return response
 
@@ -918,19 +928,52 @@ class OnyxClient(OnyxClientBase):
                 "version": "0.1.0",
                 "fields": {
                     "climb_id": {
-                        "description": "Unique identifier for a project record.",
+                        "description": "Unique identifier for a project record in Onyx.",
                         "type": "text",
                         "required": True,
+                        "actions": [
+                            "get",
+                            "list",
+                            "filter",
+                        ],
+                        "restrictions": [
+                            "Max length: 12",
+                        ],
+                    },
+                    "is_published": {
+                        "description": "Indicator for whether a project record has been published.",
+                        "type": "bool",
+                        "required": False,
+                        "actions": [
+                            "get",
+                            "list",
+                            "filter",
+                            "add",
+                            "change",
+                        ],
+                        "default": True,
                     },
                     "published_date": {
-                        "description": "Date the record was published.",
+                        "description": "The date the project record was published in Onyx.",
                         "type": "date (YYYY-MM-DD)",
-                        "required": True,
+                        "required": False,
+                        "actions": [
+                            "get",
+                            "list",
+                            "filter",
+                        ],
                     },
                     "country": {
                         "description": "Country of origin.",
                         "type": "choice",
                         "required": False,
+                        "actions": [
+                            "get",
+                            "list",
+                            "filter",
+                            "add",
+                            "change",
+                        ],
                         "values": [
                             "ENG",
                             "WALES",
@@ -1401,7 +1444,13 @@ class OnyxClient(OnyxClientBase):
         )
 
     @onyx_errors
-    def identify(self, project: str, field: str, value: str) -> Dict[str, str]:
+    def identify(
+        self,
+        project: str,
+        field: str,
+        value: str,
+        site: Optional[str] = None,
+    ) -> Dict[str, str]:
         """
         Get the anonymised identifier for a value on a field.
 
@@ -1409,9 +1458,10 @@ class OnyxClient(OnyxClientBase):
             project: Name of the project.
             field: Field on the project.
             value: Value to identify.
+            site: Site to identify the value on. If not provided, defaults to the user's site.
 
         Returns:
-            Dict containing the field, value and anonymised identifier.
+            Dict containing the project, site, field, value and anonymised identifier.
 
         Examples:
             ```python
@@ -1429,6 +1479,8 @@ class OnyxClient(OnyxClientBase):
             ```python
             >>> identification
             {
+                "project": "project",
+                "site": "site",
                 "field": "sample_id",
                 "value": "hidden-value",
                 "identifier": "S-1234567890",
@@ -1436,7 +1488,7 @@ class OnyxClient(OnyxClientBase):
             ```
         """
 
-        response = super().identify(project, field, value)
+        response = super().identify(project, field, value, site=site)
         response.raise_for_status()
         return response.json()["data"]
 
