@@ -10,9 +10,8 @@ Different [types][types] have different lookups available to them.
 [`[choice]`][choice]
 [`[integer]`][integer]
 [`[decimal]`][decimal]
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 [`[bool]`][bool]
 
 Return values equal to the search value.
@@ -22,9 +21,8 @@ Return values equal to the search value.
 [`[choice]`][choice]
 [`[integer]`][integer]
 [`[decimal]`][decimal]
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 [`[bool]`][bool]
 
 Return values not equal to the search value.
@@ -35,9 +33,8 @@ Return values not equal to the search value.
 [`[choice]`][choice]
 [`[integer]`][integer]
 [`[decimal]`][decimal]
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 [`[bool]`][bool]
 
 Return values that are within the set of search values.
@@ -118,9 +115,8 @@ Return values with a length that is within an inclusive range of search values.
 
 [`[integer]`][integer]
 [`[decimal]`][decimal]
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 
 Return values less than the search value.
 
@@ -128,9 +124,8 @@ Return values less than the search value.
 
 [`[integer]`][integer]
 [`[decimal]`][decimal]
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 
 Return values less than or equal to the search value.
 
@@ -138,9 +133,8 @@ Return values less than or equal to the search value.
 
 [`[integer]`][integer]
 [`[decimal]`][decimal]
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 
 Return values greater than the search value.
 
@@ -148,9 +142,8 @@ Return values greater than the search value.
 
 [`[integer]`][integer]
 [`[decimal]`][decimal]
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 
 Return values greater than or equal to the search value.
 
@@ -158,78 +151,50 @@ Return values greater than or equal to the search value.
 
 [`[integer]`][integer]
 [`[decimal]`][decimal]
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 
 Return values within an inclusive range of search values.
 
-## `year`
-
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
-
-Return values with a year equal to the search year.
-
-## `year__in`
-
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
-
-Return values with a year that is within the set of search years.
-
-## `year__range`
-
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
-
-Return values with a year that is within an inclusive range of search years.
-
 ## `iso_year`
 
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 
 Return values with an ISO 8601 week-numbering year equal to the search year.
 
 ## `iso_year__in`
 
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 
 Return values with an ISO 8601 week-numbering year that is within the set of search years.
 
 ## `iso_year__range`
 
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 
 Return values with an ISO 8601 week-numbering year that is within an inclusive range of search years.
 
 ## `week`
 
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 
 Return values with an ISO 8601 week number equal to the search number.
 
 ## `week__in`
 
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 
 Return values with an ISO 8601 week number that is within the set of search numbers.
 
 ## `week__range`
 
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 
 Return values with an ISO 8601 week number that is within an inclusive range of search numbers.
 
@@ -239,9 +204,8 @@ Return values with an ISO 8601 week number that is within an inclusive range of 
 [`[choice]`][choice]
 [`[integer]`][integer]
 [`[decimal]`][decimal]
-[`[date (YYYY-MM)]`][date-yyyy-mm]
-[`[date (YYYY-MM-DD)]`][date-yyyy-mm-dd]
-[`[date (YYYY-MM-DD HH:MM:SS)]`][date-yyyy-mm-dd-hhmmss]
+[`[date]`][date]
+[`[datetime]`][datetime]
 [`[bool]`][bool]
 [`[relation]`][relation]
 
