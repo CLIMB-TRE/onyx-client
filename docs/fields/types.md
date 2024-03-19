@@ -62,7 +62,7 @@ Each field belongs to a certain type. This dictates what kind of data the field 
 
 **Examples:** `1.234`, `1.0`, `23.456`
 
-## `date (YYYY-MM)`
+## `date`
 
 [`[exact]`][exact] 
 [`[ne]`][ne]
@@ -72,29 +72,6 @@ Each field belongs to a certain type. This dictates what kind of data the field 
 [`[gt]`][gt]
 [`[gte]`][gte]
 [`[range]`][range]
-[`[year]`][year]
-[`[year__in]`][year__in]
-[`[year__range]`][year__range]
-[`[iso_year]`][iso_year]
-[`[iso_year__in]`][iso_year__in]
-[`[iso_year__range]`][iso_year__range]
-[`[isnull]`][isnull]
-
-**Examples:** `"2023-03"`, `"2024-01"` 
-
-## `date (YYYY-MM-DD)`
-
-[`[exact]`][exact] 
-[`[ne]`][ne]
-[`[in]`][in]
-[`[lt]`][lt]
-[`[lte]`][lte]
-[`[gt]`][gt]
-[`[gte]`][gte]
-[`[range]`][range]
-[`[year]`][year]
-[`[year__in]`][year__in]
-[`[year__range]`][year__range]
 [`[iso_year]`][iso_year]
 [`[iso_year__in]`][iso_year__in]
 [`[iso_year__range]`][iso_year__range]
@@ -103,9 +80,9 @@ Each field belongs to a certain type. This dictates what kind of data the field 
 [`[week__range]`][week__range]
 [`[isnull]`][isnull]
 
-**Examples:** `"2023-04-05"`, `"2024-01-01"` 
+**Examples:** `"2023-03"`, `"2023-04-05"`, `"2024-01-01"` 
 
-## `date (YYYY-MM-DD HH:MM:SS)`
+## `datetime`
 
 [`[exact]`][exact] 
 [`[ne]`][ne]
@@ -115,9 +92,6 @@ Each field belongs to a certain type. This dictates what kind of data the field 
 [`[gt]`][gt]
 [`[gte]`][gte]
 [`[range]`][range]
-[`[year]`][year]
-[`[year__in]`][year__in]
-[`[year__range]`][year__range]
 [`[iso_year]`][iso_year]
 [`[iso_year__in]`][iso_year__in]
 [`[iso_year__range]`][iso_year__range]
