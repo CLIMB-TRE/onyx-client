@@ -9,6 +9,7 @@ Each field belongs to a certain type. This dictates what kind of data the field 
 [`[exact]`][exact] 
 [`[ne]`][ne]
 [`[in]`][in]
+[`[notin]`][notin]
 [`[contains]`][contains]
 [`[startswith]`][startswith]
 [`[endswith]`][endswith]
@@ -30,6 +31,7 @@ Each field belongs to a certain type. This dictates what kind of data the field 
 [`[exact]`][exact] 
 [`[ne]`][ne]
 [`[in]`][in]
+[`[notin]`][notin]
 [`[isnull]`][isnull]
 
 **Examples:** `"ENG"`, `"WALES"`, `"SCOT"`, `"NI"`
@@ -39,6 +41,7 @@ Each field belongs to a certain type. This dictates what kind of data the field 
 [`[exact]`][exact] 
 [`[ne]`][ne]
 [`[in]`][in]
+[`[notin]`][notin]
 [`[lt]`][lt]
 [`[lte]`][lte]
 [`[gt]`][gt]
@@ -53,6 +56,7 @@ Each field belongs to a certain type. This dictates what kind of data the field 
 [`[exact]`][exact] 
 [`[ne]`][ne]
 [`[in]`][in]
+[`[notin]`][notin]
 [`[lt]`][lt]
 [`[lte]`][lte]
 [`[gt]`][gt]
@@ -67,6 +71,7 @@ Each field belongs to a certain type. This dictates what kind of data the field 
 [`[exact]`][exact] 
 [`[ne]`][ne]
 [`[in]`][in]
+[`[notin]`][notin]
 [`[lt]`][lt]
 [`[lte]`][lte]
 [`[gt]`][gt]
@@ -87,6 +92,7 @@ Each field belongs to a certain type. This dictates what kind of data the field 
 [`[exact]`][exact] 
 [`[ne]`][ne]
 [`[in]`][in]
+[`[notin]`][notin]
 [`[lt]`][lt]
 [`[lte]`][lte]
 [`[gt]`][gt]
@@ -107,6 +113,7 @@ Each field belongs to a certain type. This dictates what kind of data the field 
 [`[exact]`][exact] 
 [`[ne]`][ne]
 [`[in]`][in]
+[`[notin]`][notin]
 [`[isnull]`][isnull]
 
 **Examples:** `True`, `False`
