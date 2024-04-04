@@ -39,6 +39,18 @@ Return values not equal to the search value.
 
 Return values that are within the set of search values.
 
+## `notin`
+
+[`[text]`][text]
+[`[choice]`][choice]
+[`[integer]`][integer]
+[`[decimal]`][decimal]
+[`[date]`][date]
+[`[datetime]`][datetime]
+[`[bool]`][bool]
+
+Return values that are not within the set of search values.
+
 ## `contains`
 
 [`[text]`][text]
