@@ -201,6 +201,19 @@ FILTER_SPECIFIC_EXCLUDE_DATA = {
         },
     ],
 }
+UNKNOWN_FIELD = "haha"
+FILTER_UNKNOWN_FIELD_DATA = {
+    "status": "fail",
+    "code": 400,
+    "messages": {UNKNOWN_FIELD: ["This field is unknown."]},
+}
+FILTER_ERROR_CAUSING_PROJECT_DATA = {
+    "status": "fail",
+    "code": 500,
+    "messages": {
+        "detail": "Internal server error. Deary me...",
+    },
+}
 QUERY_PAGE_1_URL = f"{OnyxClient.ENDPOINTS['query'](DOMAIN, PROJECT)}?cursor=page_1"
 QUERY_PAGE_2_URL = f"{OnyxClient.ENDPOINTS['query'](DOMAIN, PROJECT)}?cursor=page_2"
 QUERY_PAGE_1_DATA = {
@@ -454,6 +467,9 @@ APPROVE_DATA = {
         "is_approved": True,
     },
 }
+INVALID_DOMAIN_ARGUMENTS = ["", " ", None]
+INVALID_ARGUMENTS = INVALID_DOMAIN_ARGUMENTS + ["/", "?", "/?"]
+CLIMB_ID_ENDPOINT_CLASHES = ["test", "query", "fields", "lookups", "choices"]
 
 
 class MockResponse:
@@ -568,7 +584,9 @@ def mock_request(
             return MockResponse(GET_DATA)
 
         elif url == OnyxClient.ENDPOINTS["filter"](DOMAIN, PROJECT):
-            if (
+            if params.get(UNKNOWN_FIELD):
+                return MockResponse(FILTER_UNKNOWN_FIELD_DATA)
+            elif (
                 params.get("sample_id") == SAMPLE_ID
                 and params.get("run_name") == RUN_NAME
             ):
@@ -580,6 +598,9 @@ def mock_request(
                     return MockResponse(FILTER_SPECIFIC_DATA)
             else:
                 return MockResponse(FILTER_PAGE_1_DATA)
+
+        elif url == OnyxClient.ENDPOINTS["filter"](DOMAIN, ERROR_CAUSING_PROJECT):
+            return MockResponse(FILTER_ERROR_CAUSING_PROJECT_DATA)
 
         elif url == FILTER_PAGE_2_URL:
             return MockResponse(FILTER_PAGE_2_DATA)
@@ -665,22 +686,42 @@ class OnyxClientTestCase(TestCase):
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_connection_error(self, mock_request):
         self.config.domain = BAD_DOMAIN
+
+        # Non-generator connection error
         with pytest.raises(exceptions.OnyxConnectionError):
             self.client.projects()
+
+        # Generator connection error
+        with pytest.raises(exceptions.OnyxConnectionError):
+            [x for x in self.client.filter(PROJECT)]
 
         self.assertEqual(self.config.token, None)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_request_error(self, mock_request):
-        with pytest.raises(exceptions.OnyxRequestError):
+        # Non-generator request error
+        with pytest.raises(exceptions.OnyxRequestError) as e:
             self.client.fields(NOT_PROJECT)
+        self.assertEqual(e.value.response.json(), FIELDS_NOT_PROJECT_DATA)
+
+        # Generator request error
+        with pytest.raises(exceptions.OnyxRequestError) as e:
+            [x for x in self.client.filter(PROJECT, fields={UNKNOWN_FIELD: "haha"})]
+        self.assertEqual(e.value.response.json(), FILTER_UNKNOWN_FIELD_DATA)
 
         self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_server_error(self, mock_request):
-        with pytest.raises(exceptions.OnyxServerError):
+        # Non-generator server error
+        with pytest.raises(exceptions.OnyxServerError) as e:
             self.client.fields(ERROR_CAUSING_PROJECT)
+        self.assertEqual(e.value.response.json(), FIELDS_ERROR_CAUSING_PROJECT_DATA)
+
+        # Generator server error
+        with pytest.raises(exceptions.OnyxServerError) as e:
+            [x for x in self.client.filter(ERROR_CAUSING_PROJECT)]
+        self.assertEqual(e.value.response.json(), FILTER_ERROR_CAUSING_PROJECT_DATA)
 
         self.assertEqual(self.config.token, TOKEN)
 
@@ -694,9 +735,9 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(self.client.fields(PROJECT), FIELDS_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
-        for empty in ["", " ", None]:
+        for invalid in INVALID_ARGUMENTS:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.fields(empty)
+                self.client.fields(invalid)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_choices(self, mock_request):
@@ -705,12 +746,12 @@ class OnyxClientTestCase(TestCase):
         )
         self.assertEqual(self.config.token, TOKEN)
 
-        for empty in ["", " ", None]:
+        for invalid in INVALID_ARGUMENTS:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.choices(empty, CHOICE_FIELD)
+                self.client.choices(invalid, CHOICE_FIELD)
 
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.choices(PROJECT, empty)
+                self.client.choices(PROJECT, invalid)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_get(self, mock_request):
@@ -757,12 +798,16 @@ class OnyxClientTestCase(TestCase):
                 PROJECT, fields={"sample_id": "sample-123", "run_name": "run-456"}
             )
 
-        for empty in ["", " ", None]:
+        for invalid in INVALID_ARGUMENTS:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.get(empty, CLIMB_ID)
+                self.client.get(invalid, CLIMB_ID)
 
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.get(PROJECT, empty)
+                self.client.get(PROJECT, invalid)
+
+        for clash in CLIMB_ID_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.get(PROJECT, clash)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_filter(self, mock_request):
@@ -803,9 +848,9 @@ class OnyxClientTestCase(TestCase):
         )
         self.assertEqual(self.config.token, TOKEN)
 
-        for empty in ["", " ", None]:
+        for invalid in INVALID_ARGUMENTS:
             with pytest.raises(exceptions.OnyxClientError):
-                [x for x in self.client.filter(empty)]
+                [x for x in self.client.filter(invalid)]
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_query(self, mock_request):
@@ -855,9 +900,13 @@ class OnyxClientTestCase(TestCase):
                 )
             ]
 
-        for empty in ["", " ", None]:
+        for invalid in INVALID_ARGUMENTS:
             with pytest.raises(exceptions.OnyxClientError):
-                [x for x in self.client.query(empty)]
+                [x for x in self.client.query(invalid)]
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_to_csv(self, mock_request):
+        pass  # TODO Test to_csv
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_identify(self, mock_request):
@@ -871,21 +920,22 @@ class OnyxClientTestCase(TestCase):
             ),
             IDENTIFY_OTHER_SITE_DATA["data"],
         )
+        self.assertEqual(self.config.token, TOKEN)
 
-        for empty in ["", " ", None]:
+        for invalid in INVALID_ARGUMENTS:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.identify(empty, IDENTIFY_FIELD, IDENTIFY_VALUE)
+                self.client.identify(invalid, IDENTIFY_FIELD, IDENTIFY_VALUE)
 
             with pytest.raises(exceptions.OnyxClientError):
                 self.client.identify(
-                    empty, IDENTIFY_FIELD, IDENTIFY_VALUE, site=OTHER_SITE
+                    invalid, IDENTIFY_FIELD, IDENTIFY_VALUE, site=OTHER_SITE
                 )
 
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.identify(PROJECT, empty, IDENTIFY_VALUE)
+                self.client.identify(PROJECT, invalid, IDENTIFY_VALUE)
 
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.identify(PROJECT, empty, IDENTIFY_VALUE, site=OTHER_SITE)
+                self.client.identify(PROJECT, invalid, IDENTIFY_VALUE, site=OTHER_SITE)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_create(self, mock_request):
@@ -898,12 +948,12 @@ class OnyxClientTestCase(TestCase):
         )
         self.assertEqual(self.config.token, TOKEN)
 
-        for empty in ["", " ", None]:
+        for invalid in INVALID_ARGUMENTS:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.create(empty, CREATE_FIELDS)
+                self.client.create(invalid, CREATE_FIELDS)
 
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.create(empty, CREATE_FIELDS, test=True)
+                self.client.create(invalid, CREATE_FIELDS, test=True)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_update(self, mock_request):
@@ -916,30 +966,34 @@ class OnyxClientTestCase(TestCase):
         )
         self.assertEqual(self.config.token, TOKEN)
 
-        for empty in ["", " ", None]:
+        for invalid in INVALID_ARGUMENTS:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.update(empty, CLIMB_ID, UPDATE_FIELDS)
+                self.client.update(invalid, CLIMB_ID, UPDATE_FIELDS)
 
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.update(empty, CLIMB_ID, UPDATE_FIELDS, test=True)
+                self.client.update(invalid, CLIMB_ID, UPDATE_FIELDS, test=True)
 
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.update(PROJECT, empty, UPDATE_FIELDS)
+                self.client.update(PROJECT, invalid, UPDATE_FIELDS)
 
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.update(PROJECT, empty, UPDATE_FIELDS, test=True)
+                self.client.update(PROJECT, invalid, UPDATE_FIELDS, test=True)
+
+        for clash in CLIMB_ID_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.update(PROJECT, clash, UPDATE_FIELDS)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_delete(self, mock_request):
         self.assertEqual(self.client.delete(PROJECT, CLIMB_ID), DELETE_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
-        for empty in ["", " ", None]:
+        for invalid in INVALID_ARGUMENTS:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.delete(empty, CLIMB_ID)
+                self.client.delete(invalid, CLIMB_ID)
 
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.delete(PROJECT, empty)
+                self.client.delete(PROJECT, invalid)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_csv_create(self, mock_request):
@@ -1266,10 +1320,10 @@ class OnyxClientTestCase(TestCase):
             REGISTER_DATA["data"],
         )
 
-        for empty in ["", " ", None]:
+        for invalid in INVALID_DOMAIN_ARGUMENTS:
             with pytest.raises(exceptions.OnyxClientError):
                 OnyxClient.register(
-                    domain=empty,
+                    domain=invalid,
                     first_name=FIRST_NAME,
                     last_name=LAST_NAME,
                     email=EMAIL,
@@ -1302,9 +1356,9 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(self.client.approve(OTHER_USERNAME), APPROVE_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
-        for empty in ["", " ", None]:
+        for invalid in INVALID_ARGUMENTS:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.approve(empty)
+                self.client.approve(invalid)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_waiting(self, mock_request):
