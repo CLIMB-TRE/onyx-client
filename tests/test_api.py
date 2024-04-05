@@ -15,6 +15,7 @@ USERNAME = "username"
 PASSWORD = "password"
 EMAIL = "email"
 SITE = "site"
+OTHER_SITE = "other_site"
 OTHER_USERNAME = "other_username"
 OTHER_EMAIL = "other_email"
 INVALID_AUTH_DATA = {
@@ -93,37 +94,6 @@ CHOICES_DATA = {
     ],
 }
 CLIMB_ID = "C-0123456789"
-CREATE_FIELDS = {
-    "sample_id": "sample-123",
-    "run_name": "run-456",
-}
-CSV_CREATE_EMPTY_FILE = "sample_id, run_name\n"
-TSV_CREATE_EMPTY_FILE = "sample_id\t run_name\n"
-CSV_CREATE_SINGLE_FILE = "sample_id, run_name\nsample-123, run-456"
-TSV_CREATE_SINGLE_FILE = "sample_id\t run_name\nsample-123\t run-456"
-CSV_CREATE_MULTI_FILE = "sample_id, run_name\nsample-123, run-456\nsample-123, run-456"
-TSV_CREATE_MULTI_FILE = (
-    "sample_id\t run_name\nsample-123\t run-456\nsample-123\t run-456"
-)
-CSV_CREATE_SINGLE_MISSING_FILE = "sample_id\nsample-123"
-TSV_CREATE_SINGLE_MISSING_FILE = "sample_id\nsample-123"
-CSV_CREATE_MULTI_MISSING_FILE = "sample_id\nsample-123\nsample-123"
-TSV_CREATE_MULTI_MISSING_FILE = "sample_id\nsample-123\nsample-123"
-MISSING_CREATE_FIELDS = {"run_name": "run-456"}
-CREATE_DATA = {
-    "status": "success",
-    "code": 201,
-    "data": {
-        "climb_id": CLIMB_ID,
-    },
-}
-TESTCREATE_DATA = {
-    "status": "success",
-    "code": 201,
-    "data": {
-        "climb_id": None,
-    },
-}
 GET_DATA = {
     "status": "success",
     "code": 200,
@@ -286,6 +256,63 @@ QUERY_PAGE_2_DATA = {
     ],
 }
 QUERY_SPECIFIC_BODY = {"&": [{"sample_id": SAMPLE_ID}, {"run_name": RUN_NAME}]}
+IDENTIFY_FIELD = "sample_id"
+IDENTIFY_VALUE = "sample-123"
+IDENTIFY_FIELDS = {"value": IDENTIFY_VALUE}
+IDENTIFY_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": {
+        "project": PROJECT,
+        "site": SITE,
+        "field": IDENTIFY_FIELD,
+        "value": IDENTIFY_VALUE,
+        "identifier": "S-1234567890",
+    },
+}
+IDENTIFY_OTHER_SITE_FIELDS = {"value": IDENTIFY_VALUE, "site": OTHER_SITE}
+IDENTIFY_OTHER_SITE_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": {
+        "project": PROJECT,
+        "site": OTHER_SITE,
+        "field": IDENTIFY_FIELD,
+        "value": IDENTIFY_VALUE,
+        "identifier": "S-0987654321",
+    },
+}
+CREATE_FIELDS = {
+    "sample_id": "sample-123",
+    "run_name": "run-456",
+}
+CSV_CREATE_EMPTY_FILE = "sample_id, run_name\n"
+TSV_CREATE_EMPTY_FILE = "sample_id\t run_name\n"
+CSV_CREATE_SINGLE_FILE = "sample_id, run_name\nsample-123, run-456"
+TSV_CREATE_SINGLE_FILE = "sample_id\t run_name\nsample-123\t run-456"
+CSV_CREATE_MULTI_FILE = "sample_id, run_name\nsample-123, run-456\nsample-123, run-456"
+TSV_CREATE_MULTI_FILE = (
+    "sample_id\t run_name\nsample-123\t run-456\nsample-123\t run-456"
+)
+CSV_CREATE_SINGLE_MISSING_FILE = "sample_id\nsample-123"
+TSV_CREATE_SINGLE_MISSING_FILE = "sample_id\nsample-123"
+CSV_CREATE_MULTI_MISSING_FILE = "sample_id\nsample-123\nsample-123"
+TSV_CREATE_MULTI_MISSING_FILE = "sample_id\nsample-123\nsample-123"
+MISSING_CREATE_FIELDS = {"run_name": "run-456"}
+CREATE_DATA = {
+    "status": "success",
+    "code": 201,
+    "data": {
+        "climb_id": CLIMB_ID,
+    },
+}
+TESTCREATE_DATA = {
+    "status": "success",
+    "code": 201,
+    "data": {
+        "climb_id": None,
+    },
+}
 UPDATE_FIELDS = {
     "country": "England",
     "source_type": "humanoid",
@@ -514,6 +541,13 @@ def mock_request(
         elif url == OnyxClient.ENDPOINTS["logoutall"](DOMAIN):
             return MockResponse(LOGOUTALL_DATA)
 
+        elif url == OnyxClient.ENDPOINTS["identify"](DOMAIN, PROJECT, IDENTIFY_FIELD):
+            if json == IDENTIFY_FIELDS:
+                return MockResponse(IDENTIFY_DATA)
+
+            elif json == IDENTIFY_OTHER_SITE_FIELDS:
+                return MockResponse(IDENTIFY_OTHER_SITE_DATA)
+
     elif method == "get":
         if url == OnyxClient.ENDPOINTS["projects"](DOMAIN):
             return MockResponse(PROJECT_DATA)
@@ -619,6 +653,16 @@ class OnyxClientTestCase(TestCase):
         self.client = OnyxClient(self.config)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_context_manager(self, mock_request):
+        with OnyxClient(self.config) as client:
+            self.assertIsInstance(client._session, requests.Session)
+            self.assertEqual(
+                client._request_handler, client._session.request  #  type: ignore
+            )
+
+        self.assertEqual(client._request_handler, requests.request)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_connection_error(self, mock_request):
         self.config.domain = BAD_DOMAIN
         with pytest.raises(exceptions.OnyxConnectionError):
@@ -669,24 +713,6 @@ class OnyxClientTestCase(TestCase):
                 self.client.choices(PROJECT, empty)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
-    def test_create(self, mock_request):
-        self.assertEqual(
-            self.client.create(PROJECT, CREATE_FIELDS), CREATE_DATA["data"]
-        )
-        self.assertEqual(
-            self.client.create(PROJECT, CREATE_FIELDS, test=True),
-            TESTCREATE_DATA["data"],
-        )
-        self.assertEqual(self.config.token, TOKEN)
-
-        for empty in ["", " ", None]:
-            with pytest.raises(exceptions.OnyxClientError):
-                self.client.create(empty, CREATE_FIELDS)
-
-            with pytest.raises(exceptions.OnyxClientError):
-                self.client.create(empty, CREATE_FIELDS, test=True)
-
-    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_get(self, mock_request):
         self.assertEqual(self.client.get(PROJECT, CLIMB_ID), GET_DATA["data"])
         self.assertEqual(
@@ -712,6 +738,14 @@ class OnyxClientTestCase(TestCase):
             FILTER_SPECIFIC_EXCLUDE_DATA["data"][0],
         )
         self.assertEqual(self.config.token, TOKEN)
+
+        # Cannot provide both CLIMB_ID and fields
+        with pytest.raises(exceptions.OnyxClientError):
+            self.client.get(
+                PROJECT,
+                CLIMB_ID,
+                fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME},
+            )
 
         # At least one of CLIMB_ID and fields is required
         with pytest.raises(exceptions.OnyxClientError):
@@ -813,9 +847,63 @@ class OnyxClientTestCase(TestCase):
         )
         self.assertEqual(self.config.token, TOKEN)
 
+        with pytest.raises(exceptions.OnyxClientError):
+            [
+                x
+                for x in self.client.query(
+                    PROJECT, query="not_a_query_object"  #  type: ignore
+                )
+            ]
+
         for empty in ["", " ", None]:
             with pytest.raises(exceptions.OnyxClientError):
                 [x for x in self.client.query(empty)]
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_identify(self, mock_request):
+        self.assertEqual(
+            self.client.identify(PROJECT, IDENTIFY_FIELD, IDENTIFY_VALUE),
+            IDENTIFY_DATA["data"],
+        )
+        self.assertEqual(
+            self.client.identify(
+                PROJECT, IDENTIFY_FIELD, IDENTIFY_VALUE, site=OTHER_SITE
+            ),
+            IDENTIFY_OTHER_SITE_DATA["data"],
+        )
+
+        for empty in ["", " ", None]:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.identify(empty, IDENTIFY_FIELD, IDENTIFY_VALUE)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.identify(
+                    empty, IDENTIFY_FIELD, IDENTIFY_VALUE, site=OTHER_SITE
+                )
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.identify(PROJECT, empty, IDENTIFY_VALUE)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.identify(PROJECT, empty, IDENTIFY_VALUE, site=OTHER_SITE)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_create(self, mock_request):
+        self.assertEqual(
+            self.client.create(PROJECT, CREATE_FIELDS), CREATE_DATA["data"]
+        )
+        self.assertEqual(
+            self.client.create(PROJECT, CREATE_FIELDS, test=True),
+            TESTCREATE_DATA["data"],
+        )
+        self.assertEqual(self.config.token, TOKEN)
+
+        for empty in ["", " ", None]:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.create(empty, CREATE_FIELDS)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.create(empty, CREATE_FIELDS, test=True)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_update(self, mock_request):
