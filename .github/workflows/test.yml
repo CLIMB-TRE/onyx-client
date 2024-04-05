@@ -24,6 +24,8 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install .
         python -m pip install pytest
+        python -m pip install coverage
     - name: Test with pytest
       run: |
-        python -m pytest -v
+        coverage run -m pytest -v
+        coverage report
