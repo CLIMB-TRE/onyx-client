@@ -93,18 +93,6 @@ Return values that case-insensitively start with the search value.
 
 Return values that case-insensitively end with the search value.
 
-## `regex`
-
-[`[text]`][text]
-
-Return values that match the search regular expression.
-
-## `iregex`
-
-[`[text]`][text]
-
-Return values that case-insensitively match the search regular expression.
-
 ## `length`
 
 [`[text]`][text]

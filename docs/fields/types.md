@@ -17,8 +17,6 @@ Each field belongs to a certain type. This dictates what kind of data the field 
 [`[icontains]`][icontains]
 [`[istartswith]`][istartswith]
 [`[iendswith]`][iendswith]
-[`[regex]`][regex]
-[`[iregex]`][iregex]
 [`[length]`][length]
 [`[length__in]`][length__in]
 [`[length__range]`][length__range]
