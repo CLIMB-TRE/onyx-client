@@ -81,7 +81,7 @@ class OnyxField:
             OnyxOperator.NOT,
         }:
             if type(value) in {list, tuple, set}:
-                value = ",".join(map(str, value))
+                value = ",".join(map(lambda x: str(x) if x is not None else "", value))
 
         self.query = {field: value}
 
