@@ -39,6 +39,56 @@ PROJECT_DATA = {
         }
     ],
 }
+TYPES_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": [
+        {
+            "type": "text",
+            "description": "A text field.",
+            "lookups": [
+                "exact",
+                "iexact",
+                "contains",
+                "icontains",
+                "startswith",
+                "istartswith",
+                "endswith",
+                "iendswith",
+            ],
+        },
+        {
+            "type": "choice",
+            "description": "A choice field.",
+            "lookups": [
+                "exact",
+                "iexact",
+            ],
+        },
+    ],
+}
+LOOKUPS_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": [
+        {
+            "lookup": "exact",
+            "description": "Exact match.",
+            "types": [
+                "text",
+                "choice",
+            ],
+        },
+        {
+            "lookup": "iexact",
+            "description": "Case-insensitive exact match.",
+            "types": [
+                "text",
+                "choice",
+            ],
+        },
+    ],
+}
 FIELDS_DATA = {
     "status": "success",
     "code": 200,
@@ -469,7 +519,8 @@ APPROVE_DATA = {
 }
 INVALID_DOMAIN_ARGUMENTS = ["", " ", None]
 INVALID_ARGUMENTS = INVALID_DOMAIN_ARGUMENTS + ["/", "?", "/?"]
-CLIMB_ID_ENDPOINT_CLASHES = ["test", "query", "fields", "lookups", "choices"]
+PROJECT_ENDPOINT_CLASHES = ["types", "lookups"]
+CLIMB_ID_ENDPOINT_CLASHES = ["test", "query", "fields", "choices", "identify"]
 
 
 class MockResponse:
@@ -567,6 +618,12 @@ def mock_request(
     elif method == "get":
         if url == OnyxClient.ENDPOINTS["projects"](DOMAIN):
             return MockResponse(PROJECT_DATA)
+
+        elif url == OnyxClient.ENDPOINTS["types"](DOMAIN):
+            return MockResponse(TYPES_DATA)
+
+        elif url == OnyxClient.ENDPOINTS["lookups"](DOMAIN):
+            return MockResponse(LOOKUPS_DATA)
 
         elif url == OnyxClient.ENDPOINTS["fields"](DOMAIN, PROJECT):
             return MockResponse(FIELDS_DATA)
@@ -731,6 +788,16 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_types(self, mock_request):
+        self.assertEqual(self.client.types(), TYPES_DATA["data"])
+        self.assertEqual(self.config.token, TOKEN)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_lookups(self, mock_request):
+        self.assertEqual(self.client.lookups(), LOOKUPS_DATA["data"])
+        self.assertEqual(self.config.token, TOKEN)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_fields(self, mock_request):
         self.assertEqual(self.client.fields(PROJECT), FIELDS_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
@@ -804,6 +871,10 @@ class OnyxClientTestCase(TestCase):
 
             with pytest.raises(exceptions.OnyxClientError):
                 self.client.get(PROJECT, invalid)
+
+        for clash in PROJECT_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.get(clash, CLIMB_ID)
 
         for clash in CLIMB_ID_ENDPOINT_CLASHES:
             with pytest.raises(exceptions.OnyxClientError):
@@ -978,6 +1049,10 @@ class OnyxClientTestCase(TestCase):
 
             with pytest.raises(exceptions.OnyxClientError):
                 self.client.update(PROJECT, invalid, UPDATE_FIELDS, test=True)
+
+        for clash in PROJECT_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.get(clash, CLIMB_ID, UPDATE_FIELDS)
 
         for clash in CLIMB_ID_ENDPOINT_CLASHES:
             with pytest.raises(exceptions.OnyxClientError):

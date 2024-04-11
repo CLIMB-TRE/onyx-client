@@ -24,6 +24,20 @@ class OnyxClientBase:
             ),
             domain=domain,
         ),
+        "types": lambda domain: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects/types/",
+            ),
+            domain=domain,
+        ),
+        "lookups": lambda domain: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects/lookups/",
+            ),
+            domain=domain,
+        ),
         "fields": lambda domain, project: OnyxClient._handle_endpoint(
             lambda: os.path.join(
                 str(domain),
@@ -247,11 +261,15 @@ class OnyxClientBase:
                             f"Argument '{name}' contains invalid character: '{char}'."
                         )
 
-                # Crude but effective
-                # Prevents calling other endpoints from the get() function with a climb_id equal to the endpoint name
+                # Crude but effective prevention of unexpectedly calling other endpoints
                 # Its not the end of the world if that did happen, but to the user it would be quite confusing
-                if name == "climb_id":
-                    for clash in ["test", "query", "fields", "lookups", "choices"]:
+                clashes = {
+                    "project": ["types", "lookups"],
+                    "climb_id": ["test", "query", "fields", "choices", "identify"],
+                }
+
+                if name in clashes:
+                    for clash in clashes[name]:
                         if val == clash:
                             raise OnyxClientError(
                                 f"Argument '{name}' cannot have value '{val}'. This creates a URL that resolves to a different endpoint."
@@ -386,6 +404,20 @@ class OnyxClientBase:
         response = self._request(
             method="get",
             url=OnyxClient.ENDPOINTS["projects"](self.config.domain),
+        )
+        return response
+
+    def types(self) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["types"](self.config.domain),
+        )
+        return response
+
+    def lookups(self) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["lookups"](self.config.domain),
         )
         return response
 
@@ -895,6 +927,129 @@ class OnyxClient(OnyxClientBase):
         """
 
         response = super().projects()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def types(self) -> List[Dict[str, Any]]:
+        """
+        View available field types.
+
+        Returns:
+            List of field types.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                field_types = client.types()
+            ```
+            ```python
+            >>> field_types
+            [
+                {
+                    "type": "text",
+                    "description": "A string of characters.",
+                    "lookups": [
+                        "exact",
+                        "ne",
+                        "in",
+                        "notin",
+                        "contains",
+                        "startswith",
+                        "endswith",
+                        "iexact",
+                        "icontains",
+                        "istartswith",
+                        "iendswith",
+                        "length",
+                        "length__in",
+                        "length__range",
+                        "isnull",
+                    ],
+                },
+                {
+                    "type": "choice",
+                    "description": "A restricted set of options.",
+                    "lookups": [
+                        "exact",
+                        "ne",
+                        "in",
+                        "notin",
+                        "isnull",
+                    ],
+                },
+            ]
+            ```
+        """
+
+        response = super().types()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def lookups(self) -> List[Dict[str, Any]]:
+        """
+        View available lookups.
+
+        Returns:
+            List of lookups.
+
+        Examples:
+            ```python
+            import os
+
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                lookups = client.lookups()
+            ```
+            ```python
+            >>> lookups
+            [
+                {
+                    "lookup": "exact",
+                    "description": "The field's value must be equal to the query value.",
+                    "types": [
+                        "text",
+                        "choice",
+                        "integer",
+                        "decimal",
+                        "date",
+                        "datetime",
+                        "bool",
+                    ],
+                },
+                {
+                    "lookup": "ne",
+                    "description": "The field's value must not be equal to the query value.",
+                    "types": [
+                        "text",
+                        "choice",
+                        "integer",
+                        "decimal",
+                        "date",
+                        "datetime",
+                        "bool",
+                    ],
+                },
+            ]
+            ```
+        """
+
+        response = super().lookups()
         response.raise_for_status()
         return response.json()["data"]
 
