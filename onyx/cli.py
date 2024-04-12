@@ -814,6 +814,54 @@ def filter(
 
 
 @app.command()
+def history(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    climb_id: str = typer.Argument(...),
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View the history of a record in a project.
+    """
+
+    try:
+        api = setup_onyx_api(context.obj)
+        history = api.client.history(project, climb_id)
+
+        if format == InfoFormats.TABLE:
+            columns = ["Username", "Timestamp", "Action", "Changes"]
+            table = Table(
+                show_lines=True,
+            )
+
+            for column in columns:
+                table.add_column(column)
+
+            for h in history["history"]:
+                changes = [
+                    f"• {change['field']}: {change['from']} → {change['to']}"
+                    for change in h.get("changes", [])
+                ]
+                table.add_row(
+                    h.get("username", ""),
+                    h.get("timestamp", ""),
+                    format_action(h.get("action", "")),
+                    "\n".join(changes),
+                )
+
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(history))
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command()
 def identify(
     context: typer.Context,
     project: str = typer.Argument(...),
