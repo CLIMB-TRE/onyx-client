@@ -1637,6 +1637,67 @@ class OnyxClient(OnyxClientBase):
     ) -> Dict[str, Any]:
         """
         View the history of a record in a project.
+
+        Args:
+            project: Name of the project.
+            climb_id: Unique identifier for the record in the project.
+
+        Returns:
+            Dict containing the history of the record.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                history = client.history("project", "C-1234567890")
+            ```
+            ```python
+            >>> history
+            {
+                "climb_id": "C-1234567890",
+                "history": [
+                    {
+                        "username": "user",
+                        "timestamp": "2023-01-01T00:00:00Z",
+                        "action": "add",
+                    },
+                    {
+                        "username": "user",
+                        "timestamp": "2023-01-02T00:00:00Z",
+                        "action": "change",
+                        "changes": [
+                            {
+                                "field": "field_1",
+                                "from": "value1",
+                                "to": "value2",
+                            },
+                            {
+                                "field": "field_2",
+                                "from": "value3",
+                                "to": "value4",
+                            },
+                            {
+                                "field": "nested_field",
+                                "action": "add",
+                                "count" : 3,
+                            },
+                            {
+                                "field": "nested_field",
+                                "action": "change",
+                                "count" : 10,
+                            },
+                        ],
+                    },
+                ],
+            }
+            ```
         """
         response = super().history(project, climb_id)
         response.raise_for_status()
