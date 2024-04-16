@@ -93,6 +93,19 @@ class OnyxClientBase:
             domain=domain,
             project=project,
         ),
+        "history": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "history",
+                str(climb_id),
+                "",
+            ),
+            domain=domain,
+            project=project,
+            climb_id=climb_id,
+        ),
         "identify": lambda domain, project, field: OnyxClient._handle_endpoint(
             lambda: os.path.join(
                 str(domain),
@@ -265,7 +278,14 @@ class OnyxClientBase:
                 # Its not the end of the world if that did happen, but to the user it would be quite confusing
                 clashes = {
                     "project": ["types", "lookups"],
-                    "climb_id": ["test", "query", "fields", "choices", "identify"],
+                    "climb_id": [
+                        "test",
+                        "query",
+                        "fields",
+                        "choices",
+                        "history",
+                        "identify",
+                    ],
                 }
 
                 if name in clashes:
@@ -556,6 +576,17 @@ class OnyxClientBase:
             writer.writerow(row)
             for row in data_iterator:
                 writer.writerow(row)
+
+    def history(
+        self,
+        project: str,
+        climb_id: str,
+    ) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["history"](self.config.domain, project, climb_id),
+        )
+        return response
 
     def identify(
         self,
@@ -1597,6 +1628,84 @@ class OnyxClient(OnyxClientBase):
             data=data,
             delimiter=delimiter,
         )
+
+    @onyx_errors
+    def history(
+        self,
+        project: str,
+        climb_id: str,
+    ) -> Dict[str, Any]:
+        """
+        View the history of a record in a project.
+
+        Args:
+            project: Name of the project.
+            climb_id: Unique identifier for the record in the project.
+
+        Returns:
+            Dict containing the history of the record.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                history = client.history("project", "C-1234567890")
+            ```
+            ```python
+            >>> history
+            {
+                "climb_id": "C-1234567890",
+                "history": [
+                    {
+                        "username": "user",
+                        "timestamp": "2023-01-01T00:00:00Z",
+                        "action": "add",
+                    },
+                    {
+                        "username": "user",
+                        "timestamp": "2023-01-02T00:00:00Z",
+                        "action": "change",
+                        "changes": [
+                            {
+                                "field": "field_1",
+                                "type": "text",
+                                "from": "value1",
+                                "to": "value2",
+                            },
+                            {
+                                "field": "field_2",
+                                "type": "integer",
+                                "from": 3,
+                                "to": 4,
+                            },
+                            {
+                                "field": "nested_field",
+                                "type": "relation",
+                                "action": "add",
+                                "count" : 3,
+                            },
+                            {
+                                "field": "nested_field",
+                                "type": "relation",
+                                "action": "change",
+                                "count" : 10,
+                            },
+                        ],
+                    },
+                ],
+            }
+            ```
+        """
+        response = super().history(project, climb_id)
+        response.raise_for_status()
+        return response.json()["data"]
 
     @onyx_errors
     def identify(
