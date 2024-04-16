@@ -849,16 +849,18 @@ def history(
             for h in history["history"]:
                 changes = []
                 for change in h.get("changes", []):
-                    if change.get("from") or change.get("to"):
+                    if change.get("type") == "relation":
+                        action = actions.get(change.get("action", ""), "")
+                        count = change.get("count", "")
+
+                        if count:
+                            count = f"{count} record{'s' if count != 1 else ''}"
+
+                        changes.append(f"• {change['field']}: {action} {count}")
+                    else:
                         changes.append(
                             f"• {change['field']}: {change.get('from', '')} → {change.get('to', '')}"
                         )
-                    elif change.get("action"):
-                        action = actions.get(change.get("action", ""), "")
-                        count = change.get("count", "")
-                        if count:
-                            count = f"{count} record{'s' if count != 1 else ''}"
-                        changes.append(f"• {change['field']}: {action} {count}")
 
                 table.add_row(
                     h.get("username", ""),

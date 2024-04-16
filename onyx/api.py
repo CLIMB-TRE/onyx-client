@@ -1675,21 +1675,25 @@ class OnyxClient(OnyxClientBase):
                         "changes": [
                             {
                                 "field": "field_1",
+                                "type": "text",
                                 "from": "value1",
                                 "to": "value2",
                             },
                             {
                                 "field": "field_2",
-                                "from": "value3",
-                                "to": "value4",
+                                "type": "integer",
+                                "from": 3,
+                                "to": 4,
                             },
                             {
                                 "field": "nested_field",
+                                "type": "relation",
                                 "action": "add",
                                 "count" : 3,
                             },
                             {
                                 "field": "nested_field",
+                                "type": "relation",
                                 "action": "change",
                                 "count" : 10,
                             },
