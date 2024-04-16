@@ -24,6 +24,20 @@ class OnyxClientBase:
             ),
             domain=domain,
         ),
+        "types": lambda domain: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects/types/",
+            ),
+            domain=domain,
+        ),
+        "lookups": lambda domain: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects/lookups/",
+            ),
+            domain=domain,
+        ),
         "fields": lambda domain, project: OnyxClient._handle_endpoint(
             lambda: os.path.join(
                 str(domain),
@@ -78,6 +92,19 @@ class OnyxClientBase:
             ),
             domain=domain,
             project=project,
+        ),
+        "history": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
+            lambda: os.path.join(
+                str(domain),
+                "projects",
+                str(project),
+                "history",
+                str(climb_id),
+                "",
+            ),
+            domain=domain,
+            project=project,
+            climb_id=climb_id,
         ),
         "identify": lambda domain, project, field: OnyxClient._handle_endpoint(
             lambda: os.path.join(
@@ -247,11 +274,22 @@ class OnyxClientBase:
                             f"Argument '{name}' contains invalid character: '{char}'."
                         )
 
-                # Crude but effective
-                # Prevents calling other endpoints from the get() function with a climb_id equal to the endpoint name
+                # Crude but effective prevention of unexpectedly calling other endpoints
                 # Its not the end of the world if that did happen, but to the user it would be quite confusing
-                if name == "climb_id":
-                    for clash in ["test", "query", "fields", "lookups", "choices"]:
+                clashes = {
+                    "project": ["types", "lookups"],
+                    "climb_id": [
+                        "test",
+                        "query",
+                        "fields",
+                        "choices",
+                        "history",
+                        "identify",
+                    ],
+                }
+
+                if name in clashes:
+                    for clash in clashes[name]:
                         if val == clash:
                             raise OnyxClientError(
                                 f"Argument '{name}' cannot have value '{val}'. This creates a URL that resolves to a different endpoint."
@@ -386,6 +424,20 @@ class OnyxClientBase:
         response = self._request(
             method="get",
             url=OnyxClient.ENDPOINTS["projects"](self.config.domain),
+        )
+        return response
+
+    def types(self) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["types"](self.config.domain),
+        )
+        return response
+
+    def lookups(self) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["lookups"](self.config.domain),
         )
         return response
 
@@ -524,6 +576,17 @@ class OnyxClientBase:
             writer.writerow(row)
             for row in data_iterator:
                 writer.writerow(row)
+
+    def history(
+        self,
+        project: str,
+        climb_id: str,
+    ) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["history"](self.config.domain, project, climb_id),
+        )
+        return response
 
     def identify(
         self,
@@ -895,6 +958,129 @@ class OnyxClient(OnyxClientBase):
         """
 
         response = super().projects()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def types(self) -> List[Dict[str, Any]]:
+        """
+        View available field types.
+
+        Returns:
+            List of field types.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                field_types = client.types()
+            ```
+            ```python
+            >>> field_types
+            [
+                {
+                    "type": "text",
+                    "description": "A string of characters.",
+                    "lookups": [
+                        "exact",
+                        "ne",
+                        "in",
+                        "notin",
+                        "contains",
+                        "startswith",
+                        "endswith",
+                        "iexact",
+                        "icontains",
+                        "istartswith",
+                        "iendswith",
+                        "length",
+                        "length__in",
+                        "length__range",
+                        "isnull",
+                    ],
+                },
+                {
+                    "type": "choice",
+                    "description": "A restricted set of options.",
+                    "lookups": [
+                        "exact",
+                        "ne",
+                        "in",
+                        "notin",
+                        "isnull",
+                    ],
+                },
+            ]
+            ```
+        """
+
+        response = super().types()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def lookups(self) -> List[Dict[str, Any]]:
+        """
+        View available lookups.
+
+        Returns:
+            List of lookups.
+
+        Examples:
+            ```python
+            import os
+
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                lookups = client.lookups()
+            ```
+            ```python
+            >>> lookups
+            [
+                {
+                    "lookup": "exact",
+                    "description": "The field's value must be equal to the query value.",
+                    "types": [
+                        "text",
+                        "choice",
+                        "integer",
+                        "decimal",
+                        "date",
+                        "datetime",
+                        "bool",
+                    ],
+                },
+                {
+                    "lookup": "ne",
+                    "description": "The field's value must not be equal to the query value.",
+                    "types": [
+                        "text",
+                        "choice",
+                        "integer",
+                        "decimal",
+                        "date",
+                        "datetime",
+                        "bool",
+                    ],
+                },
+            ]
+            ```
+        """
+
+        response = super().lookups()
         response.raise_for_status()
         return response.json()["data"]
 
@@ -1442,6 +1628,84 @@ class OnyxClient(OnyxClientBase):
             data=data,
             delimiter=delimiter,
         )
+
+    @onyx_errors
+    def history(
+        self,
+        project: str,
+        climb_id: str,
+    ) -> Dict[str, Any]:
+        """
+        View the history of a record in a project.
+
+        Args:
+            project: Name of the project.
+            climb_id: Unique identifier for the record in the project.
+
+        Returns:
+            Dict containing the history of the record.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                history = client.history("project", "C-1234567890")
+            ```
+            ```python
+            >>> history
+            {
+                "climb_id": "C-1234567890",
+                "history": [
+                    {
+                        "username": "user",
+                        "timestamp": "2023-01-01T00:00:00Z",
+                        "action": "add",
+                    },
+                    {
+                        "username": "user",
+                        "timestamp": "2023-01-02T00:00:00Z",
+                        "action": "change",
+                        "changes": [
+                            {
+                                "field": "field_1",
+                                "type": "text",
+                                "from": "value1",
+                                "to": "value2",
+                            },
+                            {
+                                "field": "field_2",
+                                "type": "integer",
+                                "from": 3,
+                                "to": 4,
+                            },
+                            {
+                                "field": "nested_field",
+                                "type": "relation",
+                                "action": "add",
+                                "count" : 3,
+                            },
+                            {
+                                "field": "nested_field",
+                                "type": "relation",
+                                "action": "change",
+                                "count" : 10,
+                            },
+                        ],
+                    },
+                ],
+            }
+            ```
+        """
+        response = super().history(project, climb_id)
+        response.raise_for_status()
+        return response.json()["data"]
 
     @onyx_errors
     def identify(
