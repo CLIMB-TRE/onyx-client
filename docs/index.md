@@ -21,6 +21,8 @@ Onyx-client and Onyx are being developed as part of the [CLIMB-TRE](https://clim
 $ conda create --name onyx --channel conda-forge climb-onyx-client
 ```
 
+This installs the latest version of the Onyx-Client from [conda-forge](https://anaconda.org/conda-forge/climb-onyx-client).
+
 ### Install from PyPI
 
 ```
@@ -42,4 +44,20 @@ Run installation from within the source code directory:
 ```
 $ cd onyx-client/
 $ pip install .
+```
+
+## Accessibility
+
+### Enable/disable colours
+
+Colours are enabled by default in the output of the Onyx-Client. To disable them, create an environment variable `ONYX_COLOURS` with the value `NONE`:
+
+```
+$ export ONYX_COLOURS=NONE
+```
+
+To re-enable colours, unset the environment variable:
+
+```
+$ unset ONYX_COLOURS
 ```

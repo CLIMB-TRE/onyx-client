@@ -323,11 +323,93 @@ def projects(
 
             for project in projects:
                 table.add_row(
-                    project.get("project"),
-                    project.get("scope"),
+                    project.get("project", ""),
+                    project.get("scope", ""),
                     " | ".join(
                         [format_action(action) for action in project.get("actions", [])]
                     ),
+                )
+
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(projects))
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command()
+def types(
+    context: typer.Context,
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View available field types.
+    """
+
+    try:
+        api = setup_onyx_api(context.obj)
+        types = api.client.types()
+
+        if format == InfoFormats.TABLE:
+            columns = ["Type", "Description", "Lookups"]
+            table = Table(
+                show_lines=True,
+            )
+
+            for column in columns:
+                table.add_column(column)
+
+            for t in types:
+                table.add_row(
+                    t.get("type", ""),
+                    t.get("description", ""),
+                    " | ".join(t.get("lookups", [])),
+                )
+
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(types))
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command()
+def lookups(
+    context: typer.Context,
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View available lookups.
+    """
+
+    try:
+        api = setup_onyx_api(context.obj)
+        lookups = api.client.lookups()
+
+        if format == InfoFormats.TABLE:
+            columns = ["Lookup", "Description", "Types"]
+            table = Table(
+                show_lines=True,
+            )
+
+            for column in columns:
+                table.add_column(column)
+
+            for lookup in lookups:
+                table.add_row(
+                    lookup.get("lookup", ""),
+                    lookup.get("description", ""),
+                    " | ".join(lookup.get("types", [])),
                 )
 
             console.print(table)
@@ -360,11 +442,16 @@ def add_fields_table(
                 f"• {restriction}" for restriction in field_spec["restrictions"]
             )
         if field_spec.get("values"):
-            restrictions.append("• Choices: " + ", ".join(field_spec["values"]))
+            if len(field_spec["values"]) > 20:
+                restrictions.append(
+                    "• Choices: " + ", ".join(field_spec["values"][:20]) + ", ..."
+                )
+            else:
+                restrictions.append("• Choices: " + ", ".join(field_spec["values"]))
 
         table.add_row(
             # Field
-            f"[dim]{prefix}.{field}[/dim]" if prefix else field,
+            ("-" * (prefix.count(".") + 1) + f" {prefix}.{field}" if prefix else field),
             # Status
             (
                 Status.REQUIRED.value
@@ -528,7 +615,7 @@ def choices(
     ),
 ):
     """
-    View options for a choice field.
+    View options for a choice field in a project.
     """
 
     try:
@@ -722,6 +809,69 @@ def filter(
 
                 for record in records:
                     writer.writerow(record)
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command()
+def history(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    climb_id: str = typer.Argument(...),
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View the history of a record in a project.
+    """
+
+    try:
+        api = setup_onyx_api(context.obj)
+        history = api.client.history(project, climb_id)
+
+        if format == InfoFormats.TABLE:
+            columns = ["Username", "Timestamp", "Action", "Changes"]
+
+            table = Table(show_lines=True)
+            for column in columns:
+                table.add_column(column)
+
+            actions = {
+                "add": "added",
+                "change": "changed",
+                "delete": "deleted",
+            }
+
+            for h in history["history"]:
+                changes = []
+                for change in h.get("changes", []):
+                    if change.get("type") == "relation":
+                        action = actions.get(change.get("action", ""), "")
+                        count = change.get("count", "")
+
+                        if count:
+                            count = f"{count} record{'s' if count != 1 else ''}"
+
+                        changes.append(f"• {change['field']}: {action} {count}")
+                    else:
+                        changes.append(
+                            f"• {change['field']}: {change.get('from', '')} → {change.get('to', '')}"
+                        )
+
+                table.add_row(
+                    h.get("username", ""),
+                    h.get("timestamp", ""),
+                    format_action(h.get("action", "")),
+                    "\n".join(changes),
+                )
+
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(history))
     except Exception as e:
         handle_error(e)
 
