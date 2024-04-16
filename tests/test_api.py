@@ -319,6 +319,26 @@ QUERY_PAGE_2_DATA = {
     ],
 }
 QUERY_SPECIFIC_BODY = {"&": [{"sample_id": SAMPLE_ID}, {"run_name": RUN_NAME}]}
+HISTORY_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": {
+        "climb_id": CLIMB_ID,
+        "history": [
+            {
+                "username": USERNAME,
+                "timestamp": "2024-01-01T12:00:00Z",
+                "action": "add",
+            },
+            {
+                "username": USERNAME,
+                "timestamp": "2024-01-01T12:00:01Z",
+                "action": "change",
+                "changes": [],
+            },
+        ],
+    },
+}
 IDENTIFY_FIELD = "sample_id"
 IDENTIFY_VALUE = "sample-123"
 IDENTIFY_FIELDS = {"value": IDENTIFY_VALUE}
@@ -520,7 +540,14 @@ APPROVE_DATA = {
 INVALID_DOMAIN_ARGUMENTS = ["", " ", None]
 INVALID_ARGUMENTS = INVALID_DOMAIN_ARGUMENTS + ["/", "?", "/?"]
 PROJECT_ENDPOINT_CLASHES = ["types", "lookups"]
-CLIMB_ID_ENDPOINT_CLASHES = ["test", "query", "fields", "choices", "identify"]
+CLIMB_ID_ENDPOINT_CLASHES = [
+    "test",
+    "query",
+    "fields",
+    "choices",
+    "history",
+    "identify",
+]
 
 
 class MockResponse:
@@ -662,6 +689,9 @@ def mock_request(
         elif url == FILTER_PAGE_2_URL:
             return MockResponse(FILTER_PAGE_2_DATA)
 
+        elif url == OnyxClient.ENDPOINTS["history"](DOMAIN, PROJECT, CLIMB_ID):
+            return MockResponse(HISTORY_DATA)
+
         elif url == OnyxClient.ENDPOINTS["profile"](DOMAIN):
             return MockResponse(PROFILE_DATA)
 
@@ -732,6 +762,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_context_manager(self, mock_request):
+        """
+        Test that the OnyxClient can be used as a context manager.
+        """
+
         with OnyxClient(self.config) as client:
             self.assertIsInstance(client._session, requests.Session)
             self.assertEqual(
@@ -742,6 +776,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_connection_error(self, mock_request):
+        """
+        Test that the OnyxClient raises an OnyxConnectionError when a connection error occurs.
+        """
+
         self.config.domain = BAD_DOMAIN
 
         # Non-generator connection error
@@ -756,6 +794,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_request_error(self, mock_request):
+        """
+        Test that the OnyxClient raises an OnyxRequestError when a request error occurs.
+        """
+
         # Non-generator request error
         with pytest.raises(exceptions.OnyxRequestError) as e:
             self.client.fields(NOT_PROJECT)
@@ -770,6 +812,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_server_error(self, mock_request):
+        """
+        Test that the OnyxClient raises an OnyxServerError when a server error occurs.
+        """
+
         # Non-generator server error
         with pytest.raises(exceptions.OnyxServerError) as e:
             self.client.fields(ERROR_CAUSING_PROJECT)
@@ -784,21 +830,37 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_projects(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve a list of projects.
+        """
+
         self.assertEqual(self.client.projects(), PROJECT_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_types(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve a list of field types.
+        """
+
         self.assertEqual(self.client.types(), TYPES_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_lookups(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve a list of lookups.
+        """
+
         self.assertEqual(self.client.lookups(), LOOKUPS_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_fields(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve the field specification of a project.
+        """
+
         self.assertEqual(self.client.fields(PROJECT), FIELDS_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
@@ -808,6 +870,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_choices(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve the choices of a choice field.
+        """
+
         self.assertEqual(
             self.client.choices(PROJECT, CHOICE_FIELD), CHOICES_DATA["data"]
         )
@@ -822,6 +888,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_get(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve a record from a project.
+        """
+
         self.assertEqual(self.client.get(PROJECT, CLIMB_ID), GET_DATA["data"])
         self.assertEqual(
             self.client.get(
@@ -882,6 +952,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_filter(self, mock_request):
+        """
+        Test that the OnyxClient can filter records from a project.
+        """
+
         self.assertEqual(
             [x for x in self.client.filter(PROJECT)],
             FILTER_PAGE_1_DATA["data"] + FILTER_PAGE_2_DATA["data"],
@@ -925,6 +999,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_query(self, mock_request):
+        """
+        Test that the OnyxClient can query records from a project.
+        """
+
         self.assertEqual(
             [x for x in self.client.query(PROJECT)],
             QUERY_PAGE_1_DATA["data"] + QUERY_PAGE_2_DATA["data"],
@@ -977,10 +1055,42 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_to_csv(self, mock_request):
+        """
+        Test that the OnyxClient can convert records to CSV.
+        """
+
         pass  # TODO Test to_csv
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_history(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve the history of a record.
+        """
+
+        self.assertEqual(self.client.history(PROJECT, CLIMB_ID), HISTORY_DATA["data"])
+        self.assertEqual(self.config.token, TOKEN)
+
+        for invalid in INVALID_ARGUMENTS:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.history(invalid, CLIMB_ID)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.history(PROJECT, invalid)
+
+        for clash in PROJECT_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.get(clash, CLIMB_ID)
+
+        for clash in CLIMB_ID_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.history(PROJECT, clash)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_identify(self, mock_request):
+        """
+        Test that the OnyxClient can identify an anonymised value on a field.
+        """
+
         self.assertEqual(
             self.client.identify(PROJECT, IDENTIFY_FIELD, IDENTIFY_VALUE),
             IDENTIFY_DATA["data"],
@@ -1010,6 +1120,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_create(self, mock_request):
+        """
+        Test that the OnyxClient can create a record in a project.
+        """
+
         self.assertEqual(
             self.client.create(PROJECT, CREATE_FIELDS), CREATE_DATA["data"]
         )
@@ -1028,6 +1142,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_update(self, mock_request):
+        """
+        Test that the OnyxClient can update a record in a project.
+        """
+
         self.assertEqual(
             self.client.update(PROJECT, CLIMB_ID, UPDATE_FIELDS), UPDATE_DATA["data"]
         )
@@ -1060,6 +1178,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_delete(self, mock_request):
+        """
+        Test that the OnyxClient can delete a record from a project.
+        """
+
         self.assertEqual(self.client.delete(PROJECT, CLIMB_ID), DELETE_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
@@ -1072,6 +1194,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_csv_create(self, mock_request):
+        """
+        Test that the OnyxClient can create records from a CSV file.
+        """
+
         for data, test in [
             (CREATE_DATA["data"], False),
             (TESTCREATE_DATA["data"], True),
@@ -1182,6 +1308,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_csv_update(self, mock_request):
+        """
+        Test that the OnyxClient can update records from a CSV file.
+        """
+
         for data, test in [
             (UPDATE_DATA["data"], False),
             (TESTUPDATE_DATA["data"], True),
@@ -1321,6 +1451,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_csv_delete(self, mock_request):
+        """
+        Test that the OnyxClient can delete records from a CSV file.
+        """
+
         self.assertEqual(
             self.client.csv_delete(
                 PROJECT,
@@ -1383,6 +1517,10 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("requests.post", side_effect=mock_register_post)
     def test_register(self, mock_request):
+        """
+        Test that the OnyxClient can register a new user.
+        """
+
         self.assertEqual(
             OnyxClient.register(
                 domain=DOMAIN,
@@ -1408,26 +1546,46 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_login(self, mock_request):
+        """
+        Test that the OnyxClient can login.
+        """
+
         self.assertEqual(self.client.login(), LOGIN_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_logout(self, mock_request):
+        """
+        Test that the OnyxClient can logout.
+        """
+
         self.assertEqual(self.client.logout(), LOGOUT_DATA["data"])
         self.assertEqual(self.config.token, None)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_logoutall(self, mock_request):
+        """
+        Test that the OnyxClient can logout from all devices.
+        """
+
         self.assertEqual(self.client.logoutall(), LOGOUTALL_DATA["data"])
         self.assertEqual(self.config.token, None)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_profile(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve the user profile.
+        """
+
         self.assertEqual(self.client.profile(), PROFILE_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_approve(self, mock_request):
+        """
+        Test that the OnyxClient can approve a user.
+        """
+
         self.assertEqual(self.client.approve(OTHER_USERNAME), APPROVE_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
@@ -1437,15 +1595,27 @@ class OnyxClientTestCase(TestCase):
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_waiting(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve a list of users waiting to be approved.
+        """
+
         self.assertEqual(self.client.waiting(), WAITING_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_site_users(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve a list of users on the site.
+        """
+
         self.assertEqual(self.client.site_users(), SITE_USERS_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_all_users(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve a list of all users.
+        """
+
         self.assertEqual(self.client.all_users(), ALL_USERS_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
