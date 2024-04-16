@@ -48,16 +48,19 @@ $ onyx
 │ --help      -h            Show this message and exit.                                     │
 ╰───────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ────────────────────────────────────────────────────────────────────────────────╮
-│ projects       View available projects.                                                   │
-│ fields         View the field specification for a project.                                │
-│ choices        View options for a choice field.                                           │
-│ get            Get a record from a project.                                               │
-│ filter         Filter multiple records from a project.                                    │
-│ identify       Get the anonymised identifier for a value on a field.                      │
-│ profile        View profile information.                                                  │
-│ siteusers      View users from the same site.                                             │
-│ auth           Authentication commands.                                                   │
-│ admin          Admin commands.                                                            │
+│ projects    View available projects.                                                      │
+│ types       View available field types.                                                   │
+│ lookups     View available lookups.                                                       │
+│ fields      View the field specification for a project.                                   │
+│ choices     View options for a choice field in a project.                                 │
+│ get         Get a record from a project.                                                  │
+│ filter      Filter multiple records from a project.                                       │
+│ history     View the history of a record in a project.                                    │
+│ identify    Get the anonymised identifier for a value on a field.                         │
+│ profile     View profile information.                                                     │
+│ siteusers   View users from the same site.                                                │
+│ auth        Authentication commands.                                                      │
+│ admin       Admin commands.                                                               │
 ╰───────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
