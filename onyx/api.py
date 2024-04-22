@@ -476,6 +476,7 @@ class OnyxClientBase:
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         summarise: Union[List[str], str, None] = None,
+        **kwargs,
     ) -> Generator[requests.Response, Any, None]:
         if fields is None:
             fields = {}
@@ -485,6 +486,12 @@ class OnyxClientBase:
             "exclude": exclude,
             "summarise": summarise,
         }
+
+        for field, value in kwargs.items():
+            if type(value) in {list, tuple, set}:
+                value = ",".join(map(lambda x: str(x) if x is not None else "", value))
+            fields[field] = value
+
         _next = OnyxClient.ENDPOINTS["filter"](self.config.domain, project)
 
         while _next is not None:
@@ -1371,6 +1378,7 @@ class OnyxClient(OnyxClientBase):
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         summarise: Union[List[str], str, None] = None,
+        **kwargs,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
         Filter records from a project.
@@ -1499,6 +1507,7 @@ class OnyxClient(OnyxClientBase):
             include=include,
             exclude=exclude,
             summarise=summarise,
+            **kwargs,
         )
         for response in responses:
             response.raise_for_status()
