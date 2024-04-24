@@ -1177,7 +1177,7 @@ class OnyxClient(OnyxClientBase):
         return response.json()["data"]
 
     @onyx_errors
-    def choices(self, project: str, field: str) -> List[str]:
+    def choices(self, project: str, field: str) -> Dict[str, Dict[str, Any]]:
         """
         View choices for a field.
 
@@ -1186,7 +1186,7 @@ class OnyxClient(OnyxClientBase):
             field: Choice field on the project.
 
         Returns:
-            List of choices for the field.
+            Dictionary mapping choices to information about the choice.
 
         Examples:
             ```python
@@ -1203,7 +1203,24 @@ class OnyxClient(OnyxClientBase):
             ```
             ```python
             >>> choices
-            ["ENG", "WALES", "SCOT", "NI"]
+            {
+                "ENG": {
+                    "description": "England",
+                    "is_active" : True,
+                },
+                "WALES": {
+                    "description": "Wales",
+                    "is_active" : True,
+                },
+                "SCOT": {
+                    "description": "Scotland",
+                    "is_active" : True,
+                },
+                "NI": {
+                    "description": "Northern Ireland",
+                    "is_active" : True,
+                },
+            }
             ```
         """
 

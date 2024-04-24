@@ -264,6 +264,11 @@ class Actions(enum.Enum):
     DELETE = "[bold red]delete[/]"
 
 
+class ActiveStatus(enum.Enum):
+    ACTIVE = "[bold green]active[/]"
+    INACTIVE = "[bold red]inactive[/]"
+
+
 def format_action(action: str) -> str:
     """
     Format an action and apply its colour.
@@ -627,9 +632,23 @@ def choices(
             table = Table(
                 show_lines=True,
             )
-            table.add_column("Field")
-            table.add_column("Values")
-            table.add_row(field, ", ".join(choices))
+            table.add_column("Choice")
+            table.add_column("Description")
+            table.add_column("Status")
+            for choice, choice_info in choices.items():
+                active_status = choice_info.get("is_active")
+                if active_status == True:
+                    active_status = ActiveStatus.ACTIVE.value
+                elif active_status == False:
+                    active_status = ActiveStatus.INACTIVE.value
+                else:
+                    active_status = ""
+
+                table.add_row(
+                    choice,
+                    choice_info.get("description", ""),
+                    active_status,
+                )
             console.print(table)
         else:
             typer.echo(json_dump_pretty(choices))
