@@ -28,11 +28,11 @@ class OnyxField:
             - Takes a single key-value argument as input.
             - The key corresponds to a field (and optional lookup) to use for filtering.
             - The value corresponds to the field value(s) that are being matched against.
-            - OnyxField instances can be combined into complex expressions using Python's bitwise operators: `&` (AND), `|` (OR), `^` (XOR), and `~` (NOT).
-            - Multi-value lookups (e.g. 'in', 'range') support passing a Python list as the value. These are coerced into comma-separated strings internally.
+            - `OnyxField` instances can be combined into complex expressions using Python's bitwise operators: `&` (AND), `|` (OR), `^` (XOR), and `~` (NOT).
+            - Multi-value lookups (e.g. `in`, `range`) support passing a Python list as the value. These are coerced into comma-separated strings internally.
 
         Examples:
-            Create OnyxField objects and combine them using Python bitwise operators:
+            Create `OnyxField` objects and combine them using Python bitwise operators:
             ```python
             from onyx import OnyxField
 
