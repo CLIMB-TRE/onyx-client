@@ -137,10 +137,24 @@ CHOICES_DATA = {
     "status": "success",
     "code": 200,
     "data": [
-        "England",
-        "N. Ireland",
-        "Scotland",
-        "Wales",
+        {
+            "eng": {
+                "description": "England",
+                "is_active": True,
+            },
+            "ni": {
+                "description": "N. Ireland",
+                "is_active": True,
+            },
+            "scot": {
+                "description": "Scotland",
+                "is_active": True,
+            },
+            "wales": {
+                "description": "Wales",
+                "is_active": True,
+            },
+        }
     ],
 }
 CLIMB_ID = "C-0123456789"

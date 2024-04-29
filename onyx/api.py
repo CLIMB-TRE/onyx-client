@@ -1,4 +1,4 @@
-import os
+import posixpath
 import csv
 import inspect
 import requests
@@ -18,28 +18,28 @@ class OnyxClientBase:
     __slots__ = "config", "_request_handler", "_session"
     ENDPOINTS = {
         "projects": lambda domain: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects/",
             ),
             domain=domain,
         ),
         "types": lambda domain: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects/types/",
             ),
             domain=domain,
         ),
         "lookups": lambda domain: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects/lookups/",
             ),
             domain=domain,
         ),
         "fields": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects",
                 str(project),
@@ -49,7 +49,7 @@ class OnyxClientBase:
             project=project,
         ),
         "choices": lambda domain, project, field: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects",
                 str(project),
@@ -62,7 +62,7 @@ class OnyxClientBase:
             field=field,
         ),
         "get": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects",
                 str(project),
@@ -74,7 +74,7 @@ class OnyxClientBase:
             climb_id=climb_id,
         ),
         "filter": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects",
                 str(project),
@@ -84,7 +84,7 @@ class OnyxClientBase:
             project=project,
         ),
         "query": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects",
                 str(project),
@@ -94,7 +94,7 @@ class OnyxClientBase:
             project=project,
         ),
         "history": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects",
                 str(project),
@@ -107,7 +107,7 @@ class OnyxClientBase:
             climb_id=climb_id,
         ),
         "identify": lambda domain, project, field: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects",
                 str(project),
@@ -120,7 +120,7 @@ class OnyxClientBase:
             field=field,
         ),
         "create": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects",
                 str(project),
@@ -130,7 +130,7 @@ class OnyxClientBase:
             project=project,
         ),
         "testcreate": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects",
                 str(project),
@@ -140,7 +140,7 @@ class OnyxClientBase:
             project=project,
         ),
         "update": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects",
                 str(project),
@@ -152,7 +152,7 @@ class OnyxClientBase:
             climb_id=climb_id,
         ),
         "testupdate": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects",
                 str(project),
@@ -165,7 +165,7 @@ class OnyxClientBase:
             climb_id=climb_id,
         ),
         "delete": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "projects",
                 str(project),
@@ -177,49 +177,49 @@ class OnyxClientBase:
             climb_id=climb_id,
         ),
         "register": lambda domain: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "accounts/register/",
             ),
             domain=domain,
         ),
         "login": lambda domain: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "accounts/login/",
             ),
             domain=domain,
         ),
         "logout": lambda domain: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "accounts/logout/",
             ),
             domain=domain,
         ),
         "logoutall": lambda domain: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "accounts/logoutall/",
             ),
             domain=domain,
         ),
         "profile": lambda domain: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "accounts/profile/",
             ),
             domain=domain,
         ),
         "waiting": lambda domain: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "accounts/waiting/",
             ),
             domain=domain,
         ),
         "approve": lambda domain, username: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "accounts/approve",
                 str(username),
@@ -229,14 +229,14 @@ class OnyxClientBase:
             username=username,
         ),
         "siteusers": lambda domain: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "accounts/site/",
             ),
             domain=domain,
         ),
         "allusers": lambda domain: OnyxClient._handle_endpoint(
-            lambda: os.path.join(
+            lambda: posixpath.join(
                 str(domain),
                 "accounts/all/",
             ),
@@ -1184,7 +1184,7 @@ class OnyxClient(OnyxClientBase):
         return response.json()["data"]
 
     @onyx_errors
-    def choices(self, project: str, field: str) -> List[str]:
+    def choices(self, project: str, field: str) -> Dict[str, Dict[str, Any]]:
         """
         View choices for a field.
 
@@ -1193,7 +1193,7 @@ class OnyxClient(OnyxClientBase):
             field: Choice field on the project.
 
         Returns:
-            List of choices for the field.
+            Dictionary mapping choices to information about the choice.
 
         Examples:
             ```python
@@ -1210,7 +1210,24 @@ class OnyxClient(OnyxClientBase):
             ```
             ```python
             >>> choices
-            ["ENG", "WALES", "SCOT", "NI"]
+            {
+                "ENG": {
+                    "description": "England",
+                    "is_active" : True,
+                },
+                "WALES": {
+                    "description": "Wales",
+                    "is_active" : True,
+                },
+                "SCOT": {
+                    "description": "Scotland",
+                    "is_active" : True,
+                },
+                "NI": {
+                    "description": "Northern Ireland",
+                    "is_active" : True,
+                },
+            }
             ```
         """
 
