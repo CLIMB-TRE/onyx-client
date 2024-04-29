@@ -224,6 +224,7 @@ FILTER_PAGE_2_DATA = {
 }
 SAMPLE_ID = "sample-abc"
 RUN_NAME = "run-def"
+PUBLISHED_DATE_RANGE = ["2023-01-01", "2024-01-01"]
 FILTER_SPECIFIC_DATA = {
     "status": "success",
     "code": 200,
@@ -687,6 +688,8 @@ def mock_request(
             elif (
                 params.get("sample_id") == SAMPLE_ID
                 and params.get("run_name") == RUN_NAME
+                and params.get("published_date__range")
+                == ",".join(PUBLISHED_DATE_RANGE)
             ):
                 if params.get("include") == INCLUDE_FIELDS:
                     return MockResponse(FILTER_SPECIFIC_INCLUDE_DATA)
@@ -909,14 +912,23 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(self.client.get(PROJECT, CLIMB_ID), GET_DATA["data"])
         self.assertEqual(
             self.client.get(
-                PROJECT, fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME}
+                PROJECT,
+                fields={
+                    "sample_id": SAMPLE_ID,
+                    "run_name": RUN_NAME,
+                    "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
+                },
             ),
             FILTER_SPECIFIC_DATA["data"][0],
         )
         self.assertEqual(
             self.client.get(
                 PROJECT,
-                fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME},
+                fields={
+                    "sample_id": SAMPLE_ID,
+                    "run_name": RUN_NAME,
+                    "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
+                },
                 include=INCLUDE_FIELDS,
             ),
             FILTER_SPECIFIC_INCLUDE_DATA["data"][0],
@@ -924,7 +936,11 @@ class OnyxClientTestCase(TestCase):
         self.assertEqual(
             self.client.get(
                 PROJECT,
-                fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME},
+                fields={
+                    "sample_id": SAMPLE_ID,
+                    "run_name": RUN_NAME,
+                    "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
+                },
                 exclude=EXCLUDE_FIELDS,
             ),
             FILTER_SPECIFIC_EXCLUDE_DATA["data"][0],
@@ -978,7 +994,12 @@ class OnyxClientTestCase(TestCase):
             [
                 x
                 for x in self.client.filter(
-                    PROJECT, fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME}
+                    PROJECT,
+                    fields={
+                        "sample_id": SAMPLE_ID,
+                        "run_name": RUN_NAME,
+                        "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
+                    },
                 )
             ],
             FILTER_SPECIFIC_DATA["data"],
@@ -988,7 +1009,35 @@ class OnyxClientTestCase(TestCase):
                 x
                 for x in self.client.filter(
                     PROJECT,
-                    fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME},
+                    sample_id=SAMPLE_ID,
+                    run_name=RUN_NAME,
+                    published_date__range=PUBLISHED_DATE_RANGE,
+                )
+            ],
+            FILTER_SPECIFIC_DATA["data"],
+        )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.filter(
+                    PROJECT,
+                    fields={"sample_id": "will-be-overwritten", "run_name": RUN_NAME},
+                    sample_id=SAMPLE_ID,
+                    published_date__range=PUBLISHED_DATE_RANGE,
+                )
+            ],
+            FILTER_SPECIFIC_DATA["data"],
+        )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.filter(
+                    PROJECT,
+                    fields={
+                        "sample_id": SAMPLE_ID,
+                        "run_name": RUN_NAME,
+                        "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
+                    },
                     include=INCLUDE_FIELDS,
                 )
             ],
@@ -999,7 +1048,11 @@ class OnyxClientTestCase(TestCase):
                 x
                 for x in self.client.filter(
                     PROJECT,
-                    fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME},
+                    fields={
+                        "sample_id": SAMPLE_ID,
+                        "run_name": RUN_NAME,
+                        "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
+                    },
                     exclude=EXCLUDE_FIELDS,
                 )
             ],
