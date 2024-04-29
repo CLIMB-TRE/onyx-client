@@ -476,7 +476,7 @@ class OnyxClientBase:
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         summarise: Union[List[str], str, None] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Generator[requests.Response, Any, None]:
         if fields is None:
             fields = {}
@@ -877,7 +877,7 @@ class OnyxClient(OnyxClientBase):
         Initialise a client.
 
         Args:
-            config: Object that stores information for connecting and authenticating with Onyx.
+            config: `OnyxConfig` object that stores information for connecting and authenticating with Onyx.
 
         Examples:
             The recommended way to initialise a client (as a context manager):
@@ -891,7 +891,7 @@ class OnyxClient(OnyxClientBase):
             )
 
             with OnyxClient(config) as client:
-                pass # Do something with the client here
+                pass # Do something with the client here
             ```
 
             Alternatively, the client can be initialised as follows:
@@ -1250,7 +1250,7 @@ class OnyxClient(OnyxClientBase):
         Args:
             project: Name of the project.
             climb_id: Unique identifier for the record in the project.
-            fields: Series of conditions on fields, used to filter the data.
+            fields: Dictionary of field filters used to uniquely identify the record.
             include: Fields to include in the output.
             exclude: Fields to exclude from the output.
 
@@ -1395,26 +1395,26 @@ class OnyxClient(OnyxClientBase):
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         summarise: Union[List[str], str, None] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
         Filter records from a project.
 
         Args:
             project: Name of the project.
-            fields: Series of conditions on fields, used to filter the data.
+            fields: Dictionary of field filters.
             include: Fields to include in the output.
             exclude: Fields to exclude from the output.
             summarise: For a given field (or group of fields), return the frequency of each unique value (or unique group of values).
+            **kwargs: Additional keyword arguments are interpreted as field filters.
 
         Returns:
             Generator of records. If a summarise argument is provided, each record will be a dict containing values of the summary fields and a count for the frequency.
 
         Notes:
-            - The fields argument must be a dict of field conditions. Each of these specifies a requirement that the returned data must match.
-            - These conditions can be a simple match on a value (e.g. `"published_date" : "2023-01-01"`).
-            - Or, they can use a 'lookup' for more complex matching conditions (e.g. `"published_date__year" : "2023"`).
-            - Multi-value lookups must be provided as a comma-separated string of values (e.g. `"published_date__range" : "2023-01-01, 2023-01-02"`).
+            - Field filters specify requirements that the returned data must satisfy. They can be provided as keyword arguments, or as a dictionary to the `fields` argument.
+            - These filters can be a simple match on a value (e.g. `"published_date" : "2023-01-01"`), or they can use a 'lookup' for more complex matching conditions (e.g. `"published_date__iso_year" : "2023"`).
+            - Multi-value lookups (e.g. `in`, `range`) can also be used. For keyword arguments, multiple values can be provided as a Python list. For the `fields` dictionary, multiple values must be provided as a comma-separated string (see examples below).
 
         Examples:
             Retrieve all records that match a set of field requirements:
@@ -1427,6 +1427,17 @@ class OnyxClient(OnyxClientBase):
                 token=os.environ[OnyxEnv.TOKEN],
             )
 
+            # Field conditions can either be provided as keyword arguments:
+            with OnyxClient(config) as client:
+                records = list(
+                    client.filter(
+                        project="project",
+                        field1="abcd",
+                        published_date__range=["2023-01-01", "2023-01-02"],
+                    )
+                )
+
+            # Or as a dictionary to the 'fields' argument:
             with OnyxClient(config) as client:
                 records = list(
                     client.filter(
@@ -1470,10 +1481,8 @@ class OnyxClient(OnyxClientBase):
                 records_v1 = list(
                     client.filter(
                         project="project",
-                        fields={
-                            "field1": "abcd",
-                            "published_date__range" : "2023-01-01, 2023-01-02",
-                        },
+                        field1="abcd",
+                        published_date__range=["2023-01-01", "2023-01-02"],
                         summarise="published_date",
                     )
                 )
@@ -1481,10 +1490,8 @@ class OnyxClient(OnyxClientBase):
                 records_v2 = list(
                     client.filter(
                         project="project",
-                        fields={
-                            "field1": "abcd",
-                            "published_date__range" : "2023-01-01, 2023-01-02",
-                        },
+                        field1="abcd",
+                        published_date__range=["2023-01-01", "2023-01-02"],
                         summarise=["published_date", "field2"],
                     )
                 )
@@ -1543,9 +1550,12 @@ class OnyxClient(OnyxClientBase):
         """
         Query records from a project.
 
+        This method supports more complex filtering than the `OnyxClient.filter` method.
+        Here, filters can be combined using Python's bitwise operators, representing AND, OR, XOR and NOT operations.
+
         Args:
             project: Name of the project.
-            query: OnyxField object representing the query being made.
+            query: `OnyxField` object representing the query being made.
             include: Fields to include in the output.
             exclude: Fields to exclude from the output.
             summarise: For a given field (or group of fields), return the frequency of each unique value (or unique group of values).
@@ -1554,12 +1564,12 @@ class OnyxClient(OnyxClientBase):
             Generator of records. If a summarise argument is provided, each record will be a dict containing values of the summary fields and a count for the frequency.
 
         Notes:
-            - The query argument must be an instance of OnyxField.
-            - OnyxField instances can be combined into complex expressions using Python's bitwise operators: `&` (AND), `|` (OR), `^` (XOR), and `~` (NOT).
-            - Multi-value lookups (e.g. 'in', 'range') support passing a Python list as the value. These are coerced into comma-separated strings internally.
+            - The `query` argument must be an instance of `OnyxField`.
+            - `OnyxField` instances can be combined into complex expressions using Python's bitwise operators: `&` (AND), `|` (OR), `^` (XOR), and `~` (NOT).
+            - Multi-value lookups (e.g. `in`, `range`) support passing a Python list (see example below).
 
         Examples:
-            Retrieve all records that match the query provided by an OnyxField object:
+            Retrieve all records that match the query provided by an `OnyxField` object:
             ```python
             import os
             from onyx import OnyxConfig, OnyxEnv, OnyxClient, OnyxField
@@ -1625,7 +1635,7 @@ class OnyxClient(OnyxClientBase):
         Args:
             csv_file: File object for the CSV file being written to.
             data: The data being written to the CSV file. Must be either a list / generator of dict records.
-            delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
+            delimiter: CSV delimiter. If not provided, defaults to `","` for CSVs. Set this to `"\\t"` to work with TSV files.
 
         Examples:
             ```python
@@ -1795,7 +1805,7 @@ class OnyxClient(OnyxClientBase):
         Args:
             project: Name of the project.
             fields: Object representing the record to be created.
-            test: If True, runs the command as a test. Default: False
+            test: If `True`, runs the command as a test. Default: `False`
 
         Returns:
             Dict containing the CLIMB ID of the created record.
@@ -1844,7 +1854,7 @@ class OnyxClient(OnyxClientBase):
             project: Name of the project.
             climb_id: Unique identifier for the record in the project.
             fields: Object representing the record to be updated.
-            test: If True, runs the command as a test. Default: False
+            test: If `True`, runs the command as a test. Default: `False`
 
         Returns:
             Dict containing the CLIMB ID of the updated record.
@@ -1938,12 +1948,12 @@ class OnyxClient(OnyxClientBase):
             project: Name of the project.
             csv_file: File object for the CSV file being used for record upload.
             fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
-            delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
-            multiline: If True, allows processing of CSV files with more than one record. Default: False
-            test: If True, runs the command as a test. Default: False
+            delimiter: CSV delimiter. If not provided, defaults to `","` for CSVs. Set this to `"\\t"` to work with TSV files.
+            multiline: If `True`, allows processing of CSV files with more than one record. Default: `False`
+            test: If `True`, runs the command as a test. Default: `False`
 
         Returns:
-            Dict containing the CLIMB ID of the created record. If multiline = True, returns a list of dicts containing the CLIMB ID of each created record.
+            Dict containing the CLIMB ID of the created record. If `multiline = True`, returns a list of dicts containing the CLIMB ID of each created record.
 
         Examples:
             Create a single record:
@@ -2021,12 +2031,12 @@ class OnyxClient(OnyxClientBase):
             project: Name of the project.
             csv_file: File object for the CSV file being used for record upload.
             fields: Additional fields provided for each record being uploaded. Takes precedence over fields in the CSV.
-            delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
-            multiline: If True, allows processing of CSV files with more than one record. Default: False
-            test: If True, runs the command as a test. Default: False
+            delimiter: CSV delimiter. If not provided, defaults to `","` for CSVs. Set this to `"\\t"` to work with TSV files.
+            multiline: If `True`, allows processing of CSV files with more than one record. Default: `False`
+            test: If `True`, runs the command as a test. Default: `False`
 
         Returns:
-            Dict containing the CLIMB ID of the updated record. If multiline = True, returns a list of dicts containing the CLIMB ID of each updated record.
+            Dict containing the CLIMB ID of the updated record. If `multiline = True`, returns a list of dicts containing the CLIMB ID of each updated record.
 
         Examples:
             Update a single record:
@@ -2101,11 +2111,11 @@ class OnyxClient(OnyxClientBase):
         Args:
             project: Name of the project.
             csv_file: File object for the CSV file being used for record upload.
-            delimiter: CSV delimiter. If not provided, defaults to ',' for CSVs. Set this to '\\t' to work with TSV files.
-            multiline: If True, allows processing of CSV files with more than one record. Default: False
+            delimiter: CSV delimiter. If not provided, defaults to `","` for CSVs. Set this to `"\\t"` to work with TSV files.
+            multiline: If `True`, allows processing of CSV files with more than one record. Default: `False`
 
         Returns:
-            Dict containing the CLIMB ID of the deleted record. If multiline = True, returns a list of dicts containing the CLIMB ID of each deleted record.
+            Dict containing the CLIMB ID of the deleted record. If `multiline = True`, returns a list of dicts containing the CLIMB ID of each deleted record.
 
         Examples:
             Delete a single record:
