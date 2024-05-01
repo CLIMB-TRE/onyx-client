@@ -211,6 +211,13 @@ class OnyxClientBase:
             ),
             domain=domain,
         ),
+        "activity": lambda domain: OnyxClient._handle_endpoint(
+            lambda: posixpath.join(
+                str(domain),
+                "accounts/activity/",
+            ),
+            domain=domain,
+        ),
         "waiting": lambda domain: OnyxClient._handle_endpoint(
             lambda: posixpath.join(
                 str(domain),
@@ -781,6 +788,13 @@ class OnyxClientBase:
         response = self._request(
             method="get",
             url=OnyxClient.ENDPOINTS["profile"](self.config.domain),
+        )
+        return response
+
+    def activity(self) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["activity"](self.config.domain),
         )
         return response
 
@@ -2348,6 +2362,19 @@ class OnyxClient(OnyxClientBase):
         """
 
         response = super().profile()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def activity(self) -> List[Dict[str, Any]]:
+        """
+        View the user's latest activity.
+
+        Returns:
+            List of the user's latest activity.
+        """
+
+        response = super().activity()
         response.raise_for_status()
         return response.json()["data"]
 

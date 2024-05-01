@@ -1,10 +1,12 @@
 import os
 import csv
 import sys
+import ast
 import enum
 import json
 import dataclasses
 from typing import Optional, List, Dict, Any
+import http.client
 import click
 import typer
 from typer.core import TyperGroup
@@ -165,7 +167,7 @@ def create_table(
     )
 
     for column in map.keys():
-        table.add_column(column)
+        table.add_column(column, overflow="fold")
 
     for row in data:
         table.add_row(*(str(row.get(key, "")) for key in map.values()))
@@ -269,6 +271,16 @@ class ActiveStatus(enum.Enum):
     INACTIVE = "[bold red]inactive[/]"
 
 
+class Method(enum.Enum):
+    GET = "[bold cyan]GET[/]"
+    POST = "[bold green]POST[/]"
+    PUT = "[bold blue]PUT[/]"
+    PATCH = "[bold yellow]PATCH[/]"
+    DELETE = "[bold red]DELETE[/]"
+    OPTIONS = "[bold magenta]OPTIONS[/]"
+    HEAD = "[bold white]HEAD[/]"
+
+
 def format_action(action: str) -> str:
     """
     Format an action and apply its colour.
@@ -299,6 +311,68 @@ def format_action(action: str) -> str:
             return action
 
 
+def format_status_code(status: Optional[int]) -> str:
+    """
+    Format a status code, apply its colour and add a description of the status.
+
+    Args:
+        status: The status to format.
+
+    Returns:
+        The formatted status.
+    """
+
+    if status is None:
+        return ""
+
+    status_str = f"{status} ({http.client.responses[status]})"
+
+    if status_str.startswith("2"):
+        return f"[bold green]{status_str}[/]"
+
+    elif status_str.startswith("3"):
+        return f"[bold cyan]{status_str}[/]"
+
+    elif status_str.startswith("4"):
+        return f"[bold yellow]{status_str}[/]"
+
+    elif status_str.startswith("5"):
+        return f"[bold red]{status_str}[/]"
+
+    else:
+        return status_str
+
+
+def format_method(method: str) -> str:
+    """
+    Format a method and apply its colour.
+
+    Args:
+        method: The method to format.
+
+    Returns:
+        The formatted method.
+    """
+
+    match method:
+        case "GET":
+            return Method.GET.value
+        case "POST":
+            return Method.POST.value
+        case "PUT":
+            return Method.PUT.value
+        case "PATCH":
+            return Method.PATCH.value
+        case "DELETE":
+            return Method.DELETE.value
+        case "OPTIONS":
+            return Method.OPTIONS.value
+        case "HEAD":
+            return Method.HEAD.value
+        case _:
+            return method
+
+
 @app.command()
 def projects(
     context: typer.Context,
@@ -324,7 +398,7 @@ def projects(
             )
 
             for column in columns:
-                table.add_column(column)
+                table.add_column(column, overflow="fold")
 
             for project in projects:
                 table.add_row(
@@ -367,7 +441,7 @@ def types(
             )
 
             for column in columns:
-                table.add_column(column)
+                table.add_column(column, overflow="fold")
 
             for t in types:
                 table.add_row(
@@ -408,7 +482,7 @@ def lookups(
             )
 
             for column in columns:
-                table.add_column(column)
+                table.add_column(column, overflow="fold")
 
             for lookup in lookups:
                 table.add_row(
@@ -632,9 +706,9 @@ def choices(
             table = Table(
                 show_lines=True,
             )
-            table.add_column("Choice")
-            table.add_column("Description")
-            table.add_column("Status")
+            table.add_column("Choice", overflow="fold")
+            table.add_column("Description", overflow="fold")
+            table.add_column("Status", overflow="fold")
             for choice, choice_info in choices.items():
                 active_status = choice_info.get("is_active")
                 if active_status == True:
@@ -857,7 +931,7 @@ def history(
 
             table = Table(show_lines=True)
             for column in columns:
-                table.add_column(column)
+                table.add_column(column, overflow="fold")
 
             actions = {
                 "add": "added",
@@ -975,6 +1049,61 @@ def profile(
             console.print(table)
         else:
             typer.echo(json_dump_pretty(user))
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command()
+def activity(
+    context: typer.Context,
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View latest profile activity.
+    """
+
+    try:
+        api = setup_onyx_api(context.obj)
+        activity = api.client.activity()
+
+        if format == InfoFormats.TABLE:
+            columns = [
+                "Address",
+                "Timestamp",
+                "Method",
+                "Endpoint",
+                "Status Code",
+                "Execution Time (ms)",
+                "Errors",
+            ]
+
+            table = Table(show_lines=True)
+            for column in columns:
+                table.add_column(column, overflow="fold")
+
+            for a in activity:
+                errors = a.get("error_messages", "")
+                if errors:
+                    errors = json_dump_pretty(json.loads(ast.literal_eval(errors)))
+
+                table.add_row(
+                    a.get("address", ""),
+                    a.get("date", ""),
+                    format_method(a.get("method", "")),
+                    a.get("endpoint", ""),
+                    format_status_code(a.get("status")),
+                    str(a.get("exec_time", "")),
+                    errors,
+                )
+
+            console.print(table)
+        else:
+            typer.echo(json_dump_pretty(activity))
     except Exception as e:
         handle_error(e)
 
