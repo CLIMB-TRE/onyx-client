@@ -506,6 +506,30 @@ PROFILE_DATA = {
         "site": SITE,
     },
 }
+ACTIVITY_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": [
+        {
+            "date": "2023-01-01T00:00:00.000000Z",
+            "address": "127.0.0.1",
+            "endpoint": "/projects/project/",
+            "method": "POST",
+            "status": 400,
+            "exec_time": 29,
+            "error_messages": 'b\'{"status":"fail","code":400,"messages":{"site":["Select a valid choice."]}}\'',
+        },
+        {
+            "timestamp": "2023-01-02T00:00:00.000000Z",
+            "address": "127.0.0.1",
+            "endpoint": "/accounts/activity/",
+            "method": "GET",
+            "status": 200,
+            "exec_time": 22,
+            "error_messages": "",
+        },
+    ],
+}
 WAITING_DATA = {
     "status": "success",
     "code": 200,
@@ -711,6 +735,9 @@ def mock_request(
 
         elif url == OnyxClient.ENDPOINTS["profile"](DOMAIN):
             return MockResponse(PROFILE_DATA)
+
+        elif url == OnyxClient.ENDPOINTS["activity"](DOMAIN):
+            return MockResponse(ACTIVITY_DATA)
 
         elif url == OnyxClient.ENDPOINTS["waiting"](DOMAIN):
             return MockResponse(WAITING_DATA)
@@ -1645,6 +1672,15 @@ class OnyxClientTestCase(TestCase):
         """
 
         self.assertEqual(self.client.profile(), PROFILE_DATA["data"])
+        self.assertEqual(self.config.token, TOKEN)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_activity(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve the user's latest activity.
+        """
+
+        self.assertEqual(self.client.activity(), ACTIVITY_DATA["data"])
         self.assertEqual(self.config.token, TOKEN)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
