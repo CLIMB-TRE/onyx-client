@@ -260,6 +260,7 @@ class Actions(enum.Enum):
     GET = "[bold cyan]get[/]"
     LIST = "[bold blue]list[/]"
     FILTER = "[bold magenta]filter[/]"
+    HISTORY = "[bold cyan]history[/]"
     IDENTIFY = "[bold white]identify[/]"
     ADD = "[bold green]add[/]"
     CHANGE = "[bold yellow]change[/]"
@@ -299,6 +300,8 @@ def format_action(action: str) -> str:
             return Actions.LIST.value
         case "filter":
             return Actions.FILTER.value
+        case "history":
+            return Actions.HISTORY.value
         case "identify":
             return Actions.IDENTIFY.value
         case "add":
