@@ -260,7 +260,7 @@ class Actions(enum.Enum):
     GET = "[bold cyan]get[/]"
     LIST = "[bold blue]list[/]"
     FILTER = "[bold magenta]filter[/]"
-    HISTORY = "[bold cyan]history[/]"
+    HISTORY = "[bold yellow]history[/]"
     IDENTIFY = "[bold white]identify[/]"
     ADD = "[bold green]add[/]"
     CHANGE = "[bold yellow]change[/]"
