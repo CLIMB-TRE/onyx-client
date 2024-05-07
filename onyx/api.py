@@ -211,6 +211,13 @@ class OnyxClientBase:
             ),
             domain=domain,
         ),
+        "activity": lambda domain: OnyxClient._handle_endpoint(
+            lambda: posixpath.join(
+                str(domain),
+                "accounts/activity/",
+            ),
+            domain=domain,
+        ),
         "waiting": lambda domain: OnyxClient._handle_endpoint(
             lambda: posixpath.join(
                 str(domain),
@@ -481,16 +488,22 @@ class OnyxClientBase:
         if fields is None:
             fields = {}
 
+        for field, value in kwargs.items():
+            if type(value) in {list, tuple, set}:
+                value = ",".join(map(lambda x: str(x) if x is not None else "", value))
+            fields[field] = value
+
+        for field, value in fields.items():
+            if type(value) in {list, tuple, set}:
+                fields[field] = [v if v is not None else "" for v in value]
+            if value is None:
+                fields[field] = ""
+
         fields = fields | {
             "include": include,
             "exclude": exclude,
             "summarise": summarise,
         }
-
-        for field, value in kwargs.items():
-            if type(value) in {list, tuple, set}:
-                value = ",".join(map(lambda x: str(x) if x is not None else "", value))
-            fields[field] = value
 
         _next = OnyxClient.ENDPOINTS["filter"](self.config.domain, project)
 
@@ -781,6 +794,13 @@ class OnyxClientBase:
         response = self._request(
             method="get",
             url=OnyxClient.ENDPOINTS["profile"](self.config.domain),
+        )
+        return response
+
+    def activity(self) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxClient.ENDPOINTS["activity"](self.config.domain),
         )
         return response
 
@@ -2348,6 +2368,56 @@ class OnyxClient(OnyxClientBase):
         """
 
         response = super().profile()
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def activity(self) -> List[Dict[str, Any]]:
+        """
+        View the user's latest activity.
+
+        Returns:
+            List of the user's latest activity.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                activity = client.activity()
+            ```
+            ```python
+            >>> activity
+            [
+                {
+                    "date": "2023-01-01T00:00:00.000000Z",
+                    "address": "127.0.0.1",
+                    "endpoint": "/projects/project/",
+                    "method": "POST",
+                    "status": 400,
+                    "exec_time": 29,
+                    "error_messages" : "b'{\"status\":\"fail\",\"code\":400,\"messages\":{\"site\":[\"Select a valid choice.\"]}}'",
+                },
+                {
+                    "timestamp": "2023-01-02T00:00:00.000000Z",
+                    "address": "127.0.0.1",
+                    "endpoint": "/accounts/activity/",
+                    "method": "GET",
+                    "status": 200,
+                    "exec_time": 22,
+                    "error_messages": "",
+                },
+            ]
+            ```
+        """
+
+        response = super().activity()
         response.raise_for_status()
         return response.json()["data"]
 
