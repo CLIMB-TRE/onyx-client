@@ -58,6 +58,7 @@ $ onyx
 │ history     View the history of a record in a project.                                    │
 │ identify    Get the anonymised identifier for a value on a field.                         │
 │ profile     View profile information.                                                     │
+│ activity    View latest profile activity.                                                 │
 │ siteusers   View users from the same site.                                                │
 │ auth        Authentication commands.                                                      │
 │ admin       Admin commands.                                                               │
