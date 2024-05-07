@@ -267,6 +267,35 @@ FILTER_SPECIFIC_EXCLUDE_DATA = {
     ],
 }
 UNKNOWN_FIELD = "haha"
+NONE_FIELD = "field-that-has-none-values"
+FILTER_NONE_DATA = {
+    "status": "success",
+    "code": 200,
+    "next": None,
+    "previous": None,
+    "data": [
+        {
+            "climb_id": CLIMB_ID,
+            NONE_FIELD: None,
+        }
+    ],
+}
+FILTER_NONE_IN_DATA = {
+    "status": "success",
+    "code": 200,
+    "next": None,
+    "previous": None,
+    "data": [
+        {
+            "climb_id": CLIMB_ID,
+            NONE_FIELD: None,
+        },
+        {
+            "climb_id": CLIMB_ID,
+            NONE_FIELD: "not-none",
+        },
+    ],
+}
 FILTER_UNKNOWN_FIELD_DATA = {
     "status": "fail",
     "code": 400,
@@ -709,6 +738,10 @@ def mock_request(
         elif url == OnyxClient.ENDPOINTS["filter"](DOMAIN, PROJECT):
             if params.get(UNKNOWN_FIELD):
                 return MockResponse(FILTER_UNKNOWN_FIELD_DATA)
+            elif params.get(NONE_FIELD) == "":
+                return MockResponse(FILTER_NONE_DATA)
+            elif "" in params.get(f"{NONE_FIELD}__in", []):
+                return MockResponse(FILTER_NONE_IN_DATA)
             elif (
                 params.get("sample_id") == SAMPLE_ID
                 and params.get("run_name") == RUN_NAME
@@ -1085,6 +1118,53 @@ class OnyxClientTestCase(TestCase):
             ],
             FILTER_SPECIFIC_EXCLUDE_DATA["data"],
         )
+        for empty in ["", None]:
+            self.assertEqual(
+                [
+                    x
+                    for x in self.client.filter(
+                        PROJECT,
+                        fields={
+                            NONE_FIELD: empty,
+                        },
+                    )
+                ],
+                FILTER_NONE_DATA["data"],
+            )
+            self.assertEqual(
+                [
+                    x
+                    for x in self.client.filter(
+                        **{"project": PROJECT, NONE_FIELD: empty},
+                    )
+                ],
+                FILTER_NONE_DATA["data"],
+            )
+            for type_ in [list, tuple, set]:
+                self.assertEqual(
+                    [
+                        x
+                        for x in self.client.filter(
+                            PROJECT,
+                            fields={
+                                f"{NONE_FIELD}__in": type_([empty, "not-empty"]),
+                            },
+                        )
+                    ],
+                    FILTER_NONE_IN_DATA["data"],
+                )
+                self.assertEqual(
+                    [
+                        x
+                        for x in self.client.filter(
+                            **{
+                                "project": PROJECT,
+                                f"{NONE_FIELD}__in": type_([empty, "not-empty"]),
+                            },
+                        )
+                    ],
+                    FILTER_NONE_IN_DATA["data"],
+                )
         self.assertEqual(self.config.token, TOKEN)
 
         for invalid in INVALID_ARGUMENTS:

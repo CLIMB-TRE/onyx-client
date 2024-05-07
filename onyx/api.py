@@ -488,16 +488,22 @@ class OnyxClientBase:
         if fields is None:
             fields = {}
 
+        for field, value in kwargs.items():
+            if type(value) in {list, tuple, set}:
+                value = ",".join(map(lambda x: str(x) if x is not None else "", value))
+            fields[field] = value
+
+        for field, value in fields.items():
+            if type(value) in {list, tuple, set}:
+                fields[field] = [v if v is not None else "" for v in value]
+            if value is None:
+                fields[field] = ""
+
         fields = fields | {
             "include": include,
             "exclude": exclude,
             "summarise": summarise,
         }
-
-        for field, value in kwargs.items():
-            if type(value) in {list, tuple, set}:
-                value = ",".join(map(lambda x: str(x) if x is not None else "", value))
-            fields[field] = value
 
         _next = OnyxClient.ENDPOINTS["filter"](self.config.domain, project)
 
