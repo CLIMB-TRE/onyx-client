@@ -12,7 +12,7 @@ theme:
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: teal
+      primary: black
       accent: teal
       toggle:
         icon: material/toggle-switch-off-outline
@@ -21,7 +21,7 @@ theme:
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: purple
+      primary: black
       accent: purple
       toggle:
         icon: material/toggle-switch
