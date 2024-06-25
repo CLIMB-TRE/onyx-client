@@ -27,7 +27,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install .
-          pip install typer-cli
           pip install mkdocs-material
           pip install mkdocstrings[python]
           pip install mkdocs-with-pdf
