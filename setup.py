@@ -12,7 +12,7 @@ setuptools.setup(
     version=version,
     author="Thomas Brier",
     author_email="t.brier@outlook.com",
-    description="Client program for interacting with Onyx.",
+    description="CLI and Python library for Onyx",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/CLIMB-TRE/onyx-client",
