@@ -13,9 +13,9 @@ theme:
     - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: black
-      accent: teal
+      accent: purple
       toggle:
-        icon: material/toggle-switch-off-outline
+        icon: material/weather-sunny
         name: Switch to dark mode
 
     # Palette toggle for dark mode
@@ -24,7 +24,7 @@ theme:
       primary: black
       accent: purple
       toggle:
-        icon: material/toggle-switch
+        icon: material/weather-night
         name: Switch to light mode
       
   features:
@@ -66,6 +66,9 @@ markdown_extensions:
   - pymdownx.magiclink
   - toc:
       permalink: true
+
+extra_css:
+  - stylesheets/extra.css
 
 nav:
   - Overview: index.md

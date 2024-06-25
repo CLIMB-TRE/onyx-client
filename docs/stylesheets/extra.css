@@ -1,0 +1,9 @@
+[data-md-color-scheme="slate"][data-md-color-primary="black"] {
+    --md-typeset-a-color: rgb(171, 71, 189);
+    /* or any other hex value */
+}
+
+[data-md-color-primary="black"] {
+    --md-typeset-a-color: rgb(171, 71, 189);
+    /* or any other hex value */
+}
