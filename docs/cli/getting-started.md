@@ -52,7 +52,7 @@ Multiple filters can be provided, and only the records that satisfy *all* these 
 
 ### Lookups
 
-The data can be filtered in more complex ways using [lookups][lookups]. These use a `field.lookup=value` syntax (or alternatively, `field__lookup=value`), and different ones are available depending on a field's [data type][types] (e.g. [`text`][text], [`integer`][integer]). There are lookups for searching between a range of values on a field ([`range`][range]), whether a field's value is empty ([`isnull`][isnull]), whether a field case-insensitively matches a regular expression ([`iregex`][iregex]), and [more][lookups]. 
+The data can be filtered in more complex ways using [lookups][lookups]. These use a `field.lookup=value` syntax (or alternatively, `field__lookup=value`), and different ones are available depending on a field's [data type][types] (e.g. [`text`][text], [`integer`][integer]). There are lookups for searching between a range of values on a field ([`range`][range]), whether a field's value is empty ([`isnull`][isnull]), whether a field case-insensitively contains some text ([`icontains`][icontains]), and [more][lookups]. 
 
 ### Examples
 
