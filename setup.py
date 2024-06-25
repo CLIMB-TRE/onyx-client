@@ -11,7 +11,7 @@ setuptools.setup(
     name="climb-onyx-client",
     version=version,
     author="Thomas Brier",
-    author_email="t.brier@outlook.com",
+    author_email="t.o.brier@bham.ac.uk",
     description="CLI and Python library for Onyx",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -25,7 +25,7 @@ setuptools.setup(
     ],
     install_requires=[
         "requests",
-        "typer>=0.6.0",
+        "typer>=0.12.3",
         "rich",
     ],
 )
