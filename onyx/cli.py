@@ -175,7 +175,7 @@ def create_table(
     return table
 
 
-def parse_fields_option(fields_option: List[str]) -> Dict[str, str]:
+def parse_fields_option(fields_option: List[str]) -> Dict[str, List[str]]:
     """
     Parse the fields option into a dictionary that maps field names to values.
 
@@ -200,6 +200,31 @@ def parse_fields_option(fields_option: List[str]) -> Dict[str, str]:
     return fields
 
 
+def parse_fields_option_single(fields_option: List[str]) -> Dict[str, str]:
+    """
+    Parse the fields option into a dictionary that maps field names to their last provided value.
+
+    Args:
+        fields_option: List of unparsed 'field=value' pairs.
+
+    Returns:
+        The parsed dictionary of field names mapped to their last provided value.
+    """
+
+    fields = {}
+    for name_value in fields_option:
+        try:
+            name, value = name_value.split("=")
+        except ValueError:
+            raise click.BadParameter(
+                "'name=value' syntax was not used.",
+                param_hint="'-f' / '--field'",
+            )
+        name = name.replace(".", "__")
+        fields[name] = value
+    return fields
+
+
 def parse_extra_option(extra_option: List[str]) -> List[str]:
     """
     Parse the extra option into a list of valid field names.
@@ -221,11 +246,15 @@ def parse_extra_option(extra_option: List[str]) -> List[str]:
 
 
 class HelpText(enum.Enum):
-    FIELD = "Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax."
+    FILTER_FIELD = "Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax."
+    CREATE_FIELD = "Field and value to be created. Uses a `name=value` syntax."
+    UPDATE_FIELD = "Field and value to be updated. Uses a `name=value` syntax."
     INCLUDE = "Specify which fields to include in the output."
     EXCLUDE = "Specify which fields to exclude from the output."
     SUMMARISE = "For a given field (or group of fields), return the frequency of each unique value (or unique group of values)."
     FORMAT = "Set the file format of the returned data."
+    TEST = "Run the command as a test."
+    FORCE = "Run the command without confirmation."
 
 
 class DataFormats(enum.Enum):
@@ -376,7 +405,7 @@ def format_method(method: str) -> str:
             return method
 
 
-@app.command()
+@app.command(rich_help_panel="Data")
 def projects(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -419,7 +448,7 @@ def projects(
         handle_error(e)
 
 
-@app.command()
+@app.command(rich_help_panel="Data")
 def types(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -460,7 +489,7 @@ def types(
         handle_error(e)
 
 
-@app.command()
+@app.command(rich_help_panel="Data")
 def lookups(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -614,7 +643,7 @@ def add_fields_writer(
             )
 
 
-@app.command()
+@app.command(rich_help_panel="Data")
 def fields(
     context: typer.Context,
     project: str = typer.Argument(...),
@@ -684,7 +713,7 @@ def fields(
         handle_error(e)
 
 
-@app.command()
+@app.command(rich_help_panel="Data")
 def choices(
     context: typer.Context,
     project: str = typer.Argument(...),
@@ -733,7 +762,7 @@ def choices(
         handle_error(e)
 
 
-@app.command()
+@app.command(rich_help_panel="Data")
 def get(
     context: typer.Context,
     project: str = typer.Argument(...),
@@ -744,7 +773,7 @@ def get(
         None,
         "-f",
         "--field",
-        help=HelpText.FIELD.value,
+        help=HelpText.FILTER_FIELD.value,
     ),
     include: Optional[List[str]] = typer.Option(
         None,
@@ -790,7 +819,7 @@ def get(
         handle_error(e)
 
 
-@app.command()
+@app.command(rich_help_panel="Data")
 def filter(
     context: typer.Context,
     project: str = typer.Argument(...),
@@ -798,7 +827,7 @@ def filter(
         None,
         "-f",
         "--field",
-        help=HelpText.FIELD.value,
+        help=HelpText.FILTER_FIELD.value,
     ),
     include: Optional[List[str]] = typer.Option(
         None,
@@ -909,7 +938,7 @@ def filter(
         handle_error(e)
 
 
-@app.command()
+@app.command(rich_help_panel="Data")
 def history(
     context: typer.Context,
     project: str = typer.Argument(...),
@@ -972,7 +1001,7 @@ def history(
         handle_error(e)
 
 
-@app.command()
+@app.command(rich_help_panel="Data")
 def identify(
     context: typer.Context,
     project: str = typer.Argument(...),
@@ -1022,7 +1051,120 @@ def identify(
         handle_error(e)
 
 
-@app.command()
+@app.command(rich_help_panel="Data")
+def create(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    field: Optional[List[str]] = typer.Option(
+        None,
+        "-f",
+        "--field",
+        help=HelpText.CREATE_FIELD.value,
+    ),
+    test: bool = typer.Option(
+        False,
+        "-t",
+        "--test",
+        show_default="False",
+        help=HelpText.TEST.value,
+    ),
+):
+    """
+    Create a record in a project.
+    """
+
+    try:
+        api = setup_onyx_api(context.obj)
+
+        if field:
+            fields = parse_fields_option_single(field)
+        else:
+            fields = {}
+
+        record = api.client.create(
+            project,
+            fields=fields,
+            test=test,
+        )
+
+        typer.echo(json_dump_pretty(record))
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command(rich_help_panel="Data")
+def update(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    climb_id: str = typer.Argument(...),
+    field: Optional[List[str]] = typer.Option(
+        None,
+        "-f",
+        "--field",
+        help=HelpText.UPDATE_FIELD.value,
+    ),
+    test: bool = typer.Option(
+        False,
+        "-t",
+        "--test",
+        show_default="False",
+        help=HelpText.TEST.value,
+    ),
+):
+    """
+    Update a record in a project.
+    """
+
+    try:
+        api = setup_onyx_api(context.obj)
+
+        if field:
+            fields = parse_fields_option_single(field)
+        else:
+            fields = {}
+
+        record = api.client.update(
+            project,
+            climb_id,
+            fields=fields,
+            test=test,
+        )
+
+        typer.echo(json_dump_pretty(record))
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command(rich_help_panel="Data")
+def delete(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    climb_id: str = typer.Argument(...),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        show_default="False",
+        prompt="This record will be permanently deleted. Are you sure you want to do this?",
+        help=HelpText.FORCE.value,
+    ),
+):
+    """
+    Delete a record in a project.
+    """
+
+    if force:
+        try:
+            api = setup_onyx_api(context.obj)
+            record = api.client.delete(project, climb_id)
+
+            typer.echo(json_dump_pretty(record))
+        except Exception as e:
+            handle_error(e)
+    else:
+        print("Operation cancelled.")
+
+
+@app.command(rich_help_panel="Accounts")
 def profile(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -1056,7 +1198,7 @@ def profile(
         handle_error(e)
 
 
-@app.command()
+@app.command(rich_help_panel="Accounts")
 def activity(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -1111,7 +1253,7 @@ def activity(
         handle_error(e)
 
 
-@app.command()
+@app.command(rich_help_panel="Accounts")
 def siteusers(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -1145,7 +1287,7 @@ def siteusers(
         handle_error(e)
 
 
-@auth_app.command()
+@auth_app.command(rich_help_panel="Accounts")
 def register(context: typer.Context):
     """
     Create a new user.
@@ -1179,7 +1321,7 @@ def register(context: typer.Context):
         handle_error(e)
 
 
-@auth_app.command()
+@auth_app.command(rich_help_panel="Accounts")
 def login(
     context: typer.Context,
 ):
@@ -1215,7 +1357,7 @@ def login(
         handle_error(e)
 
 
-@auth_app.command()
+@auth_app.command(rich_help_panel="Accounts")
 def logout(
     context: typer.Context,
 ):
@@ -1232,7 +1374,7 @@ def logout(
         handle_error(e)
 
 
-@auth_app.command()
+@auth_app.command(rich_help_panel="Accounts")
 def logoutall(
     context: typer.Context,
 ):
@@ -1249,7 +1391,7 @@ def logoutall(
         handle_error(e)
 
 
-@admin_app.command()
+@admin_app.command(rich_help_panel="Accounts")
 def waiting(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -1284,7 +1426,7 @@ def waiting(
         handle_error(e)
 
 
-@admin_app.command()
+@admin_app.command(rich_help_panel="Accounts")
 def approve(
     context: typer.Context,
     username: str = typer.Argument(..., help="Name of the user being approved."),
@@ -1302,7 +1444,7 @@ def approve(
         handle_error(e)
 
 
-@admin_app.command()
+@admin_app.command(rich_help_panel="Accounts")
 def allusers(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(

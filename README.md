@@ -30,11 +30,11 @@ Check it works:
 
 ```
 $ onyx
-
- Usage: onyx [OPTIONS] COMMAND [ARGS]...
-
- API for pathogen metadata.
-
+                                                                                             
+ Usage: onyx [OPTIONS] COMMAND [ARGS]...                                                     
+                                                                                             
+ API for pathogen metadata.                                                                  
+                                                                                             
 ╭─ Options ─────────────────────────────────────────────────────────────────────────────────╮
 │ --domain    -d      TEXT  Domain name for connecting to Onyx. [env var: ONYX_DOMAIN]      │
 │                           [default: None]                                                 │
@@ -48,6 +48,10 @@ $ onyx
 │ --help      -h            Show this message and exit.                                     │
 ╰───────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ────────────────────────────────────────────────────────────────────────────────╮
+│ auth        Authentication commands.                                                      │
+│ admin       Admin commands.                                                               │
+╰───────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Data ────────────────────────────────────────────────────────────────────────────────────╮
 │ projects    View available projects.                                                      │
 │ types       View available field types.                                                   │
 │ lookups     View available lookups.                                                       │
@@ -57,11 +61,14 @@ $ onyx
 │ filter      Filter multiple records from a project.                                       │
 │ history     View the history of a record in a project.                                    │
 │ identify    Get the anonymised identifier for a value on a field.                         │
+│ create      Create a record in a project.                                                 │
+│ update      Update a record in a project.                                                 │
+│ delete      Delete a record in a project.                                                 │
+╰───────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Accounts ────────────────────────────────────────────────────────────────────────────────╮
 │ profile     View profile information.                                                     │
 │ activity    View latest profile activity.                                                 │
 │ siteusers   View users from the same site.                                                │
-│ auth        Authentication commands.                                                      │
-│ admin       Admin commands.                                                               │
 ╰───────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
