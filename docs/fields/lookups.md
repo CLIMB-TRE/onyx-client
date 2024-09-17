@@ -13,6 +13,8 @@ Different [types][types] have different lookups available to them.
 [`[date]`][date]
 [`[datetime]`][datetime]
 [`[bool]`][bool]
+[`[array]`][array]
+[`[structure]`][structure]
 
 Return values equal to the search value.
 
@@ -54,6 +56,8 @@ Return values that are not within the set of search values.
 ## `contains`
 
 [`[text]`][text]
+[`[array]`][array]
+[`[structure]`][structure]
 
 Return values that contain the search value.
 
@@ -96,18 +100,21 @@ Return values that case-insensitively end with the search value.
 ## `length`
 
 [`[text]`][text]
+[`[array]`][array]
 
 Return values with a length equal to the search value.
 
 ## `length__in`
 
 [`[text]`][text]
+[`[array]`][array]
 
 Return values with a length that is within the set of search values.
 
 ## `length__range`
 
 [`[text]`][text]
+[`[array]`][array]
 
 Return values with a length that is within an inclusive range of search values.
 
@@ -208,9 +215,44 @@ Return values with an ISO 8601 week number that is within an inclusive range of 
 [`[datetime]`][datetime]
 [`[bool]`][bool]
 [`[relation]`][relation]
+[`[array]`][array]
+[`[structure]`][structure]
 
 Return values that are empty (`isnull = True`) or non-empty (`isnull = False`). 
 
 * For [`text`][text] and [`choice`][choice] types, 'empty' is defined as the empty string `""`. 
 * For the [`relation`][relation] type, 'empty' is defined as there being zero items linked to the record being evaluated.
+* For the [`array`][array] type, 'empty' is defined as the empty array `[]`.
+* For the [`structure`][structure] type, 'empty' is defined as the empty structure `{}`.
 * For all other types, 'empty' is the SQL `null` value.
+
+## `contained_by`
+
+[`[array]`][array]
+[`[structure]`][structure]
+
+Return values that are equal to, or a subset of, the search value.
+
+## `overlap`
+
+[`[array]`][array]
+
+Return values that overlap with the search value.
+
+## `has_key`
+
+[`[structure]`][structure]
+
+Return values that have a top-level key which contains the search value.
+
+## `has_keys`
+
+[`[structure]`][structure]
+
+Return values that have top-level keys which contains all of the search values.
+
+## `has_any_keys`
+
+[`[structure]`][structure]
+
+Return values that have top-level keys which contains any of the search values.
