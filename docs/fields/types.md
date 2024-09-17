@@ -149,6 +149,8 @@ A link to a row, or multiple rows, in another table.
 
 A list of values.
 
+**Examples:** `[1, 2, 3]`, `["hello", "world", "!"]`
+
 ## `structure`
 
 [`[exact]`][exact]
@@ -160,3 +162,5 @@ A list of values.
 [`[isnull]`][isnull]
 
 An arbitrary JSON structure.
+
+**Examples:** `{"hello" : "world", "goodbye" : "!"}`, `{"numbers" : [1, 2, {"more_numbers" : [3, 4, 5]}]}`
