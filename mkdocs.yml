@@ -6,6 +6,7 @@ site_author: CLIMB-TRE
 
 theme:
   name: material
+  logo: assets/logo.svg
   icon:
     repo: fontawesome/brands/github
   palette:
@@ -13,7 +14,7 @@ theme:
     - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: black
-      accent: purple
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to dark mode
@@ -22,7 +23,7 @@ theme:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: black
-      accent: purple
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to light mode
@@ -56,6 +57,7 @@ plugins:
       cover_subtitle: ""
 
 markdown_extensions:
+  - attr_list
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -75,14 +77,15 @@ nav:
   - Command-line interface: 
     - Getting started: cli/getting-started.md
     - Documentation: cli/documentation.md
-  - Python API: 
+  - Python API:
+    # - Getting started: api/getting-started.md
     - Documentation:
       - OnyxClient: api/documentation/client.md
       - OnyxConfig: api/documentation/config.md
       - OnyxEnv: api/documentation/env.md
       - OnyxField: api/documentation/field.md
       - Exceptions: api/documentation/exceptions.md
-  - Fields Reference: 
+  - Types & Lookups:
       - Types: fields/types.md
       - Lookups: fields/lookups.md
   - CLIMB-TRE: https://climb-tre.github.io
