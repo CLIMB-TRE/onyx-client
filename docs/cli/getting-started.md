@@ -1,6 +1,7 @@
+[](){#cli-getting-started}
 # Getting started
 
-This guide walks through getting started with the Onyx-client CLI.
+This guide walks through getting started with the Onyx-client command-line interface.
 
 The guide assumes an environment where authentication credentials are pre-configured.
 
@@ -50,7 +51,7 @@ Filtering on the CLI uses a `field=value` syntax, where `field` is the name of a
 
 Multiple filters can be provided, and only the records that satisfy *all* these filters will be returned.
 
-### Lookups
+### Advanced filtering using lookups
 
 The data can be filtered in more complex ways using [lookups][lookups]. These use a `field.lookup=value` syntax (or alternatively, `field__lookup=value`), and different ones are available depending on a field's [data type][types] (e.g. [`text`][text], [`integer`][integer]). There are lookups for searching between a range of values on a field ([`range`][range]), whether a field's value is empty ([`isnull`][isnull]), whether a field case-insensitively contains some text ([`icontains`][icontains]), and [more][lookups]. 
 

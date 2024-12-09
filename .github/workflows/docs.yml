@@ -27,9 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install .
-          pip install mkdocs-material
-          pip install mkdocstrings[python]
-          pip install mkdocs-with-pdf
+          pip install mkdocs-material mkdocstrings-python mkdocs-with-pdf
       - name: Deploy site
         run: |
           typer onyx.cli utils docs --output docs/cli/documentation.md
