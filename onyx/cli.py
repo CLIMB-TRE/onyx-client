@@ -34,6 +34,8 @@ class DefinedOrderGroup(TyperGroup):
 
 
 app = typer.Typer(
+    name="onyx",
+    help="API for pathogen metadata.",
     cls=DefinedOrderGroup,
     no_args_is_help=True,
     pretty_exceptions_show_locals=False,
@@ -1484,7 +1486,7 @@ def version_callback(value: bool):
         raise typer.Exit()
 
 
-@app.callback(name="onyx", help=f"API for pathogen metadata.")
+@app.callback()
 def common(
     context: typer.Context,
     domain: Optional[str] = typer.Option(
