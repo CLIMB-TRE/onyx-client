@@ -247,6 +247,13 @@ def parse_extra_option(extra_option: List[str]) -> List[str]:
     ]
 
 
+class Panels(enum.Enum):
+    DATA = "Data"
+    RECORDS = "Records"
+    ANALYSES = "Analyses"
+    ACCOUNTS = "Accounts"
+
+
 class HelpText(enum.Enum):
     FILTER_FIELD = "Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax."
     CREATE_FIELD = "Field and value to be created. Uses a `name=value` syntax."
@@ -407,7 +414,7 @@ def format_method(method: str) -> str:
             return method
 
 
-@app.command(rich_help_panel="Data")
+@app.command(rich_help_panel=Panels.DATA.value)
 def projects(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -450,7 +457,7 @@ def projects(
         handle_error(e)
 
 
-@app.command(rich_help_panel="Data")
+@app.command(rich_help_panel=Panels.DATA.value)
 def types(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -491,7 +498,7 @@ def types(
         handle_error(e)
 
 
-@app.command(rich_help_panel="Data")
+@app.command(rich_help_panel=Panels.DATA.value)
 def lookups(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -583,7 +590,7 @@ def add_fields_table(
             "\n".join(restrictions),
         )
 
-        if field_spec["type"] == "relation":
+        if field_spec["type"] == "relation" and "fields" in field_spec:
             add_fields_table(
                 table,
                 field_spec["fields"],
@@ -645,24 +652,15 @@ def add_fields_writer(
             )
 
 
-@app.command(rich_help_panel="Data")
-def fields(
+def fields_base(
     context: typer.Context,
-    project: str = typer.Argument(...),
-    format: Optional[FieldFormats] = typer.Option(
-        FieldFormats.TABLE.value,
-        "-F",
-        "--format",
-        help=HelpText.FORMAT.value,
-    ),
+    project: str,
+    format: Optional[FieldFormats],
+    method: str,
 ):
-    """
-    View the field specification for a project.
-    """
-
     try:
         api = setup_onyx_api(context.obj)
-        fields = api.client.fields(project)
+        fields = getattr(api.client, method)(project)
 
         if format == FieldFormats.JSON:
             typer.echo(json_dump_pretty(fields))
@@ -715,26 +713,53 @@ def fields(
         handle_error(e)
 
 
-@app.command(rich_help_panel="Data")
-def choices(
+@app.command(rich_help_panel=Panels.RECORDS.value)
+def fields(
     context: typer.Context,
     project: str = typer.Argument(...),
-    field: str = typer.Argument(...),
-    format: Optional[InfoFormats] = typer.Option(
-        InfoFormats.TABLE.value,
+    format: Optional[FieldFormats] = typer.Option(
+        FieldFormats.TABLE.value,
         "-F",
         "--format",
         help=HelpText.FORMAT.value,
     ),
 ):
     """
-    View options for a choice field in a project.
+    View the field specification for a project.
     """
 
+    fields_base(context, project, format, "fields")
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def analysis_fields(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    format: Optional[FieldFormats] = typer.Option(
+        FieldFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View the analysis field specification for a project.
+    """
+
+    fields_base(context, project, format, "analysis_fields")
+
+
+def choices_base(
+    context: typer.Context,
+    project: str,
+    field: str,
+    format: Optional[InfoFormats],
+    method: str,
+):
     try:
         api = setup_onyx_api(context.obj)
         field = parse_extra_option([field])[0]
-        choices = api.client.choices(project, field)
+        choices = getattr(api.client, method)(project, field)
 
         if format == InfoFormats.TABLE:
             table = Table(
@@ -764,7 +789,81 @@ def choices(
         handle_error(e)
 
 
-@app.command(rich_help_panel="Data")
+@app.command(rich_help_panel=Panels.RECORDS.value)
+def choices(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    field: str = typer.Argument(...),
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View options for a choice field in a project.
+    """
+
+    choices_base(context, project, field, format, "choices")
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def analysis_choices(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    field: str = typer.Argument(...),
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View options for an analysis choice field.
+    """
+
+    choices_base(context, project, field, format, "analysis_choices")
+
+
+def get_base(
+    context: typer.Context,
+    project: str,
+    climb_id: Optional[str],
+    field: Optional[List[str]],
+    include: Optional[List[str]],
+    exclude: Optional[List[str]],
+    method: str,
+):
+    try:
+        api = setup_onyx_api(context.obj)
+
+        if field:
+            fields = parse_fields_option(field)
+        else:
+            fields = {}
+
+        if include:
+            include = parse_extra_option(include)
+
+        if exclude:
+            exclude = parse_extra_option(exclude)
+
+        record = getattr(api.client, method)(
+            project,
+            climb_id,
+            fields=fields,
+            include=include,
+            exclude=exclude,
+        )
+
+        typer.echo(json_dump_pretty(record))
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command(rich_help_panel=Panels.RECORDS.value)
 def get(
     context: typer.Context,
     project: str = typer.Argument(...),
@@ -794,6 +893,53 @@ def get(
     Get a record from a project.
     """
 
+    get_base(context, project, climb_id, field, include, exclude, "get")
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def get_analysis(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    analysis_id: Optional[str] = typer.Argument(
+        None,
+    ),
+    field: Optional[List[str]] = typer.Option(
+        None,
+        "-f",
+        "--field",
+        help=HelpText.FILTER_FIELD.value,
+    ),
+    include: Optional[List[str]] = typer.Option(
+        None,
+        "-i",
+        "--include",
+        help=HelpText.INCLUDE.value,
+    ),
+    exclude: Optional[List[str]] = typer.Option(
+        None,
+        "-e",
+        "--exclude",
+        help=HelpText.EXCLUDE.value,
+    ),
+):
+    """
+    Get an analysis from a project.
+    """
+
+    get_base(context, project, analysis_id, field, include, exclude, "get_analysis")
+
+
+def filter_base(
+    context: typer.Context,
+    project: str,
+    field: Optional[List[str]],
+    include: Optional[List[str]],
+    exclude: Optional[List[str]],
+    summarise: Optional[List[str]],
+    format: Optional[DataFormats],
+    method: str,
+):
+
     try:
         api = setup_onyx_api(context.obj)
 
@@ -808,20 +954,73 @@ def get(
         if exclude:
             exclude = parse_extra_option(exclude)
 
-        record = api.client.get(
-            project,
-            climb_id,
-            fields=fields,
-            include=include,
-            exclude=exclude,
-        )
+        if summarise:
+            summarise = parse_extra_option(summarise)
 
-        typer.echo(json_dump_pretty(record))
+        if format == DataFormats.JSON:
+            # ...nobody needs to know
+            results = onyx_errors(getattr(super(OnyxClient, api.client), method))(
+                project,
+                fields,
+                include=include,
+                exclude=exclude,
+                summarise=summarise,
+            )
+
+            for result in results:
+                if result.ok:
+                    try:
+                        result_json = result.json()
+                    except json.decoder.JSONDecodeError:
+                        raise click.exceptions.ClickException(result.text)
+
+                    rendered_response = json_dump_pretty(result_json["data"])
+
+                    if result_json.get("previous"):
+                        if not rendered_response.startswith("[\n"):
+                            raise Exception(
+                                "Response JSON has invalid start character(s)."
+                            )
+                        rendered_response = rendered_response.removeprefix("[\n")
+
+                    if result_json.get("next"):
+                        if not rendered_response.endswith("}\n]"):
+                            raise Exception(
+                                "Response JSON has invalid end character(s)."
+                            )
+                        rendered_response = (
+                            rendered_response.removesuffix("}\n]") + "},"
+                        )
+
+                    typer.echo(rendered_response)
+                else:
+                    raise exceptions.OnyxHTTPError("", result)
+        else:
+            records = getattr(api.client, method)(
+                project,
+                fields,
+                include=include,
+                exclude=exclude,
+                summarise=summarise,
+            )
+
+            record = next(records, None)
+            if record:
+                writer = csv.DictWriter(
+                    sys.stdout,
+                    delimiter="\t" if format == DataFormats.TSV else ",",
+                    fieldnames=record.keys(),
+                )
+                writer.writeheader()
+                writer.writerow(record)
+
+                for record in records:
+                    writer.writerow(record)
     except Exception as e:
         handle_error(e)
 
 
-@app.command(rich_help_panel="Data")
+@app.command(rich_help_panel=Panels.RECORDS.value)
 def filter(
     context: typer.Context,
     project: str = typer.Argument(...),
@@ -860,105 +1059,63 @@ def filter(
     Filter multiple records from a project.
     """
 
-    try:
-        api = setup_onyx_api(context.obj)
-
-        if field:
-            fields = parse_fields_option(field)
-        else:
-            fields = {}
-
-        if include:
-            include = parse_extra_option(include)
-
-        if exclude:
-            exclude = parse_extra_option(exclude)
-
-        if summarise:
-            summarise = parse_extra_option(summarise)
-
-        if format == DataFormats.JSON:
-            # ...nobody needs to know
-            results = onyx_errors(super(OnyxClient, api.client).filter)(
-                project,
-                fields,
-                include=include,
-                exclude=exclude,
-                summarise=summarise,
-            )
-
-            for result in results:
-                if result.ok:
-                    try:
-                        result_json = result.json()
-                    except json.decoder.JSONDecodeError:
-                        raise click.exceptions.ClickException(result.text)
-
-                    rendered_response = json_dump_pretty(result_json["data"])
-
-                    if result_json.get("previous"):
-                        if not rendered_response.startswith("[\n"):
-                            raise Exception(
-                                "Response JSON has invalid start character(s)."
-                            )
-                        rendered_response = rendered_response.removeprefix("[\n")
-
-                    if result_json.get("next"):
-                        if not rendered_response.endswith("}\n]"):
-                            raise Exception(
-                                "Response JSON has invalid end character(s)."
-                            )
-                        rendered_response = (
-                            rendered_response.removesuffix("}\n]") + "},"
-                        )
-
-                    typer.echo(rendered_response)
-                else:
-                    raise exceptions.OnyxHTTPError("", result)
-        else:
-            records = api.client.filter(
-                project,
-                fields,
-                include=include,
-                exclude=exclude,
-                summarise=summarise,
-            )
-
-            record = next(records, None)
-            if record:
-                writer = csv.DictWriter(
-                    sys.stdout,
-                    delimiter="\t" if format == DataFormats.TSV else ",",
-                    fieldnames=record.keys(),
-                )
-                writer.writeheader()
-                writer.writerow(record)
-
-                for record in records:
-                    writer.writerow(record)
-    except Exception as e:
-        handle_error(e)
+    filter_base(context, project, field, include, exclude, summarise, format, "filter")
 
 
-@app.command(rich_help_panel="Data")
-def history(
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def filter_analyses(
     context: typer.Context,
     project: str = typer.Argument(...),
-    climb_id: str = typer.Argument(...),
-    format: Optional[InfoFormats] = typer.Option(
-        InfoFormats.TABLE.value,
+    field: Optional[List[str]] = typer.Option(
+        None,
+        "-f",
+        "--field",
+        help=HelpText.FILTER_FIELD.value,
+    ),
+    include: Optional[List[str]] = typer.Option(
+        None,
+        "-i",
+        "--include",
+        help=HelpText.INCLUDE.value,
+    ),
+    exclude: Optional[List[str]] = typer.Option(
+        None,
+        "-e",
+        "--exclude",
+        help=HelpText.EXCLUDE.value,
+    ),
+    summarise: Optional[List[str]] = typer.Option(
+        None,
+        "-s",
+        "--summarise",
+        help=HelpText.SUMMARISE.value,
+    ),
+    format: Optional[DataFormats] = typer.Option(
+        DataFormats.JSON.value,
         "-F",
         "--format",
         help=HelpText.FORMAT.value,
     ),
 ):
     """
-    View the history of a record in a project.
+    Filter multiple analyses from a project.
     """
 
+    filter_base(
+        context, project, field, include, exclude, summarise, format, "filter_analyses"
+    )
+
+
+def history_base(
+    context: typer.Context,
+    project: str,
+    climb_id: str,
+    format: Optional[InfoFormats],
+    method: str,
+):
     try:
         api = setup_onyx_api(context.obj)
-        history = api.client.history(project, climb_id)
+        history = getattr(api.client, method)(project, climb_id)
 
         if format == InfoFormats.TABLE:
             columns = ["Username", "Timestamp", "Action", "Changes"]
@@ -1003,7 +1160,45 @@ def history(
         handle_error(e)
 
 
-@app.command(rich_help_panel="Data")
+@app.command(rich_help_panel=Panels.RECORDS.value)
+def history(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    climb_id: str = typer.Argument(...),
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View the history of a record in a project.
+    """
+
+    history_base(context, project, climb_id, format, "history")
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def analysis_history(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    analysis_id: str = typer.Argument(...),
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View the history of an analysis in a project.
+    """
+
+    history_base(context, project, analysis_id, format, "analysis_history")
+
+
+@app.command(rich_help_panel=Panels.RECORDS.value)
 def identify(
     context: typer.Context,
     project: str = typer.Argument(...),
@@ -1053,7 +1248,7 @@ def identify(
         handle_error(e)
 
 
-@app.command(rich_help_panel="Data")
+@app.command(rich_help_panel=Panels.RECORDS.value)
 def create(
     context: typer.Context,
     project: str = typer.Argument(...),
@@ -1094,7 +1289,7 @@ def create(
         handle_error(e)
 
 
-@app.command(rich_help_panel="Data")
+@app.command(rich_help_panel=Panels.RECORDS.value)
 def update(
     context: typer.Context,
     project: str = typer.Argument(...),
@@ -1137,7 +1332,7 @@ def update(
         handle_error(e)
 
 
-@app.command(rich_help_panel="Data")
+@app.command(rich_help_panel=Panels.RECORDS.value)
 def delete(
     context: typer.Context,
     project: str = typer.Argument(...),

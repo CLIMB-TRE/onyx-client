@@ -678,7 +678,7 @@ def mock_request(
             return MockResponse(CREATE_DATA)
 
         elif (
-            url == OnyxClient.ENDPOINTS["testcreate"](DOMAIN, PROJECT)
+            url == OnyxClient.ENDPOINTS["create.test"](DOMAIN, PROJECT)
             and json == CREATE_FIELDS
         ):
             return MockResponse(TESTCREATE_DATA)
@@ -789,7 +789,7 @@ def mock_request(
             return MockResponse(UPDATE_DATA)
 
         elif (
-            url == OnyxClient.ENDPOINTS["testupdate"](DOMAIN, PROJECT, CLIMB_ID)
+            url == OnyxClient.ENDPOINTS["update.test"](DOMAIN, PROJECT, CLIMB_ID)
             and json == UPDATE_FIELDS
         ):
             return MockResponse(TESTUPDATE_DATA)

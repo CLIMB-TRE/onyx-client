@@ -1,890 +1,9 @@
-import posixpath
-import csv
-import inspect
-import requests
-from requests import HTTPError, RequestException
 from typing import Any, Generator, List, Dict, TextIO, Optional, Union
+from requests.models import Response as Response
 from .config import OnyxConfig
+from .core import OnyxClientBase, onyx_errors
 from .field import OnyxField
-from .exceptions import (
-    OnyxClientError,
-    OnyxConnectionError,
-    OnyxRequestError,
-    OnyxServerError,
-)
-
-
-class OnyxClientBase:
-    __slots__ = "config", "_request_handler", "_session"
-    ENDPOINTS = {
-        "projects": lambda domain: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects/",
-            ),
-            domain=domain,
-        ),
-        "types": lambda domain: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects/types/",
-            ),
-            domain=domain,
-        ),
-        "lookups": lambda domain: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects/lookups/",
-            ),
-            domain=domain,
-        ),
-        "fields": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "fields/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "choices": lambda domain, project, field: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "choices",
-                str(field),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            field=field,
-        ),
-        "get": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "filter": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "query": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "query/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "history": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "history",
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "identify": lambda domain, project, field: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "identify",
-                str(field),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            field=field,
-        ),
-        "create": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "testcreate": lambda domain, project: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "test/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "update": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "testupdate": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "test",
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "delete": lambda domain, project, climb_id: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "register": lambda domain: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/register/",
-            ),
-            domain=domain,
-        ),
-        "login": lambda domain: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/login/",
-            ),
-            domain=domain,
-        ),
-        "logout": lambda domain: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/logout/",
-            ),
-            domain=domain,
-        ),
-        "logoutall": lambda domain: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/logoutall/",
-            ),
-            domain=domain,
-        ),
-        "profile": lambda domain: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/profile/",
-            ),
-            domain=domain,
-        ),
-        "activity": lambda domain: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/activity/",
-            ),
-            domain=domain,
-        ),
-        "waiting": lambda domain: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/waiting/",
-            ),
-            domain=domain,
-        ),
-        "approve": lambda domain, username: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/approve",
-                str(username),
-                "",
-            ),
-            domain=domain,
-            username=username,
-        ),
-        "siteusers": lambda domain: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/site/",
-            ),
-            domain=domain,
-        ),
-        "allusers": lambda domain: OnyxClient._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/all/",
-            ),
-            domain=domain,
-        ),
-    }
-
-    def __init__(self, config: OnyxConfig):
-        self.config = config
-        self._session = None
-        self._request_handler = requests.request
-
-    def __enter__(self):
-        self._session = requests.Session()
-        self._request_handler = self._session.request
-        return self
-
-    def __exit__(self, type, value, traceback):
-        if self._session:
-            self._session.close()
-        self._request_handler = requests.request
-
-    @classmethod
-    def _handle_endpoint(cls, endpoint, **kwargs):
-        for name, val in kwargs.items():
-            if val is None or not str(val).strip():
-                raise OnyxClientError(f"Argument '{name}' was not provided.")
-
-            val = str(val).strip()
-
-            if name != "domain":
-                for char in "/?":
-                    if char in val:
-                        raise OnyxClientError(
-                            f"Argument '{name}' contains invalid character: '{char}'."
-                        )
-
-                # Crude but effective prevention of unexpectedly calling other endpoints
-                # Its not the end of the world if that did happen, but to the user it would be quite confusing
-                clashes = {
-                    "project": ["types", "lookups"],
-                    "climb_id": [
-                        "test",
-                        "query",
-                        "fields",
-                        "choices",
-                        "history",
-                        "identify",
-                    ],
-                }
-
-                if name in clashes:
-                    for clash in clashes[name]:
-                        if val == clash:
-                            raise OnyxClientError(
-                                f"Argument '{name}' cannot have value '{val}'. This creates a URL that resolves to a different endpoint."
-                            )
-
-        return endpoint()
-
-    def _request(self, method: str, retries: int = 3, **kwargs) -> requests.Response:
-        if not retries:
-            raise Exception(
-                "Request retry limit reached. This should not be possible..."
-            )
-
-        kwargs.setdefault("headers", {}).update(
-            {"Authorization": f"Token {self.config.token}"}
-        )
-        method_response = self._request_handler(method, **kwargs)
-
-        # Token has expired or was invalid.
-        # If username and password were provided, log in again, obtain a new token, and re-run the method.
-        if (
-            method_response.status_code == 401
-            and self.config.username
-            and self.config.password
-        ):
-            OnyxClientBase.login(self).raise_for_status()
-            # A retry mechanism has been incorporated as a failsafe.
-            # This is to protect against the case where an onyx endpoint returns a 401 status code,
-            # despite the user being able to successfully log in, leading to an infinite loop of
-            # re-logging in and re-hitting the endpoint.
-            # This scenario should not be possible. But if it happened, it would not be fun at all.
-            # So, better safe than sorry...
-            return self._request(method, retries=retries - 1, **kwargs)
-
-        return method_response
-
-    def _csv_upload(
-        self,
-        method: str,
-        endpoint: str,
-        project: str,
-        csv_file: TextIO,
-        fields: Optional[Dict[str, Any]] = None,
-        delimiter: Optional[str] = None,
-        multiline: bool = False,
-        test: bool = False,
-        climb_id_required: bool = False,
-    ) -> Generator[requests.Response, Any, None]:
-        # Get appropriate endpoint for test/prod
-        if test:
-            endpoint = "test" + endpoint
-
-        # Create CSV reader
-        if delimiter is None:
-            reader = csv.DictReader(
-                csv_file,
-                skipinitialspace=True,
-            )
-        else:
-            reader = csv.DictReader(
-                csv_file,
-                delimiter=delimiter,
-                skipinitialspace=True,
-            )
-
-        # Read the first two records (if they exist) and store in 'records' list
-        # This is done to protect against two scenarios:
-        # - There are no records in the file (never allowed)
-        # - There is more than one record, but multiline = False (not allowed)
-        records = []
-
-        record_1 = next(reader, None)
-        if record_1:
-            records.append(record_1)
-        else:
-            raise OnyxClientError("File must contain at least one record.")
-
-        record_2 = next(reader, None)
-        if record_2:
-            if not multiline:
-                raise OnyxClientError(
-                    "File contains multiple records but this is not allowed. To upload multiple records, set 'multiline' = True."
-                )
-            records.append(record_2)
-
-        # Iterate over the read and unread records and upload sequentially
-        for iterator in (records, reader):
-            for record in iterator:
-                if fields:
-                    record = record | fields
-
-                if climb_id_required:
-                    # Grab the climb_id, if required for the URL
-                    climb_id = record.pop("climb_id", None)
-                    if not climb_id:
-                        raise OnyxClientError(
-                            "Record requires a 'climb_id' for upload."
-                        )
-                    url = OnyxClient.ENDPOINTS[endpoint](
-                        self.config.domain, project, climb_id
-                    )
-                else:
-                    url = OnyxClient.ENDPOINTS[endpoint](self.config.domain, project)
-
-                response = self._request(
-                    method=method,
-                    url=url,
-                    json=record,
-                )
-                yield response
-
-    def _csv_handle_multiline(
-        self,
-        responses: Generator[requests.Response, Any, None],
-        multiline: bool,
-    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        if multiline:
-            results = []
-            for response in responses:
-                response.raise_for_status()
-                results.append(response.json()["data"])
-            return results
-        else:
-            response = next(responses, None)
-            if response is None:
-                raise OnyxClientError("Iterator must contain at least one record.")
-
-            response.raise_for_status()
-            return response.json()["data"]
-
-    def projects(self) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["projects"](self.config.domain),
-        )
-        return response
-
-    def types(self) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["types"](self.config.domain),
-        )
-        return response
-
-    def lookups(self) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["lookups"](self.config.domain),
-        )
-        return response
-
-    def fields(self, project: str) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["fields"](self.config.domain, project),
-        )
-        return response
-
-    def choices(self, project: str, field: str) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["choices"](self.config.domain, project, field),
-        )
-        return response
-
-    def get(
-        self,
-        project: str,
-        climb_id: str,
-        include: Union[List[str], str, None] = None,
-        exclude: Union[List[str], str, None] = None,
-    ) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["get"](self.config.domain, project, climb_id),
-            params={"include": include, "exclude": exclude},
-        )
-        return response
-
-    def filter(
-        self,
-        project: str,
-        fields: Optional[Dict[str, Any]] = None,
-        include: Union[List[str], str, None] = None,
-        exclude: Union[List[str], str, None] = None,
-        summarise: Union[List[str], str, None] = None,
-        **kwargs: Any,
-    ) -> Generator[requests.Response, Any, None]:
-        if fields is None:
-            fields = {}
-
-        for field, value in kwargs.items():
-            if type(value) in {list, tuple, set}:
-                value = ",".join(map(lambda x: str(x) if x is not None else "", value))
-            fields[field] = value
-
-        for field, value in fields.items():
-            if type(value) in {list, tuple, set}:
-                fields[field] = [v if v is not None else "" for v in value]
-            if value is None:
-                fields[field] = ""
-
-        fields = fields | {
-            "include": include,
-            "exclude": exclude,
-            "summarise": summarise,
-        }
-
-        _next = OnyxClient.ENDPOINTS["filter"](self.config.domain, project)
-
-        while _next is not None:
-            response = self._request(
-                method="get",
-                url=_next,
-                params=fields,
-            )
-            yield response
-
-            fields = None
-            if response.ok:
-                _next = response.json().get("next")
-            else:
-                _next = None
-
-    def query(
-        self,
-        project: str,
-        query: Optional[OnyxField] = None,
-        include: Union[List[str], str, None] = None,
-        exclude: Union[List[str], str, None] = None,
-        summarise: Union[List[str], str, None] = None,
-    ) -> Generator[requests.Response, Any, None]:
-        if query:
-            if not isinstance(query, OnyxField):
-                raise OnyxClientError(
-                    f"Query must be an instance of {OnyxField}. Received: {type(query)}"
-                )
-            else:
-                query_json = query.query
-        else:
-            query_json = None
-
-        fields = {
-            "include": include,
-            "exclude": exclude,
-            "summarise": summarise,
-        }
-        _next = OnyxClient.ENDPOINTS["query"](self.config.domain, project)
-
-        while _next is not None:
-            response = self._request(
-                method="post",
-                url=_next,
-                json=query_json,
-                params=fields,
-            )
-            yield response
-
-            fields = None
-            if response.ok:
-                _next = response.json().get("next")
-            else:
-                _next = None
-
-    @classmethod
-    def to_csv(
-        cls,
-        csv_file: TextIO,
-        data: Union[List[Dict[str, Any]], Generator[Dict[str, Any], Any, None]],
-        delimiter: Optional[str] = None,
-    ):
-        # Ensure data is an iterator
-        if inspect.isgenerator(data):
-            data_iterator = data
-        else:
-            data_iterator = iter(data)
-
-        row = next(data_iterator, None)
-        if row:
-            fields = row.keys()
-
-            # Create CSV writer
-            if delimiter is None:
-                writer = csv.DictWriter(
-                    csv_file,
-                    fieldnames=fields,
-                )
-            else:
-                writer = csv.DictWriter(
-                    csv_file,
-                    fieldnames=fields,
-                    delimiter=delimiter,
-                )
-
-            # Write data
-            writer.writeheader()
-            writer.writerow(row)
-            for row in data_iterator:
-                writer.writerow(row)
-
-    def history(
-        self,
-        project: str,
-        climb_id: str,
-    ) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["history"](self.config.domain, project, climb_id),
-        )
-        return response
-
-    def identify(
-        self,
-        project: str,
-        field: str,
-        value: str,
-        site: Optional[str] = None,
-    ) -> requests.Response:
-        identify_json = {"value": value}
-        if site:
-            identify_json = identify_json | {"site": site}
-
-        response = self._request(
-            method="post",
-            url=OnyxClient.ENDPOINTS["identify"](self.config.domain, project, field),
-            json=identify_json,
-        )
-        return response
-
-    def create(
-        self,
-        project: str,
-        fields: Dict[str, Any],
-        test: bool = False,
-    ) -> requests.Response:
-        if test:
-            endpoint = "testcreate"
-        else:
-            endpoint = "create"
-
-        response = self._request(
-            method="post",
-            url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project),
-            json=fields,
-        )
-        return response
-
-    def update(
-        self,
-        project: str,
-        climb_id: str,
-        fields: Optional[Dict[str, Any]] = None,
-        test: bool = False,
-    ) -> requests.Response:
-        if test:
-            endpoint = "testupdate"
-        else:
-            endpoint = "update"
-
-        response = self._request(
-            method="patch",
-            url=OnyxClient.ENDPOINTS[endpoint](self.config.domain, project, climb_id),
-            json=fields,
-        )
-        return response
-
-    def delete(
-        self,
-        project: str,
-        climb_id: str,
-    ) -> requests.Response:
-        response = self._request(
-            method="delete",
-            url=OnyxClient.ENDPOINTS["delete"](self.config.domain, project, climb_id),
-        )
-        return response
-
-    def csv_create(
-        self,
-        project: str,
-        csv_file: TextIO,
-        fields: Optional[Dict[str, Any]] = None,
-        delimiter: Optional[str] = None,
-        multiline: bool = False,
-        test: bool = False,
-    ) -> Generator[requests.Response, Any, None]:
-        yield from self._csv_upload(
-            method="post",
-            endpoint="create",
-            project=project,
-            csv_file=csv_file,
-            fields=fields,
-            delimiter=delimiter,
-            multiline=multiline,
-            test=test,
-        )
-
-    def csv_update(
-        self,
-        project: str,
-        csv_file: TextIO,
-        fields: Optional[Dict[str, Any]] = None,
-        delimiter: Optional[str] = None,
-        multiline: bool = False,
-        test: bool = False,
-    ) -> Generator[requests.Response, Any, None]:
-        yield from self._csv_upload(
-            method="patch",
-            endpoint="update",
-            project=project,
-            csv_file=csv_file,
-            fields=fields,
-            delimiter=delimiter,
-            multiline=multiline,
-            test=test,
-            climb_id_required=True,
-        )
-
-    def csv_delete(
-        self,
-        project: str,
-        csv_file: TextIO,
-        delimiter: Optional[str] = None,
-        multiline: bool = False,
-    ) -> Generator[requests.Response, Any, None]:
-        yield from self._csv_upload(
-            method="delete",
-            endpoint="delete",
-            project=project,
-            csv_file=csv_file,
-            delimiter=delimiter,
-            multiline=multiline,
-            climb_id_required=True,
-        )
-
-    @classmethod
-    def register(
-        cls,
-        domain: str,
-        first_name: str,
-        last_name: str,
-        email: str,
-        site: str,
-        password: str,
-    ) -> requests.Response:
-        response = requests.post(
-            OnyxClient.ENDPOINTS["register"](domain),
-            json={
-                "first_name": first_name,
-                "last_name": last_name,
-                "password": password,
-                "email": email,
-                "site": site,
-            },
-        )
-        return response
-
-    def login(self) -> requests.Response:
-        if self.config.username and self.config.password:
-            credentials = (self.config.username, self.config.password)
-        else:
-            credentials = None
-
-        response = self._request_handler(
-            "post",
-            auth=credentials,
-            url=OnyxClient.ENDPOINTS["login"](self.config.domain),
-        )
-        if response.ok:
-            self.config.token = response.json()["data"]["token"]
-
-        return response
-
-    def logout(self) -> requests.Response:
-        response = self._request(
-            method="post",
-            url=OnyxClient.ENDPOINTS["logout"](self.config.domain),
-        )
-        if response.ok:
-            self.config.token = None
-
-        return response
-
-    def logoutall(self) -> requests.Response:
-        response = self._request(
-            method="post",
-            url=OnyxClient.ENDPOINTS["logoutall"](self.config.domain),
-        )
-        if response.ok:
-            self.config.token = None
-
-        return response
-
-    def profile(self) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["profile"](self.config.domain),
-        )
-        return response
-
-    def activity(self) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["activity"](self.config.domain),
-        )
-        return response
-
-    def approve(self, username: str) -> requests.Response:
-        response = self._request(
-            method="patch",
-            url=OnyxClient.ENDPOINTS["approve"](self.config.domain, username),
-        )
-        return response
-
-    def waiting(self) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["waiting"](self.config.domain),
-        )
-        return response
-
-    def site_users(self) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["siteusers"](self.config.domain),
-        )
-        return response
-
-    def all_users(self) -> requests.Response:
-        response = self._request(
-            method="get",
-            url=OnyxClient.ENDPOINTS["allusers"](self.config.domain),
-        )
-        return response
-
-
-def onyx_errors(method):
-    """
-    Decorator that coerces `requests` library errors into appropriate `OnyxError` subclasses.
-    """
-    if inspect.isgeneratorfunction(method):
-
-        def wrapped_generator_method(self, *args, **kwargs):
-            try:
-                yield from method(self, *args, **kwargs)
-
-            except HTTPError as e:
-                if e.response is None:
-                    # TODO: Seems this does not need handling?
-                    raise e  #  type: ignore
-                elif e.response.status_code < 500:
-                    raise OnyxRequestError(
-                        message=str(e),
-                        response=e.response,
-                    ) from e
-                else:
-                    raise OnyxServerError(
-                        message=str(e),
-                        response=e.response,
-                    ) from e
-            except RequestException as e:
-                raise OnyxConnectionError(str(e)) from e
-
-        return wrapped_generator_method
-    else:
-
-        def wrapped_method(self, *args, **kwargs):
-            try:
-                return method(self, *args, **kwargs)
-
-            except HTTPError as e:
-                if e.response is None:
-                    # TODO: Seems this does not need handling?
-                    raise e  #  type: ignore
-                elif e.response.status_code < 500:
-                    raise OnyxRequestError(
-                        message=str(e),
-                        response=e.response,
-                    ) from e
-                else:
-                    raise OnyxServerError(
-                        message=str(e),
-                        response=e.response,
-                    ) from e
-            except RequestException as e:
-                raise OnyxConnectionError(str(e)) from e
-
-        return wrapped_method
+from .exceptions import OnyxClientError
 
 
 class OnyxClient(OnyxClientBase):
@@ -1542,7 +661,6 @@ class OnyxClient(OnyxClientBase):
                 },
             ]
             ```
-
         """
 
         responses = super().filter(
@@ -2193,6 +1311,430 @@ class OnyxClient(OnyxClientBase):
             multiline=multiline,
         )
         return self._csv_handle_multiline(responses, multiline)
+
+    @onyx_errors
+    def analysis_fields(self, project: str) -> Dict[str, Any]:
+        """
+        View analysis fields.
+
+        Args:
+            project: Name of the project.
+
+        Returns:
+            Dict of fields.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                fields = client.analysis_fields("project")
+            ```
+        """
+
+        response = super().analysis_fields(project)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def analysis_choices(self, project: str, field: str) -> Dict[str, Dict[str, Any]]:
+        """
+        View choices for an analysis field.
+
+        Args:
+            project: Name of the project.
+            field: Analysis choice field.
+
+        Returns:
+            Dictionary mapping choices to information about the choice.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                choices = client.analysis_choices("project", "country")
+            ```
+        """
+
+        response = super().analysis_choices(project, field)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def get_analysis(
+        self,
+        project: str,
+        analysis_id: str,
+        fields: Optional[Dict[str, Any]] = None,
+        include: List[str] | str | None = None,
+        exclude: List[str] | str | None = None,
+    ) -> Dict[str, Any]:
+        """
+        Get an analysis from a project.
+
+        Args:
+            project: Name of the project.
+            analysis_id: Unique identifier for the analysis.
+            fields: Dictionary of field filters used to uniquely identify the record.
+            include: Fields to include in the output.
+            exclude: Fields to exclude from the output.
+
+        Returns:
+            Dict containing the record.
+
+        Examples:
+            Get an analysis by analysis ID:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                analysis = client.get_analysis("project", "A-1234567890")
+            ```
+            ```python
+            >>> analysis
+            {
+                "analysis_id": "A-1234567890",
+                "published_date": "2023-01-01",
+                "name": "Very cool analysis",
+                "result": "Found very cool things",
+            }
+            ```
+        """
+
+        # TODO: Copy shared logic into a shared method
+        if analysis_id and fields:
+            raise OnyxClientError("Cannot provide both 'analysis_id' and 'fields'.")
+
+        if not (analysis_id or fields):
+            raise OnyxClientError("Must provide either 'analysis_id' or 'fields'.")
+
+        if analysis_id:
+            response = super().get_analysis(
+                project,
+                analysis_id,
+                include=include,
+                exclude=exclude,
+            )
+            response.raise_for_status()
+            return response.json()["data"]
+        else:
+            responses = super().filter_analyses(
+                project,
+                fields=fields,
+                include=include,
+                exclude=exclude,
+            )
+            response = next(responses, None)
+            if response is None:
+                raise OnyxClientError(
+                    f"Expected one analysis to be returned but received no response."
+                )
+
+            response.raise_for_status()
+            count = len(response.json()["data"])
+            if count != 1:
+                raise OnyxClientError(
+                    f"Expected one analysis to be returned but received: {count}"
+                )
+
+            return response.json()["data"][0]
+
+    @onyx_errors
+    def filter_analyses(
+        self,
+        project: str,
+        fields: Dict[str, Any] | None = None,
+        include: List[str] | str | None = None,
+        exclude: List[str] | str | None = None,
+        summarise: List[str] | str | None = None,
+        **kwargs: Any,
+    ) -> Generator[Dict[str, Any], Any, None]:
+        """
+        Filter analyses from a project.
+
+        Args:
+            project: Name of the project.
+            fields: Dictionary of field filters.
+            include: Fields to include in the output.
+            exclude: Fields to exclude from the output.
+            summarise: For a given field (or group of fields), return the frequency of each unique value (or unique group of values).
+            **kwargs: Additional keyword arguments are interpreted as field filters.
+
+        Returns:
+            Generator of analyses. If a summarise argument is provided, each record will be a dict containing values of the summary fields and a count for the frequency.
+
+        Examples:
+            Retrieve all analyses that match a set of field requirements:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                analyses = list(
+                    client.filter_analyses(
+                        project="project",
+                        published_date__range=["2023-01-01", "2023-01-02"],
+                    )
+                )
+            ```
+            ```python
+            >>> analyses
+            [
+                {
+                    "analysis_id": "A-1234567890",
+                    "published_date": "2023-01-01",
+                    "name": "Very cool analysis",
+                    "result": "Found very cool things",
+                },
+                {
+                    "analysis_id": "A-1234567891",
+                    "published_date": "2023-01-02",
+                    "name": "Not so cool analysis",
+                    "result": "Found not so cool things",
+                },
+            ]
+            ```
+
+        Tips:
+            - See the documentation for the `filter` method for more information on filtering records, as this also applies to analyses.
+        """
+
+        responses = super().filter_analyses(
+            project,
+            fields=fields,
+            include=include,
+            exclude=exclude,
+            summarise=summarise,
+            **kwargs,
+        )
+        for response in responses:
+            response.raise_for_status()
+            for result in response.json()["data"]:
+                yield result
+
+    @onyx_errors
+    def analysis_history(
+        self,
+        project: str,
+        analysis_id: str,
+    ) -> Dict[str, Any]:
+        """
+        View the history of an analysis in a project.
+
+        Args:
+            project: Name of the project.
+            analysis_id: Unique identifier for the analysis.
+
+        Returns:
+            Dict containing the history of the analysis.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                history = client.analysis_history("project", "A-1234567890")
+            ```
+            ```python
+            >>> history
+            {
+                "analysis_id": "A-1234567890",
+                "history": [
+                    {
+                        "username": "user",
+                        "timestamp": "2023-01-01T00:00:00Z",
+                        "action": "add",
+                    },
+                    {
+                        "username": "user",
+                        "timestamp": "2023-01-02T00:00:00Z",
+                        "action": "change",
+                        "changes": [
+                            {
+                                "field": "name",
+                                "type": "text",
+                                "from": "Cool analysis",
+                                "to": "Very cool analysis",
+                            },
+                        ],
+                    },
+                ],
+            }
+            ```
+        """
+        response = super().analysis_history(project, analysis_id)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def create_analysis(
+        self,
+        project: str,
+        fields: Dict[str, Any],
+        test: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Create an analysis in a project.
+
+        Args:
+            project: Name of the project.
+            fields: Object representing the analysis to be created.
+            test: If `True`, runs the command as a test. Default: `False`
+
+        Returns:
+            Dict containing the Analysis ID of the created analysis.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                result = client.create_analysis(
+                    "project",
+                    fields={
+                        "name": "Absolutely incredible analysis",
+                        "result": "Insane results",
+                    },
+                )
+            ```
+            ```python
+            >>> result
+            {"analysis_id": "A-1234567890"}
+            ```
+        """
+
+        response = super().create_analysis(project, fields, test=test)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def update_analysis(
+        self,
+        project: str,
+        analysis_id: str,
+        fields: Optional[Dict[str, Any]] = None,
+        test: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Update an analysis in a project.
+
+        Args:
+            project: Name of the project.
+            analysis_id: Unique identifier for the analysis.
+            fields: Object representing the analysis to be updated.
+            test: If `True`, runs the command as a test. Default: `False`
+
+        Returns:
+            Dict containing the Analysis ID of the updated analysis.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                result = client.update_analysis(
+                    project="project",
+                    analysis_id="A-1234567890",
+                    fields={
+                        "result": "The results were even more insane",
+                    },
+                )
+            ```
+            ```python
+            >>> result
+            {"analysis_id": "A-1234567890"}
+            ```
+        """
+
+        response = super().update_analysis(
+            project, analysis_id, fields=fields, test=test
+        )
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def delete_analysis(
+        self,
+        project: str,
+        analysis_id: str,
+    ) -> Dict[str, Any]:
+        """
+        Delete an analysis in a project.
+
+        Args:
+            project: Name of the project.
+            analysis_id: Unique identifier for the analysis.
+
+        Returns:
+            Dict containing the Analysis ID of the deleted analysis.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                result = client.delete_analysis(
+                    project="project",
+                    analysis_id="A-1234567890",
+                )
+            ```
+            ```python
+            >>> result
+            {"analysis_id": "A-1234567890"}
+            ```
+        """
+
+        response = super().delete_analysis(project, analysis_id)
+        response.raise_for_status()
+        return response.json()["data"]
 
     @classmethod
     @onyx_errors
