@@ -1063,7 +1063,7 @@ def filter(
 
 
 @app.command(rich_help_panel=Panels.ANALYSES.value)
-def filter_analyses(
+def filter_analysis(
     context: typer.Context,
     project: str = typer.Argument(...),
     field: Optional[List[str]] = typer.Option(
@@ -1102,7 +1102,7 @@ def filter_analyses(
     """
 
     filter_base(
-        context, project, field, include, exclude, summarise, format, "filter_analyses"
+        context, project, field, include, exclude, summarise, format, "filter_analysis"
     )
 
 
@@ -1248,6 +1248,32 @@ def identify(
         handle_error(e)
 
 
+def create_base(
+    context: typer.Context,
+    project: str,
+    field: Optional[List[str]],
+    test: bool,
+    method: str,
+):
+    try:
+        api = setup_onyx_api(context.obj)
+
+        if field:
+            fields = parse_fields_option_single(field)
+        else:
+            fields = {}
+
+        record = getattr(api.client, method)(
+            project,
+            fields=fields,
+            test=test,
+        )
+
+        typer.echo(json_dump_pretty(record))
+    except Exception as e:
+        handle_error(e)
+
+
 @app.command(rich_help_panel=Panels.RECORDS.value)
 def create(
     context: typer.Context,
@@ -1270,6 +1296,42 @@ def create(
     Create a record in a project.
     """
 
+    create_base(context, project, field, test, "create")
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def create_analysis(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    field: Optional[List[str]] = typer.Option(
+        None,
+        "-f",
+        "--field",
+        help=HelpText.CREATE_FIELD.value,
+    ),
+    test: bool = typer.Option(
+        False,
+        "-t",
+        "--test",
+        show_default="False",
+        help=HelpText.TEST.value,
+    ),
+):
+    """
+    Create an analysis in a project.
+    """
+
+    create_base(context, project, field, test, "create_analysis")
+
+
+def update_base(
+    context: typer.Context,
+    project: str,
+    climb_id: str,
+    field: Optional[List[str]],
+    test: bool,
+    method: str,
+):
     try:
         api = setup_onyx_api(context.obj)
 
@@ -1278,8 +1340,9 @@ def create(
         else:
             fields = {}
 
-        record = api.client.create(
+        record = getattr(api.client, method)(
             project,
+            climb_id,
             fields=fields,
             test=test,
         )
@@ -1312,24 +1375,52 @@ def update(
     Update a record in a project.
     """
 
-    try:
-        api = setup_onyx_api(context.obj)
+    update_base(context, project, climb_id, field, test, "update")
 
-        if field:
-            fields = parse_fields_option_single(field)
-        else:
-            fields = {}
 
-        record = api.client.update(
-            project,
-            climb_id,
-            fields=fields,
-            test=test,
-        )
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def update_analysis(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    analysis_id: str = typer.Argument(...),
+    field: Optional[List[str]] = typer.Option(
+        None,
+        "-f",
+        "--field",
+        help=HelpText.UPDATE_FIELD.value,
+    ),
+    test: bool = typer.Option(
+        False,
+        "-t",
+        "--test",
+        show_default="False",
+        help=HelpText.TEST.value,
+    ),
+):
+    """
+    Update an analysis in a project.
+    """
 
-        typer.echo(json_dump_pretty(record))
-    except Exception as e:
-        handle_error(e)
+    update_base(context, project, analysis_id, field, test, "update_analysis")
+
+
+def delete_base(
+    context: typer.Context,
+    project: str,
+    climb_id: str,
+    force: bool,
+    method: str,
+):
+    if force:
+        try:
+            api = setup_onyx_api(context.obj)
+            record = getattr(api.client, method)(project, climb_id)
+
+            typer.echo(json_dump_pretty(record))
+        except Exception as e:
+            handle_error(e)
+    else:
+        print("Operation cancelled.")
 
 
 @app.command(rich_help_panel=Panels.RECORDS.value)
@@ -1349,16 +1440,27 @@ def delete(
     Delete a record in a project.
     """
 
-    if force:
-        try:
-            api = setup_onyx_api(context.obj)
-            record = api.client.delete(project, climb_id)
+    delete_base(context, project, climb_id, force, "delete")
 
-            typer.echo(json_dump_pretty(record))
-        except Exception as e:
-            handle_error(e)
-    else:
-        print("Operation cancelled.")
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def delete_analysis(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    analysis_id: str = typer.Argument(...),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        show_default="False",
+        prompt="This analysis will be permanently deleted. Are you sure you want to do this?",
+        help=HelpText.FORCE.value,
+    ),
+):
+    """
+    Delete an analysis in a project.
+    """
+
+    delete_base(context, project, analysis_id, force, "delete_analysis")
 
 
 @app.command(rich_help_panel="Accounts")

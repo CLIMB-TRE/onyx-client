@@ -374,6 +374,55 @@ class OnyxClient(OnyxClientBase):
         response.raise_for_status()
         return response.json()["data"]
 
+    def _handle_get(
+        self,
+        project: str,
+        object_name: str,
+        get_method_name: str,
+        filter_method_name: str,
+        id_field: str,
+        id_value: Optional[str] = None,
+        fields: Optional[Dict[str, Any]] = None,
+        include: Union[List[str], str, None] = None,
+        exclude: Union[List[str], str, None] = None,
+    ) -> Dict[str, Any]:
+        if id_value and fields:
+            raise OnyxClientError(f"Cannot provide both '{id_field}' and 'fields'.")
+
+        if not (id_value or fields):
+            raise OnyxClientError(f"Must provide either '{id_field}' or 'fields'.")
+
+        if not id_value:
+            responses = getattr(super(), filter_method_name)(
+                project,
+                fields=fields,
+                include=[id_field],
+            )
+            response = next(responses, None)
+            if response is None:
+                raise OnyxClientError(
+                    f"Expected one {object_name} to be returned but received no response."
+                )
+
+            response.raise_for_status()
+            count = len(response.json()["data"])
+            if count != 1:
+                raise OnyxClientError(
+                    f"Expected one {object_name} to be returned but received: {count}"
+                )
+            id_value = response.json()["data"][0][id_field]
+
+        response = getattr(super(), get_method_name)(
+            **{
+                "project": project,
+                id_field: id_value,
+                "include": include,
+                "exclude": exclude,
+            }
+        )
+        response.raise_for_status()
+        return response.json()["data"]
+
     @onyx_errors
     def get(
         self,
@@ -489,42 +538,17 @@ class OnyxClient(OnyxClientBase):
             - Including/excluding fields to reduce the size of the returned data can improve performance.
         """
 
-        if climb_id and fields:
-            raise OnyxClientError("Cannot provide both 'climb_id' and 'fields'.")
-
-        if not (climb_id or fields):
-            raise OnyxClientError("Must provide either 'climb_id' or 'fields'.")
-
-        if climb_id:
-            response = super().get(
-                project,
-                climb_id,
-                include=include,
-                exclude=exclude,
-            )
-            response.raise_for_status()
-            return response.json()["data"]
-        else:
-            responses = super().filter(
-                project,
-                fields=fields,
-                include=include,
-                exclude=exclude,
-            )
-            response = next(responses, None)
-            if response is None:
-                raise OnyxClientError(
-                    f"Expected one record to be returned but received no response."
-                )
-
-            response.raise_for_status()
-            count = len(response.json()["data"])
-            if count != 1:
-                raise OnyxClientError(
-                    f"Expected one record to be returned but received: {count}"
-                )
-
-            return response.json()["data"][0]
+        return self._handle_get(
+            project=project,
+            object_name="record",
+            get_method_name="get",
+            filter_method_name="filter",
+            id_field="climb_id",
+            id_value=climb_id,
+            fields=fields,
+            include=include,
+            exclude=exclude,
+        )
 
     @onyx_errors
     def filter(
@@ -1420,46 +1444,20 @@ class OnyxClient(OnyxClientBase):
             ```
         """
 
-        # TODO: Copy shared logic into a shared method
-        if analysis_id and fields:
-            raise OnyxClientError("Cannot provide both 'analysis_id' and 'fields'.")
-
-        if not (analysis_id or fields):
-            raise OnyxClientError("Must provide either 'analysis_id' or 'fields'.")
-
-        if analysis_id:
-            response = super().get_analysis(
-                project,
-                analysis_id,
-                include=include,
-                exclude=exclude,
-            )
-            response.raise_for_status()
-            return response.json()["data"]
-        else:
-            responses = super().filter_analyses(
-                project,
-                fields=fields,
-                include=include,
-                exclude=exclude,
-            )
-            response = next(responses, None)
-            if response is None:
-                raise OnyxClientError(
-                    f"Expected one analysis to be returned but received no response."
-                )
-
-            response.raise_for_status()
-            count = len(response.json()["data"])
-            if count != 1:
-                raise OnyxClientError(
-                    f"Expected one analysis to be returned but received: {count}"
-                )
-
-            return response.json()["data"][0]
+        return self._handle_get(
+            project=project,
+            object_name="analysis",
+            get_method_name="get_analysis",
+            filter_method_name="filter_analysis",
+            id_field="analysis_id",
+            id_value=analysis_id,
+            fields=fields,
+            include=include,
+            exclude=exclude,
+        )
 
     @onyx_errors
-    def filter_analyses(
+    def filter_analysis(
         self,
         project: str,
         fields: Dict[str, Any] | None = None,
@@ -1495,7 +1493,7 @@ class OnyxClient(OnyxClientBase):
 
             with OnyxClient(config) as client:
                 analyses = list(
-                    client.filter_analyses(
+                    client.filter_analysis(
                         project="project",
                         published_date__range=["2023-01-01", "2023-01-02"],
                     )
@@ -1523,7 +1521,7 @@ class OnyxClient(OnyxClientBase):
             - See the documentation for the `filter` method for more information on filtering records, as this also applies to analyses.
         """
 
-        responses = super().filter_analyses(
+        responses = super().filter_analysis(
             project,
             fields=fields,
             include=include,

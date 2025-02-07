@@ -495,7 +495,7 @@ class OnyxClientBase:
             endpoint="analysis.get",
         )
 
-    def filter_analyses(
+    def filter_analysis(
         self,
         project: str,
         fields: Optional[Dict[str, Any]] = None,
