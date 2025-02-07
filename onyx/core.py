@@ -1,4 +1,3 @@
-import posixpath
 import csv
 import inspect
 import requests
@@ -12,362 +11,11 @@ from .exceptions import (
     OnyxRequestError,
     OnyxServerError,
 )
+from .endpoints import OnyxEndpoint
 
 
 class OnyxClientBase:
     __slots__ = "config", "_request_handler", "_session"
-    ENDPOINTS = {
-        "projects": lambda domain: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects/",
-            ),
-            domain=domain,
-        ),
-        "types": lambda domain: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects/types/",
-            ),
-            domain=domain,
-        ),
-        "lookups": lambda domain: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects/lookups/",
-            ),
-            domain=domain,
-        ),
-        "fields": lambda domain, project: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "fields/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "choices": lambda domain, project, field: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "choices",
-                str(field),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            field=field,
-        ),
-        "get": lambda domain, project, climb_id: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "filter": lambda domain, project: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "query": lambda domain, project: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "query/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "history": lambda domain, project, climb_id: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "history",
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "identify": lambda domain, project, field: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "identify",
-                str(field),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            field=field,
-        ),
-        "create": lambda domain, project: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "create.test": lambda domain, project: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "test/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "update": lambda domain, project, climb_id: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "update.test": lambda domain, project, climb_id: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "test",
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "delete": lambda domain, project, climb_id: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                str(climb_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            climb_id=climb_id,
-        ),
-        "analysis.fields": lambda domain, project: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "analysis/fields/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "analysis.choices": lambda domain, project, field: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "analysis/choices",
-                str(field),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            field=field,
-        ),
-        "analysis.get": lambda domain, project, analysis_id: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "analysis",
-                str(analysis_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            analysis_id=analysis_id,
-        ),
-        "analysis.filter": lambda domain, project: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "analysis/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "analysis.history": lambda domain, project, analysis_id: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "analysis/history",
-                str(analysis_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            analysis_id=analysis_id,
-        ),
-        "analysis.create": lambda domain, project: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "analysis/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "analysis.create.test": lambda domain, project: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "analysis/test/",
-            ),
-            domain=domain,
-            project=project,
-        ),
-        "analysis.update": lambda domain, project, analysis_id: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "analysis",
-                str(analysis_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            analysis_id=analysis_id,
-        ),
-        "analysis.update.test": lambda domain, project, analysis_id: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "analysis/test",
-                str(analysis_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            analysis_id=analysis_id,
-        ),
-        "analysis.delete": lambda domain, project, analysis_id: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "projects",
-                str(project),
-                "analysis",
-                str(analysis_id),
-                "",
-            ),
-            domain=domain,
-            project=project,
-            analysis_id=analysis_id,
-        ),
-        "register": lambda domain: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/register/",
-            ),
-            domain=domain,
-        ),
-        "login": lambda domain: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/login/",
-            ),
-            domain=domain,
-        ),
-        "logout": lambda domain: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/logout/",
-            ),
-            domain=domain,
-        ),
-        "logoutall": lambda domain: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/logoutall/",
-            ),
-            domain=domain,
-        ),
-        "profile": lambda domain: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/profile/",
-            ),
-            domain=domain,
-        ),
-        "activity": lambda domain: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/activity/",
-            ),
-            domain=domain,
-        ),
-        "waiting": lambda domain: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/waiting/",
-            ),
-            domain=domain,
-        ),
-        "approve": lambda domain, username: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/approve",
-                str(username),
-                "",
-            ),
-            domain=domain,
-            username=username,
-        ),
-        "siteusers": lambda domain: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/site/",
-            ),
-            domain=domain,
-        ),
-        "allusers": lambda domain: OnyxClientBase._handle_endpoint(
-            lambda: posixpath.join(
-                str(domain),
-                "accounts/all/",
-            ),
-            domain=domain,
-        ),
-    }
 
     def __init__(self, config: OnyxConfig):
         self.config = config
@@ -383,44 +31,6 @@ class OnyxClientBase:
         if self._session:
             self._session.close()
         self._request_handler = requests.request
-
-    @classmethod
-    def _handle_endpoint(cls, endpoint, **kwargs):
-        for name, val in kwargs.items():
-            if val is None or not str(val).strip():
-                raise OnyxClientError(f"Argument '{name}' was not provided.")
-
-            val = str(val).strip()
-
-            if name != "domain":
-                for char in "/?":
-                    if char in val:
-                        raise OnyxClientError(
-                            f"Argument '{name}' contains invalid character: '{char}'."
-                        )
-
-                # Crude but effective prevention of unexpectedly calling other endpoints
-                # Its not the end of the world if that did happen, but to the user it would be quite confusing
-                clashes = {
-                    "project": ["types", "lookups"],
-                    "climb_id": [
-                        "test",
-                        "query",
-                        "fields",
-                        "choices",
-                        "history",
-                        "identify",
-                    ],
-                }
-
-                if name in clashes:
-                    for clash in clashes[name]:
-                        if val == clash:
-                            raise OnyxClientError(
-                                f"Argument '{name}' cannot have value '{val}'. This creates a URL that resolves to a different endpoint."
-                            )
-
-        return endpoint()
 
     def _request(self, method: str, retries: int = 3, **kwargs) -> requests.Response:
         if not retries:
@@ -513,13 +123,9 @@ class OnyxClientBase:
                         raise OnyxClientError(
                             "Record requires a 'climb_id' for upload."
                         )
-                    url = OnyxClientBase.ENDPOINTS[endpoint](
-                        self.config.domain, project, climb_id
-                    )
+                    url = OnyxEndpoint[endpoint](self.config.domain, project, climb_id)
                 else:
-                    url = OnyxClientBase.ENDPOINTS[endpoint](
-                        self.config.domain, project
-                    )
+                    url = OnyxEndpoint[endpoint](self.config.domain, project)
 
                 response = self._request(
                     method=method,
@@ -550,28 +156,28 @@ class OnyxClientBase:
     def projects(self) -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClientBase.ENDPOINTS["projects"](self.config.domain),
+            url=OnyxEndpoint["projects"](self.config.domain),
         )
         return response
 
     def types(self) -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClientBase.ENDPOINTS["types"](self.config.domain),
+            url=OnyxEndpoint["types"](self.config.domain),
         )
         return response
 
     def lookups(self) -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClientBase.ENDPOINTS["lookups"](self.config.domain),
+            url=OnyxEndpoint["lookups"](self.config.domain),
         )
         return response
 
     def fields(self, project: str, endpoint: str = "fields") -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClientBase.ENDPOINTS[endpoint](self.config.domain, project),
+            url=OnyxEndpoint[endpoint](self.config.domain, project),
         )
         return response
 
@@ -580,7 +186,7 @@ class OnyxClientBase:
     ) -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClientBase.ENDPOINTS[endpoint](self.config.domain, project, field),
+            url=OnyxEndpoint[endpoint](self.config.domain, project, field),
         )
         return response
 
@@ -594,9 +200,7 @@ class OnyxClientBase:
     ) -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClientBase.ENDPOINTS[endpoint](
-                self.config.domain, project, climb_id
-            ),
+            url=OnyxEndpoint[endpoint](self.config.domain, project, climb_id),
             params={"include": include, "exclude": exclude},
         )
         return response
@@ -631,7 +235,7 @@ class OnyxClientBase:
             "summarise": summarise,
         }
 
-        _next = OnyxClientBase.ENDPOINTS[endpoint](self.config.domain, project)
+        _next = OnyxEndpoint[endpoint](self.config.domain, project)
 
         while _next is not None:
             response = self._request(
@@ -671,7 +275,7 @@ class OnyxClientBase:
             "exclude": exclude,
             "summarise": summarise,
         }
-        _next = OnyxClientBase.ENDPOINTS[endpoint](self.config.domain, project)
+        _next = OnyxEndpoint[endpoint](self.config.domain, project)
 
         while _next is not None:
             response = self._request(
@@ -732,9 +336,7 @@ class OnyxClientBase:
     ) -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClientBase.ENDPOINTS[endpoint](
-                self.config.domain, project, climb_id
-            ),
+            url=OnyxEndpoint[endpoint](self.config.domain, project, climb_id),
         )
         return response
 
@@ -752,7 +354,7 @@ class OnyxClientBase:
 
         response = self._request(
             method="post",
-            url=OnyxClientBase.ENDPOINTS[endpoint](self.config.domain, project, field),
+            url=OnyxEndpoint[endpoint](self.config.domain, project, field),
             json=identify_json,
         )
         return response
@@ -769,7 +371,7 @@ class OnyxClientBase:
 
         response = self._request(
             method="post",
-            url=OnyxClientBase.ENDPOINTS[endpoint](self.config.domain, project),
+            url=OnyxEndpoint[endpoint](self.config.domain, project),
             json=fields,
         )
         return response
@@ -787,9 +389,7 @@ class OnyxClientBase:
 
         response = self._request(
             method="patch",
-            url=OnyxClientBase.ENDPOINTS[endpoint](
-                self.config.domain, project, climb_id
-            ),
+            url=OnyxEndpoint[endpoint](self.config.domain, project, climb_id),
             json=fields,
         )
         return response
@@ -802,9 +402,7 @@ class OnyxClientBase:
     ) -> requests.Response:
         response = self._request(
             method="delete",
-            url=OnyxClientBase.ENDPOINTS[endpoint](
-                self.config.domain, project, climb_id
-            ),
+            url=OnyxEndpoint[endpoint](self.config.domain, project, climb_id),
         )
         return response
 
@@ -982,7 +580,7 @@ class OnyxClientBase:
         password: str,
     ) -> requests.Response:
         response = requests.post(
-            OnyxClientBase.ENDPOINTS["register"](domain),
+            OnyxEndpoint["register"](domain),
             json={
                 "first_name": first_name,
                 "last_name": last_name,
@@ -1002,7 +600,7 @@ class OnyxClientBase:
         response = self._request_handler(
             "post",
             auth=credentials,
-            url=OnyxClientBase.ENDPOINTS["login"](self.config.domain),
+            url=OnyxEndpoint["login"](self.config.domain),
         )
         if response.ok:
             self.config.token = response.json()["data"]["token"]
@@ -1012,7 +610,7 @@ class OnyxClientBase:
     def logout(self) -> requests.Response:
         response = self._request(
             method="post",
-            url=OnyxClientBase.ENDPOINTS["logout"](self.config.domain),
+            url=OnyxEndpoint["logout"](self.config.domain),
         )
         if response.ok:
             self.config.token = None
@@ -1022,7 +620,7 @@ class OnyxClientBase:
     def logoutall(self) -> requests.Response:
         response = self._request(
             method="post",
-            url=OnyxClientBase.ENDPOINTS["logoutall"](self.config.domain),
+            url=OnyxEndpoint["logoutall"](self.config.domain),
         )
         if response.ok:
             self.config.token = None
@@ -1032,42 +630,42 @@ class OnyxClientBase:
     def profile(self) -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClientBase.ENDPOINTS["profile"](self.config.domain),
+            url=OnyxEndpoint["profile"](self.config.domain),
         )
         return response
 
     def activity(self) -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClientBase.ENDPOINTS["activity"](self.config.domain),
+            url=OnyxEndpoint["activity"](self.config.domain),
         )
         return response
 
     def approve(self, username: str) -> requests.Response:
         response = self._request(
             method="patch",
-            url=OnyxClientBase.ENDPOINTS["approve"](self.config.domain, username),
+            url=OnyxEndpoint["approve"](self.config.domain, username),
         )
         return response
 
     def waiting(self) -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClientBase.ENDPOINTS["waiting"](self.config.domain),
+            url=OnyxEndpoint["waiting"](self.config.domain),
         )
         return response
 
     def site_users(self) -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClientBase.ENDPOINTS["siteusers"](self.config.domain),
+            url=OnyxEndpoint["siteusers"](self.config.domain),
         )
         return response
 
     def all_users(self) -> requests.Response:
         response = self._request(
             method="get",
-            url=OnyxClientBase.ENDPOINTS["allusers"](self.config.domain),
+            url=OnyxEndpoint["allusers"](self.config.domain),
         )
         return response
 

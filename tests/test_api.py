@@ -2,7 +2,7 @@ import io
 import requests
 import pytest
 from unittest import TestCase, mock
-from onyx import OnyxConfig, OnyxClient, exceptions, OnyxField
+from onyx import OnyxConfig, OnyxClient, exceptions, OnyxField, OnyxEndpoint
 
 
 DOMAIN = "https://onyx.domain"
@@ -168,8 +168,8 @@ GET_DATA = {
         "run_name": "run-456",
     },
 }
-FILTER_PAGE_1_URL = f"{OnyxClient.ENDPOINTS['filter'](DOMAIN, PROJECT)}?cursor=page_1"
-FILTER_PAGE_2_URL = f"{OnyxClient.ENDPOINTS['filter'](DOMAIN, PROJECT)}?cursor=page_2"
+FILTER_PAGE_1_URL = f"{OnyxEndpoint['filter'](DOMAIN, PROJECT)}?cursor=page_1"
+FILTER_PAGE_2_URL = f"{OnyxEndpoint['filter'](DOMAIN, PROJECT)}?cursor=page_2"
 FILTER_PAGE_1_DATA = {
     "status": "success",
     "code": 200,
@@ -308,8 +308,8 @@ FILTER_ERROR_CAUSING_PROJECT_DATA = {
         "detail": "Internal server error. Deary me...",
     },
 }
-QUERY_PAGE_1_URL = f"{OnyxClient.ENDPOINTS['query'](DOMAIN, PROJECT)}?cursor=page_1"
-QUERY_PAGE_2_URL = f"{OnyxClient.ENDPOINTS['query'](DOMAIN, PROJECT)}?cursor=page_2"
+QUERY_PAGE_1_URL = f"{OnyxEndpoint['query'](DOMAIN, PROJECT)}?cursor=page_1"
+QUERY_PAGE_2_URL = f"{OnyxEndpoint['query'](DOMAIN, PROJECT)}?cursor=page_2"
 QUERY_PAGE_1_DATA = {
     "status": "success",
     "code": 200,
@@ -661,7 +661,7 @@ def mock_request(
     if url.startswith(BAD_DOMAIN):
         raise requests.ConnectionError
 
-    if method == "post" and url == OnyxClient.ENDPOINTS["login"](DOMAIN):
+    if method == "post" and url == OnyxEndpoint["login"](DOMAIN):
         if auth == (USERNAME, PASSWORD):
             return MockResponse(LOGIN_DATA)
         else:
@@ -671,19 +671,16 @@ def mock_request(
         return MockResponse(INVALID_AUTH_DATA)
 
     if method == "post":
-        if (
-            url == OnyxClient.ENDPOINTS["create"](DOMAIN, PROJECT)
-            and json == CREATE_FIELDS
-        ):
+        if url == OnyxEndpoint["create"](DOMAIN, PROJECT) and json == CREATE_FIELDS:
             return MockResponse(CREATE_DATA)
 
         elif (
-            url == OnyxClient.ENDPOINTS["create.test"](DOMAIN, PROJECT)
+            url == OnyxEndpoint["create.test"](DOMAIN, PROJECT)
             and json == CREATE_FIELDS
         ):
             return MockResponse(TESTCREATE_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["query"](DOMAIN, PROJECT):
+        elif url == OnyxEndpoint["query"](DOMAIN, PROJECT):
             if json == QUERY_SPECIFIC_BODY:
                 if params.get("include") == INCLUDE_FIELDS:
                     return MockResponse(FILTER_SPECIFIC_INCLUDE_DATA)
@@ -697,13 +694,13 @@ def mock_request(
         elif url == QUERY_PAGE_2_URL:
             return MockResponse(QUERY_PAGE_2_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["logout"](DOMAIN):
+        elif url == OnyxEndpoint["logout"](DOMAIN):
             return MockResponse(LOGOUT_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["logoutall"](DOMAIN):
+        elif url == OnyxEndpoint["logoutall"](DOMAIN):
             return MockResponse(LOGOUTALL_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["identify"](DOMAIN, PROJECT, IDENTIFY_FIELD):
+        elif url == OnyxEndpoint["identify"](DOMAIN, PROJECT, IDENTIFY_FIELD):
             if json == IDENTIFY_FIELDS:
                 return MockResponse(IDENTIFY_DATA)
 
@@ -711,31 +708,31 @@ def mock_request(
                 return MockResponse(IDENTIFY_OTHER_SITE_DATA)
 
     elif method == "get":
-        if url == OnyxClient.ENDPOINTS["projects"](DOMAIN):
+        if url == OnyxEndpoint["projects"](DOMAIN):
             return MockResponse(PROJECT_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["types"](DOMAIN):
+        elif url == OnyxEndpoint["types"](DOMAIN):
             return MockResponse(TYPES_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["lookups"](DOMAIN):
+        elif url == OnyxEndpoint["lookups"](DOMAIN):
             return MockResponse(LOOKUPS_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["fields"](DOMAIN, PROJECT):
+        elif url == OnyxEndpoint["fields"](DOMAIN, PROJECT):
             return MockResponse(FIELDS_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["fields"](DOMAIN, NOT_PROJECT):
+        elif url == OnyxEndpoint["fields"](DOMAIN, NOT_PROJECT):
             return MockResponse(FIELDS_NOT_PROJECT_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["fields"](DOMAIN, ERROR_CAUSING_PROJECT):
+        elif url == OnyxEndpoint["fields"](DOMAIN, ERROR_CAUSING_PROJECT):
             return MockResponse(FIELDS_ERROR_CAUSING_PROJECT_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["choices"](DOMAIN, PROJECT, CHOICE_FIELD):
+        elif url == OnyxEndpoint["choices"](DOMAIN, PROJECT, CHOICE_FIELD):
             return MockResponse(CHOICES_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["get"](DOMAIN, PROJECT, CLIMB_ID):
+        elif url == OnyxEndpoint["get"](DOMAIN, PROJECT, CLIMB_ID):
             return MockResponse(GET_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["filter"](DOMAIN, PROJECT):
+        elif url == OnyxEndpoint["filter"](DOMAIN, PROJECT):
             if params.get(UNKNOWN_FIELD):
                 return MockResponse(FILTER_UNKNOWN_FIELD_DATA)
             elif params.get(NONE_FIELD) == "":
@@ -757,48 +754,48 @@ def mock_request(
             else:
                 return MockResponse(FILTER_PAGE_1_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["filter"](DOMAIN, ERROR_CAUSING_PROJECT):
+        elif url == OnyxEndpoint["filter"](DOMAIN, ERROR_CAUSING_PROJECT):
             return MockResponse(FILTER_ERROR_CAUSING_PROJECT_DATA)
 
         elif url == FILTER_PAGE_2_URL:
             return MockResponse(FILTER_PAGE_2_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["history"](DOMAIN, PROJECT, CLIMB_ID):
+        elif url == OnyxEndpoint["history"](DOMAIN, PROJECT, CLIMB_ID):
             return MockResponse(HISTORY_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["profile"](DOMAIN):
+        elif url == OnyxEndpoint["profile"](DOMAIN):
             return MockResponse(PROFILE_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["activity"](DOMAIN):
+        elif url == OnyxEndpoint["activity"](DOMAIN):
             return MockResponse(ACTIVITY_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["waiting"](DOMAIN):
+        elif url == OnyxEndpoint["waiting"](DOMAIN):
             return MockResponse(WAITING_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["siteusers"](DOMAIN):
+        elif url == OnyxEndpoint["siteusers"](DOMAIN):
             return MockResponse(SITE_USERS_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["allusers"](DOMAIN):
+        elif url == OnyxEndpoint["allusers"](DOMAIN):
             return MockResponse(ALL_USERS_DATA)
 
     elif method == "patch":
         if (
-            url == OnyxClient.ENDPOINTS["update"](DOMAIN, PROJECT, CLIMB_ID)
+            url == OnyxEndpoint["update"](DOMAIN, PROJECT, CLIMB_ID)
             and json == UPDATE_FIELDS
         ):
             return MockResponse(UPDATE_DATA)
 
         elif (
-            url == OnyxClient.ENDPOINTS["update.test"](DOMAIN, PROJECT, CLIMB_ID)
+            url == OnyxEndpoint["update.test"](DOMAIN, PROJECT, CLIMB_ID)
             and json == UPDATE_FIELDS
         ):
             return MockResponse(TESTUPDATE_DATA)
 
-        elif url == OnyxClient.ENDPOINTS["approve"](DOMAIN, OTHER_USERNAME):
+        elif url == OnyxEndpoint["approve"](DOMAIN, OTHER_USERNAME):
             return MockResponse(APPROVE_DATA)
 
     elif method == "delete":
-        if url == OnyxClient.ENDPOINTS["delete"](DOMAIN, PROJECT, CLIMB_ID):
+        if url == OnyxEndpoint["delete"](DOMAIN, PROJECT, CLIMB_ID):
             return MockResponse(DELETE_DATA)
 
     return MockResponse(
@@ -814,7 +811,7 @@ def mock_register_post(url=None, json=None):
     if not json:
         json = {}
 
-    if url == OnyxClient.ENDPOINTS["register"](DOMAIN) and all(
+    if url == OnyxEndpoint["register"](DOMAIN) and all(
         json.get(field) == value for field, value in REGISTER_FIELDS.items()
     ):
         return MockResponse(REGISTER_DATA)
