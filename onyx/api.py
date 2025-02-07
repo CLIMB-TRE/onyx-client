@@ -1403,8 +1403,8 @@ class OnyxClient(OnyxClientBase):
         project: str,
         analysis_id: str,
         fields: Optional[Dict[str, Any]] = None,
-        include: List[str] | str | None = None,
-        exclude: List[str] | str | None = None,
+        include: Union[List[str], str, None] = None,
+        exclude: Union[List[str], str, None] = None,
     ) -> Dict[str, Any]:
         """
         Get an analysis from a project.
@@ -1460,10 +1460,10 @@ class OnyxClient(OnyxClientBase):
     def filter_analysis(
         self,
         project: str,
-        fields: Dict[str, Any] | None = None,
-        include: List[str] | str | None = None,
-        exclude: List[str] | str | None = None,
-        summarise: List[str] | str | None = None,
+        fields: Union[Dict[str, Any], None] = None,
+        include: Union[List[str], str, None] = None,
+        exclude: Union[List[str], str, None] = None,
+        summarise: Union[List[str], str, None] = None,
         **kwargs: Any,
     ) -> Generator[Dict[str, Any], Any, None]:
         """
