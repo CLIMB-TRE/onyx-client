@@ -5,6 +5,7 @@ from unittest import TestCase, mock
 from onyx import OnyxConfig, OnyxClient, exceptions, OnyxField, OnyxEndpoint
 
 
+# TODO: Some of these names 'e.g. ..._SPECIFIC_...' make no sense
 DOMAIN = "https://onyx.domain"
 BAD_DOMAIN = "not-onyx"
 TOKEN = "token"
@@ -168,6 +169,13 @@ GET_DATA = {
         "run_name": "run-456",
     },
 }
+SINGLE_ID_FILTER_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": [
+        {"climb_id": CLIMB_ID},
+    ],
+}
 FILTER_PAGE_1_URL = f"{OnyxEndpoint['filter'](DOMAIN, PROJECT)}?cursor=page_1"
 FILTER_PAGE_2_URL = f"{OnyxEndpoint['filter'](DOMAIN, PROJECT)}?cursor=page_2"
 FILTER_PAGE_1_DATA = {
@@ -240,6 +248,16 @@ FILTER_SPECIFIC_DATA = {
     ],
 }
 INCLUDE_FIELDS = ["climb_id", "published_date"]
+GET_SPECIFIC_INCLUDE_DATA = {
+    "status": "success",
+    "code": 200,
+    "next": None,
+    "previous": None,
+    "data": {
+        "climb_id": CLIMB_ID,
+        "published_date": "2023-09-18",
+    },
+}
 FILTER_SPECIFIC_INCLUDE_DATA = {
     "status": "success",
     "code": 200,
@@ -253,6 +271,17 @@ FILTER_SPECIFIC_INCLUDE_DATA = {
     ],
 }
 EXCLUDE_FIELDS = ["run_name"]
+GET_SPECIFIC_EXCLUDE_DATA = {
+    "status": "success",
+    "code": 200,
+    "next": None,
+    "previous": None,
+    "data": {
+        "climb_id": CLIMB_ID,
+        "published_date": "2023-09-18",
+        "sample_id": "sample-abc",
+    },
+}
 FILTER_SPECIFIC_EXCLUDE_DATA = {
     "status": "success",
     "code": 200,
@@ -730,7 +759,12 @@ def mock_request(
             return MockResponse(CHOICES_DATA)
 
         elif url == OnyxEndpoint["get"](DOMAIN, PROJECT, CLIMB_ID):
-            return MockResponse(GET_DATA)
+            if params.get("include") == INCLUDE_FIELDS:
+                return MockResponse(GET_SPECIFIC_INCLUDE_DATA)
+            elif params.get("exclude") == EXCLUDE_FIELDS:
+                return MockResponse(GET_SPECIFIC_EXCLUDE_DATA)
+            else:
+                return MockResponse(GET_DATA)
 
         elif url == OnyxEndpoint["filter"](DOMAIN, PROJECT):
             if params.get(UNKNOWN_FIELD):
@@ -745,7 +779,9 @@ def mock_request(
                 and params.get("published_date__range")
                 == ",".join(PUBLISHED_DATE_RANGE)
             ):
-                if params.get("include") == INCLUDE_FIELDS:
+                if params.get("include") == ["climb_id"]:
+                    return MockResponse(SINGLE_ID_FILTER_DATA)
+                elif params.get("include") == INCLUDE_FIELDS:
                     return MockResponse(FILTER_SPECIFIC_INCLUDE_DATA)
                 elif params.get("exclude") == EXCLUDE_FIELDS:
                     return MockResponse(FILTER_SPECIFIC_EXCLUDE_DATA)
@@ -976,7 +1012,7 @@ class OnyxClientTestCase(TestCase):
                     "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
                 },
             ),
-            FILTER_SPECIFIC_DATA["data"][0],
+            GET_DATA["data"],
         )
         self.assertEqual(
             self.client.get(
@@ -988,7 +1024,7 @@ class OnyxClientTestCase(TestCase):
                 },
                 include=INCLUDE_FIELDS,
             ),
-            FILTER_SPECIFIC_INCLUDE_DATA["data"][0],
+            GET_SPECIFIC_INCLUDE_DATA["data"],
         )
         self.assertEqual(
             self.client.get(
@@ -1000,7 +1036,7 @@ class OnyxClientTestCase(TestCase):
                 },
                 exclude=EXCLUDE_FIELDS,
             ),
-            FILTER_SPECIFIC_EXCLUDE_DATA["data"][0],
+            GET_SPECIFIC_EXCLUDE_DATA["data"],
         )
         self.assertEqual(self.config.token, TOKEN)
 
