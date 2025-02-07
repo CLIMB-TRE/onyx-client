@@ -1460,7 +1460,7 @@ class OnyxClient(OnyxClientBase):
     def filter_analysis(
         self,
         project: str,
-        fields: Union[Dict[str, Any], None] = None,
+        fields: Optional[Dict[str, Any]] = None,
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,
         summarise: Union[List[str], str, None] = None,
