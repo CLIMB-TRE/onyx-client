@@ -5,7 +5,6 @@ from unittest import TestCase, mock
 from onyx import OnyxConfig, OnyxClient, exceptions, OnyxField, OnyxEndpoint
 
 
-# TODO: Some of these names 'e.g. ..._SPECIFIC_...' make no sense
 DOMAIN = "https://onyx.domain"
 BAD_DOMAIN = "not-onyx"
 TOKEN = "token"
@@ -158,7 +157,13 @@ CHOICES_DATA = {
         }
     ],
 }
+SAMPLE_ID = "sample-abc"
+RUN_NAME = "run-def"
+INCLUDE_FIELDS = ["climb_id", "published_date"]
+EXCLUDE_FIELDS = ["run_name"]
+PUBLISHED_DATE_RANGE = ["2023-01-01", "2024-01-01"]
 CLIMB_ID = "C-0123456789"
+ANALYSIS_ID = "A-9876543210"
 GET_DATA = {
     "status": "success",
     "code": 200,
@@ -169,15 +174,80 @@ GET_DATA = {
         "run_name": "run-456",
     },
 }
-SINGLE_ID_FILTER_DATA = {
+GET_INCLUDE_DATA = {
+    "status": "success",
+    "code": 200,
+    "next": None,
+    "previous": None,
+    "data": {
+        "climb_id": CLIMB_ID,
+        "published_date": "2023-09-18",
+    },
+}
+GET_EXCLUDE_DATA = {
+    "status": "success",
+    "code": 200,
+    "next": None,
+    "previous": None,
+    "data": {
+        "climb_id": CLIMB_ID,
+        "published_date": "2023-09-18",
+        "sample_id": "sample-abc",
+    },
+}
+CLIMB_ID_FILTER_DATA = {
     "status": "success",
     "code": 200,
     "data": [
         {"climb_id": CLIMB_ID},
     ],
 }
+GET_ANALYSIS_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": {
+        "analysis_id": ANALYSIS_ID,
+        "published_date": "2023-09-18",
+        "sample_id": "sample-123",
+        "run_name": "run-456",
+    },
+}
+GET_ANALYSIS_INCLUDE_DATA = {
+    "status": "success",
+    "code": 200,
+    "next": None,
+    "previous": None,
+    "data": {
+        "analysis_id": ANALYSIS_ID,
+        "published_date": "2023-09-18",
+    },
+}
+GET_ANALYSIS_EXCLUDE_DATA = {
+    "status": "success",
+    "code": 200,
+    "next": None,
+    "previous": None,
+    "data": {
+        "analysis_id": ANALYSIS_ID,
+        "published_date": "2023-09-18",
+        "sample_id": "sample-abc",
+    },
+}
+ANALYSIS_ID_FILTER_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": [
+        {"analysis_id": ANALYSIS_ID},
+    ],
+}
 FILTER_PAGE_1_URL = f"{OnyxEndpoint['filter'](DOMAIN, PROJECT)}?cursor=page_1"
 FILTER_PAGE_2_URL = f"{OnyxEndpoint['filter'](DOMAIN, PROJECT)}?cursor=page_2"
+ANALYSIS_FILTER_PAGE_1_URL = (
+    f"{OnyxEndpoint['analysis.filter'](DOMAIN, PROJECT)}?cursor=page_1"
+)
+ANALYSIS_FILTER_PAGE_2_URL = (
+    f"{OnyxEndpoint['analysis.filter'](DOMAIN, PROJECT)}?cursor=page_2"
+)
 FILTER_PAGE_1_DATA = {
     "status": "success",
     "code": 200,
@@ -230,9 +300,6 @@ FILTER_PAGE_2_DATA = {
         },
     ],
 }
-SAMPLE_ID = "sample-abc"
-RUN_NAME = "run-def"
-PUBLISHED_DATE_RANGE = ["2023-01-01", "2024-01-01"]
 FILTER_SPECIFIC_DATA = {
     "status": "success",
     "code": 200,
@@ -247,17 +314,6 @@ FILTER_SPECIFIC_DATA = {
         },
     ],
 }
-INCLUDE_FIELDS = ["climb_id", "published_date"]
-GET_SPECIFIC_INCLUDE_DATA = {
-    "status": "success",
-    "code": 200,
-    "next": None,
-    "previous": None,
-    "data": {
-        "climb_id": CLIMB_ID,
-        "published_date": "2023-09-18",
-    },
-}
 FILTER_SPECIFIC_INCLUDE_DATA = {
     "status": "success",
     "code": 200,
@@ -269,18 +325,6 @@ FILTER_SPECIFIC_INCLUDE_DATA = {
             "published_date": "2023-09-18",
         },
     ],
-}
-EXCLUDE_FIELDS = ["run_name"]
-GET_SPECIFIC_EXCLUDE_DATA = {
-    "status": "success",
-    "code": 200,
-    "next": None,
-    "previous": None,
-    "data": {
-        "climb_id": CLIMB_ID,
-        "published_date": "2023-09-18",
-        "sample_id": "sample-abc",
-    },
 }
 FILTER_SPECIFIC_EXCLUDE_DATA = {
     "status": "success",
@@ -506,8 +550,8 @@ TESTUPDATE_DATA = {
         "climb_id": CLIMB_ID,
     },
 }
-CSV_DELETE_EMPTY_FILE = f"climb_id\n"
-TSV_DELETE_EMPTY_FILE = f"climb_id\n"
+CSV_DELETE_EMPTY_FILE = "climb_id\n"
+TSV_DELETE_EMPTY_FILE = "climb_id\n"
 CSV_DELETE_SINGLE_FILE = f"climb_id\n{CLIMB_ID}"
 TSV_DELETE_SINGLE_FILE = f"climb_id\n{CLIMB_ID}"
 CSV_DELETE_MULTI_FILE = f"climb_id\n{CLIMB_ID}\n{CLIMB_ID}"
@@ -645,6 +689,12 @@ CLIMB_ID_ENDPOINT_CLASHES = [
     "history",
     "identify",
 ]
+ANALYSIS_ID_ENDPOINT_CLASHES = [
+    "test",
+    "fields",
+    "choices",
+    "history",
+]
 
 
 class MockResponse:
@@ -700,13 +750,16 @@ def mock_request(
         return MockResponse(INVALID_AUTH_DATA)
 
     if method == "post":
-        if url == OnyxEndpoint["create"](DOMAIN, PROJECT) and json == CREATE_FIELDS:
+        if (
+            url == OnyxEndpoint["create"](DOMAIN, PROJECT)
+            or url == OnyxEndpoint["analysis.create"](DOMAIN, PROJECT)
+        ) and json == CREATE_FIELDS:
             return MockResponse(CREATE_DATA)
 
         elif (
             url == OnyxEndpoint["create.test"](DOMAIN, PROJECT)
-            and json == CREATE_FIELDS
-        ):
+            or url == OnyxEndpoint["analysis.create.test"](DOMAIN, PROJECT)
+        ) and json == CREATE_FIELDS:
             return MockResponse(TESTCREATE_DATA)
 
         elif url == OnyxEndpoint["query"](DOMAIN, PROJECT):
@@ -746,27 +799,45 @@ def mock_request(
         elif url == OnyxEndpoint["lookups"](DOMAIN):
             return MockResponse(LOOKUPS_DATA)
 
-        elif url == OnyxEndpoint["fields"](DOMAIN, PROJECT):
+        elif url == OnyxEndpoint["fields"](DOMAIN, PROJECT) or url == OnyxEndpoint[
+            "analysis.fields"
+        ](DOMAIN, PROJECT):
             return MockResponse(FIELDS_DATA)
 
-        elif url == OnyxEndpoint["fields"](DOMAIN, NOT_PROJECT):
+        elif url == OnyxEndpoint["fields"](DOMAIN, NOT_PROJECT) or url == OnyxEndpoint[
+            "analysis.fields"
+        ](DOMAIN, NOT_PROJECT):
             return MockResponse(FIELDS_NOT_PROJECT_DATA)
 
-        elif url == OnyxEndpoint["fields"](DOMAIN, ERROR_CAUSING_PROJECT):
+        elif url == OnyxEndpoint["fields"](
+            DOMAIN, ERROR_CAUSING_PROJECT
+        ) or url == OnyxEndpoint["analysis.fields"](DOMAIN, ERROR_CAUSING_PROJECT):
             return MockResponse(FIELDS_ERROR_CAUSING_PROJECT_DATA)
 
-        elif url == OnyxEndpoint["choices"](DOMAIN, PROJECT, CHOICE_FIELD):
+        elif url == OnyxEndpoint["choices"](
+            DOMAIN, PROJECT, CHOICE_FIELD
+        ) or url == OnyxEndpoint["analysis.choices"](DOMAIN, PROJECT, CHOICE_FIELD):
             return MockResponse(CHOICES_DATA)
 
         elif url == OnyxEndpoint["get"](DOMAIN, PROJECT, CLIMB_ID):
             if params.get("include") == INCLUDE_FIELDS:
-                return MockResponse(GET_SPECIFIC_INCLUDE_DATA)
+                return MockResponse(GET_INCLUDE_DATA)
             elif params.get("exclude") == EXCLUDE_FIELDS:
-                return MockResponse(GET_SPECIFIC_EXCLUDE_DATA)
+                return MockResponse(GET_EXCLUDE_DATA)
             else:
                 return MockResponse(GET_DATA)
 
-        elif url == OnyxEndpoint["filter"](DOMAIN, PROJECT):
+        elif url == OnyxEndpoint["analysis.get"](DOMAIN, PROJECT, ANALYSIS_ID):
+            if params.get("include") == INCLUDE_FIELDS:
+                return MockResponse(GET_ANALYSIS_INCLUDE_DATA)
+            elif params.get("exclude") == EXCLUDE_FIELDS:
+                return MockResponse(GET_ANALYSIS_EXCLUDE_DATA)
+            else:
+                return MockResponse(GET_ANALYSIS_DATA)
+
+        elif url == OnyxEndpoint["filter"](DOMAIN, PROJECT) or url == OnyxEndpoint[
+            "analysis.filter"
+        ](DOMAIN, PROJECT):
             if params.get(UNKNOWN_FIELD):
                 return MockResponse(FILTER_UNKNOWN_FIELD_DATA)
             elif params.get(NONE_FIELD) == "":
@@ -780,7 +851,9 @@ def mock_request(
                 == ",".join(PUBLISHED_DATE_RANGE)
             ):
                 if params.get("include") == ["climb_id"]:
-                    return MockResponse(SINGLE_ID_FILTER_DATA)
+                    return MockResponse(CLIMB_ID_FILTER_DATA)
+                elif params.get("include") == ["analysis_id"]:
+                    return MockResponse(ANALYSIS_ID_FILTER_DATA)
                 elif params.get("include") == INCLUDE_FIELDS:
                     return MockResponse(FILTER_SPECIFIC_INCLUDE_DATA)
                 elif params.get("exclude") == EXCLUDE_FIELDS:
@@ -790,13 +863,17 @@ def mock_request(
             else:
                 return MockResponse(FILTER_PAGE_1_DATA)
 
-        elif url == OnyxEndpoint["filter"](DOMAIN, ERROR_CAUSING_PROJECT):
+        elif url == OnyxEndpoint["filter"](
+            DOMAIN, ERROR_CAUSING_PROJECT
+        ) or url == OnyxEndpoint["analysis.filter"](DOMAIN, ERROR_CAUSING_PROJECT):
             return MockResponse(FILTER_ERROR_CAUSING_PROJECT_DATA)
 
-        elif url == FILTER_PAGE_2_URL:
+        elif url == FILTER_PAGE_2_URL or url == ANALYSIS_FILTER_PAGE_2_URL:
             return MockResponse(FILTER_PAGE_2_DATA)
 
-        elif url == OnyxEndpoint["history"](DOMAIN, PROJECT, CLIMB_ID):
+        elif url == OnyxEndpoint["history"](
+            DOMAIN, PROJECT, CLIMB_ID
+        ) or url == OnyxEndpoint["analysis.history"](DOMAIN, PROJECT, ANALYSIS_ID):
             return MockResponse(HISTORY_DATA)
 
         elif url == OnyxEndpoint["profile"](DOMAIN):
@@ -817,21 +894,23 @@ def mock_request(
     elif method == "patch":
         if (
             url == OnyxEndpoint["update"](DOMAIN, PROJECT, CLIMB_ID)
-            and json == UPDATE_FIELDS
-        ):
+            or url == OnyxEndpoint["analysis.update"](DOMAIN, PROJECT, ANALYSIS_ID)
+        ) and json == UPDATE_FIELDS:
             return MockResponse(UPDATE_DATA)
 
         elif (
             url == OnyxEndpoint["update.test"](DOMAIN, PROJECT, CLIMB_ID)
-            and json == UPDATE_FIELDS
-        ):
+            or url == OnyxEndpoint["analysis.update.test"](DOMAIN, PROJECT, ANALYSIS_ID)
+        ) and json == UPDATE_FIELDS:
             return MockResponse(TESTUPDATE_DATA)
 
         elif url == OnyxEndpoint["approve"](DOMAIN, OTHER_USERNAME):
             return MockResponse(APPROVE_DATA)
 
     elif method == "delete":
-        if url == OnyxEndpoint["delete"](DOMAIN, PROJECT, CLIMB_ID):
+        if url == OnyxEndpoint["delete"](
+            DOMAIN, PROJECT, CLIMB_ID
+        ) or url == OnyxEndpoint["analysis.delete"](DOMAIN, PROJECT, ANALYSIS_ID):
             return MockResponse(DELETE_DATA)
 
     return MockResponse(
@@ -879,7 +958,8 @@ class OnyxClientTestCase(TestCase):
         with OnyxClient(self.config) as client:
             self.assertIsInstance(client._session, requests.Session)
             self.assertEqual(
-                client._request_handler, client._session.request  #  type: ignore
+                client._request_handler,
+                client._session.request,  #  type: ignore
             )
 
         self.assertEqual(client._request_handler, requests.request)
@@ -1024,7 +1104,7 @@ class OnyxClientTestCase(TestCase):
                 },
                 include=INCLUDE_FIELDS,
             ),
-            GET_SPECIFIC_INCLUDE_DATA["data"],
+            GET_INCLUDE_DATA["data"],
         )
         self.assertEqual(
             self.client.get(
@@ -1036,7 +1116,7 @@ class OnyxClientTestCase(TestCase):
                 },
                 exclude=EXCLUDE_FIELDS,
             ),
-            GET_SPECIFIC_EXCLUDE_DATA["data"],
+            GET_EXCLUDE_DATA["data"],
         )
         self.assertEqual(self.config.token, TOKEN)
 
@@ -1252,7 +1332,8 @@ class OnyxClientTestCase(TestCase):
             [
                 x
                 for x in self.client.query(
-                    PROJECT, query="not_a_query_object"  #  type: ignore
+                    PROJECT,
+                    query="not_a_query_object",  #  type: ignore
                 )
             ]
 
@@ -1721,6 +1802,352 @@ class OnyxClientTestCase(TestCase):
                 io.StringIO(TSV_DELETE_MULTI_FILE),
                 delimiter="\t",
             )
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_analysis_fields(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve the analysis field specification of a project.
+        """
+
+        self.assertEqual(self.client.analysis_fields(PROJECT), FIELDS_DATA["data"])
+        self.assertEqual(self.config.token, TOKEN)
+
+        for invalid in INVALID_ARGUMENTS:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analysis_fields(invalid)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_analysis_choices(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve the choices of an analysis choice field.
+        """
+
+        self.assertEqual(
+            self.client.analysis_choices(PROJECT, CHOICE_FIELD), CHOICES_DATA["data"]
+        )
+        self.assertEqual(self.config.token, TOKEN)
+
+        for invalid in INVALID_ARGUMENTS:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analysis_choices(invalid, CHOICE_FIELD)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analysis_choices(PROJECT, invalid)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_get_analysis(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve an analysis from a project.
+        """
+
+        self.assertEqual(
+            self.client.get_analysis(PROJECT, ANALYSIS_ID), GET_ANALYSIS_DATA["data"]
+        )
+        self.assertEqual(
+            self.client.get_analysis(
+                PROJECT,
+                fields={
+                    "sample_id": SAMPLE_ID,
+                    "run_name": RUN_NAME,
+                    "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
+                },
+            ),
+            GET_ANALYSIS_DATA["data"],
+        )
+        self.assertEqual(
+            self.client.get_analysis(
+                PROJECT,
+                fields={
+                    "sample_id": SAMPLE_ID,
+                    "run_name": RUN_NAME,
+                    "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
+                },
+                include=INCLUDE_FIELDS,
+            ),
+            GET_ANALYSIS_INCLUDE_DATA["data"],
+        )
+        self.assertEqual(
+            self.client.get_analysis(
+                PROJECT,
+                fields={
+                    "sample_id": SAMPLE_ID,
+                    "run_name": RUN_NAME,
+                    "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
+                },
+                exclude=EXCLUDE_FIELDS,
+            ),
+            GET_ANALYSIS_EXCLUDE_DATA["data"],
+        )
+        self.assertEqual(self.config.token, TOKEN)
+
+        # Cannot provide both ANALYSIS_ID and fields
+        with pytest.raises(exceptions.OnyxClientError):
+            self.client.get_analysis(
+                PROJECT,
+                ANALYSIS_ID,
+                fields={"sample_id": SAMPLE_ID, "run_name": RUN_NAME},
+            )
+
+        # At least one of ANALYSIS_ID and fields is required
+        with pytest.raises(exceptions.OnyxClientError):
+            self.client.get_analysis(PROJECT)
+
+        # More than one record returned
+        with pytest.raises(exceptions.OnyxClientError):
+            self.client.get_analysis(
+                PROJECT, fields={"sample_id": "sample-123", "run_name": "run-456"}
+            )
+
+        for invalid in INVALID_ARGUMENTS:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.get_analysis(invalid, ANALYSIS_ID)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.get_analysis(PROJECT, invalid)
+
+        for clash in PROJECT_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.get_analysis(clash, ANALYSIS_ID)
+
+        for clash in ANALYSIS_ID_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.get_analysis(PROJECT, clash)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_filter_analysis(self, mock_request):
+        """
+        Test that the OnyxClient can filter analyses from a project.
+        """
+
+        self.assertEqual(
+            [x for x in self.client.filter_analysis(PROJECT)],
+            FILTER_PAGE_1_DATA["data"] + FILTER_PAGE_2_DATA["data"],
+        )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.filter_analysis(
+                    PROJECT,
+                    fields={
+                        "sample_id": SAMPLE_ID,
+                        "run_name": RUN_NAME,
+                        "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
+                    },
+                )
+            ],
+            FILTER_SPECIFIC_DATA["data"],
+        )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.filter_analysis(
+                    PROJECT,
+                    sample_id=SAMPLE_ID,
+                    run_name=RUN_NAME,
+                    published_date__range=PUBLISHED_DATE_RANGE,
+                )
+            ],
+            FILTER_SPECIFIC_DATA["data"],
+        )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.filter_analysis(
+                    PROJECT,
+                    fields={"sample_id": "will-be-overwritten", "run_name": RUN_NAME},
+                    sample_id=SAMPLE_ID,
+                    published_date__range=PUBLISHED_DATE_RANGE,
+                )
+            ],
+            FILTER_SPECIFIC_DATA["data"],
+        )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.filter_analysis(
+                    PROJECT,
+                    fields={
+                        "sample_id": SAMPLE_ID,
+                        "run_name": RUN_NAME,
+                        "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
+                    },
+                    include=INCLUDE_FIELDS,
+                )
+            ],
+            FILTER_SPECIFIC_INCLUDE_DATA["data"],
+        )
+        self.assertEqual(
+            [
+                x
+                for x in self.client.filter_analysis(
+                    PROJECT,
+                    fields={
+                        "sample_id": SAMPLE_ID,
+                        "run_name": RUN_NAME,
+                        "published_date__range": ",".join(PUBLISHED_DATE_RANGE),
+                    },
+                    exclude=EXCLUDE_FIELDS,
+                )
+            ],
+            FILTER_SPECIFIC_EXCLUDE_DATA["data"],
+        )
+        for empty in ["", None]:
+            self.assertEqual(
+                [
+                    x
+                    for x in self.client.filter_analysis(
+                        PROJECT,
+                        fields={
+                            NONE_FIELD: empty,
+                        },
+                    )
+                ],
+                FILTER_NONE_DATA["data"],
+            )
+            self.assertEqual(
+                [
+                    x
+                    for x in self.client.filter_analysis(
+                        **{"project": PROJECT, NONE_FIELD: empty},
+                    )
+                ],
+                FILTER_NONE_DATA["data"],
+            )
+            for type_ in [list, tuple, set]:
+                self.assertEqual(
+                    [
+                        x
+                        for x in self.client.filter_analysis(
+                            PROJECT,
+                            fields={
+                                f"{NONE_FIELD}__in": type_([empty, "not-empty"]),
+                            },
+                        )
+                    ],
+                    FILTER_NONE_IN_DATA["data"],
+                )
+                self.assertEqual(
+                    [
+                        x
+                        for x in self.client.filter_analysis(
+                            **{
+                                "project": PROJECT,
+                                f"{NONE_FIELD}__in": type_([empty, "not-empty"]),
+                            },
+                        )
+                    ],
+                    FILTER_NONE_IN_DATA["data"],
+                )
+        self.assertEqual(self.config.token, TOKEN)
+
+        for invalid in INVALID_ARGUMENTS:
+            with pytest.raises(exceptions.OnyxClientError):
+                [x for x in self.client.filter_analysis(invalid)]
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_analysis_history(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve the history of an analysis.
+        """
+
+        self.assertEqual(
+            self.client.analysis_history(PROJECT, ANALYSIS_ID), HISTORY_DATA["data"]
+        )
+        self.assertEqual(self.config.token, TOKEN)
+
+        for invalid in INVALID_ARGUMENTS:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analysis_history(invalid, ANALYSIS_ID)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analysis_history(PROJECT, invalid)
+
+        for clash in PROJECT_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.get(clash, ANALYSIS_ID)
+
+        for clash in ANALYSIS_ID_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analysis_history(PROJECT, clash)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_create_analysis(self, mock_request):
+        """
+        Test that the OnyxClient can create an analysis in a project.
+        """
+
+        self.assertEqual(
+            self.client.create_analysis(PROJECT, CREATE_FIELDS), CREATE_DATA["data"]
+        )
+        self.assertEqual(
+            self.client.create_analysis(PROJECT, CREATE_FIELDS, test=True),
+            TESTCREATE_DATA["data"],
+        )
+        self.assertEqual(self.config.token, TOKEN)
+
+        for invalid in INVALID_ARGUMENTS:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.create_analysis(invalid, CREATE_FIELDS)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.create_analysis(invalid, CREATE_FIELDS, test=True)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_update_analysis(self, mock_request):
+        """
+        Test that the OnyxClient can update an analysis in a project.
+        """
+
+        self.assertEqual(
+            self.client.update_analysis(PROJECT, ANALYSIS_ID, UPDATE_FIELDS),
+            UPDATE_DATA["data"],
+        )
+        self.assertEqual(
+            self.client.update_analysis(PROJECT, ANALYSIS_ID, UPDATE_FIELDS, test=True),
+            TESTUPDATE_DATA["data"],
+        )
+        self.assertEqual(self.config.token, TOKEN)
+
+        for invalid in INVALID_ARGUMENTS:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.update_analysis(invalid, ANALYSIS_ID, UPDATE_FIELDS)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.update_analysis(
+                    invalid, ANALYSIS_ID, UPDATE_FIELDS, test=True
+                )
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.update_analysis(PROJECT, invalid, UPDATE_FIELDS)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.update_analysis(PROJECT, invalid, UPDATE_FIELDS, test=True)
+
+        for clash in PROJECT_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.get(clash, ANALYSIS_ID, UPDATE_FIELDS)
+
+        for clash in ANALYSIS_ID_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.update_analysis(PROJECT, clash, UPDATE_FIELDS)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_delete_analysis(self, mock_request):
+        """
+        Test that the OnyxClient can delete an analysis from a project.
+        """
+
+        self.assertEqual(
+            self.client.delete_analysis(PROJECT, ANALYSIS_ID), DELETE_DATA["data"]
+        )
+        self.assertEqual(self.config.token, TOKEN)
+
+        for invalid in INVALID_ARGUMENTS:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.delete_analysis(invalid, ANALYSIS_ID)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.delete_analysis(PROJECT, invalid)
 
     @mock.patch("requests.post", side_effect=mock_register_post)
     def test_register(self, mock_request):

@@ -1401,7 +1401,7 @@ class OnyxClient(OnyxClientBase):
     def get_analysis(
         self,
         project: str,
-        analysis_id: str,
+        analysis_id: Optional[str] = None,
         fields: Optional[Dict[str, Any]] = None,
         include: Union[List[str], str, None] = None,
         exclude: Union[List[str], str, None] = None,

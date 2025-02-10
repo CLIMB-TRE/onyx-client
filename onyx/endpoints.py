@@ -30,7 +30,6 @@ def handle_endpoint(endpoint, **kwargs):
                 ],
                 "analysis_id": [
                     "test",
-                    "filter",
                     "fields",
                     "choices",
                     "history",
