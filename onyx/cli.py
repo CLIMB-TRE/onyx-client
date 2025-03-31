@@ -769,9 +769,9 @@ def choices_base(
             table.add_column("Status", overflow="fold")
             for choice, choice_info in choices.items():
                 active_status = choice_info.get("is_active")
-                if active_status == True:
+                if active_status:
                     active_status = ActiveStatus.ACTIVE.value
-                elif active_status == False:
+                elif active_status:
                     active_status = ActiveStatus.INACTIVE.value
                 else:
                     active_status = ""
