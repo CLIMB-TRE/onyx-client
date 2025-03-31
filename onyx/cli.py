@@ -35,7 +35,6 @@ class DefinedOrderGroup(TyperGroup):
 
 app = typer.Typer(
     name="onyx",
-    help="API for pathogen metadata.",
     cls=DefinedOrderGroup,
     no_args_is_help=True,
     pretty_exceptions_show_locals=False,
@@ -939,7 +938,6 @@ def filter_base(
     format: Optional[DataFormats],
     method: str,
 ):
-
     try:
         api = setup_onyx_api(context.obj)
 
@@ -1822,6 +1820,12 @@ def common(
         help="Show the client version number and exit.",
     ),
 ):
+    """
+    API for Pathogen Metadata.
+
+    For documentation, see: https://climb-tre.github.io/onyx-client/
+    """
+
     context.obj = OnyxConfigOptions(
         domain=domain,
         token=token,
