@@ -672,7 +672,11 @@ def fields_base(
                 "Actions",
                 "Restrictions",
             ]
-            caption = f"Fields specification for the {fields['name']} project. Version: {fields['version']}"
+
+            if fields.get("object_type"):
+                caption = f"Fields specification for {fields['object_type']} in the {fields['name']} project. Version: {fields['version']}"
+            else:
+                caption = f"Fields specification for the {fields['name']} project. Version: {fields['version']}"
 
             if fields.get("description"):
                 caption += "\n" + fields["description"]

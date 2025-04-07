@@ -257,6 +257,9 @@ class OnyxClient(OnyxClientBase):
             ```python
             >>> fields
             {
+                "name": "Project Name",
+                "description": "Project description.",
+                "object_type": "records",
                 "version": "0.1.0",
                 "fields": {
                     "climb_id": {

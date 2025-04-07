@@ -93,6 +93,9 @@ FIELDS_DATA = {
     "status": "success",
     "code": 200,
     "data": {
+        "name": "Project Name",
+        "description": "Project Description",
+        "object_type": "records",
         "version": "0.1.0",
         "fields": {
             "climb_id": {
