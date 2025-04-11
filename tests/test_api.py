@@ -459,6 +459,20 @@ HISTORY_DATA = {
         ],
     },
 }
+ANALYSES_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": [
+        {"analysis_id": ANALYSIS_ID, "site": SITE, "published_date": "2024-01-01"},
+    ],
+}
+ANALYSIS_RECORDS_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": [
+        {"climb_id": CLIMB_ID, "site": SITE, "published_date": "2024-01-01"},
+    ],
+}
 IDENTIFY_FIELD = "sample_id"
 IDENTIFY_VALUE = "sample-123"
 IDENTIFY_FIELDS = {"value": IDENTIFY_VALUE}
@@ -690,6 +704,7 @@ CLIMB_ID_ENDPOINT_CLASHES = [
     "fields",
     "choices",
     "history",
+    "analyses",
     "identify",
 ]
 ANALYSIS_ID_ENDPOINT_CLASHES = [
@@ -697,6 +712,7 @@ ANALYSIS_ID_ENDPOINT_CLASHES = [
     "fields",
     "choices",
     "history",
+    "records",
 ]
 
 
@@ -878,6 +894,12 @@ def mock_request(
             DOMAIN, PROJECT, CLIMB_ID
         ) or url == OnyxEndpoint["analysis.history"](DOMAIN, PROJECT, ANALYSIS_ID):
             return MockResponse(HISTORY_DATA)
+
+        elif url == OnyxEndpoint["analyses"](DOMAIN, PROJECT, CLIMB_ID):
+            return MockResponse(ANALYSES_DATA)
+
+        elif url == OnyxEndpoint["analysis.records"](DOMAIN, PROJECT, ANALYSIS_ID):
+            return MockResponse(ANALYSIS_RECORDS_DATA)
 
         elif url == OnyxEndpoint["profile"](DOMAIN):
             return MockResponse(PROFILE_DATA)
@@ -1370,11 +1392,35 @@ class OnyxClientTestCase(TestCase):
 
         for clash in PROJECT_ENDPOINT_CLASHES:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.get(clash, CLIMB_ID)
+                self.client.history(clash, CLIMB_ID)
 
         for clash in CLIMB_ID_ENDPOINT_CLASHES:
             with pytest.raises(exceptions.OnyxClientError):
                 self.client.history(PROJECT, clash)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_analyses(self, mock_request):
+        """
+        Test that the OnyxClient can retrieve the analyses of a record.
+        """
+
+        self.assertEqual(self.client.analyses(PROJECT, CLIMB_ID), ANALYSES_DATA["data"])
+        self.assertEqual(self.config.token, TOKEN)
+
+        for invalid in INVALID_ARGUMENTS:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analyses(invalid, CLIMB_ID)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analyses(PROJECT, invalid)
+
+        for clash in PROJECT_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analyses(clash, CLIMB_ID)
+
+        for clash in CLIMB_ID_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analyses(PROJECT, clash)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_identify(self, mock_request):
@@ -1461,7 +1507,7 @@ class OnyxClientTestCase(TestCase):
 
         for clash in PROJECT_ENDPOINT_CLASHES:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.get(clash, CLIMB_ID, UPDATE_FIELDS)
+                self.client.update(clash, CLIMB_ID, UPDATE_FIELDS)
 
         for clash in CLIMB_ID_ENDPOINT_CLASHES:
             with pytest.raises(exceptions.OnyxClientError):
@@ -2067,11 +2113,34 @@ class OnyxClientTestCase(TestCase):
 
         for clash in PROJECT_ENDPOINT_CLASHES:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.get(clash, ANALYSIS_ID)
+                self.client.analysis_history(clash, ANALYSIS_ID)
 
         for clash in ANALYSIS_ID_ENDPOINT_CLASHES:
             with pytest.raises(exceptions.OnyxClientError):
                 self.client.analysis_history(PROJECT, clash)
+
+    @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
+    def test_analysis_records(self, mock_request):
+        self.assertEqual(
+            self.client.analysis_records(PROJECT, ANALYSIS_ID),
+            ANALYSIS_RECORDS_DATA["data"],
+        )
+        self.assertEqual(self.config.token, TOKEN)
+
+        for invalid in INVALID_ARGUMENTS:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analysis_records(invalid, ANALYSIS_ID)
+
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analysis_records(PROJECT, invalid)
+
+        for clash in PROJECT_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analysis_records(clash, ANALYSIS_ID)
+
+        for clash in ANALYSIS_ID_ENDPOINT_CLASHES:
+            with pytest.raises(exceptions.OnyxClientError):
+                self.client.analysis_records(PROJECT, clash)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_create_analysis(self, mock_request):
@@ -2128,7 +2197,7 @@ class OnyxClientTestCase(TestCase):
 
         for clash in PROJECT_ENDPOINT_CLASHES:
             with pytest.raises(exceptions.OnyxClientError):
-                self.client.get(clash, ANALYSIS_ID, UPDATE_FIELDS)
+                self.client.update_analysis(clash, ANALYSIS_ID, UPDATE_FIELDS)
 
         for clash in ANALYSIS_ID_ENDPOINT_CLASHES:
             with pytest.raises(exceptions.OnyxClientError):
