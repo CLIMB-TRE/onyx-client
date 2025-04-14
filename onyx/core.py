@@ -464,6 +464,17 @@ class OnyxClientBase:
             climb_id_required=True,
         )
 
+    def analyses(
+        self,
+        project: str,
+        climb_id: str,
+    ) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxEndpoint["analyses"](self.config.domain, project, climb_id),
+        )
+        return response
+
     def analysis_fields(self, project: str) -> requests.Response:
         return OnyxClientBase.fields(
             self,
@@ -568,6 +579,19 @@ class OnyxClientBase:
             climb_id=analysis_id,
             endpoint="analysis.delete",
         )
+
+    def analysis_records(
+        self,
+        project: str,
+        analysis_id: str,
+    ) -> requests.Response:
+        response = self._request(
+            method="get",
+            url=OnyxEndpoint["analysis.records"](
+                self.config.domain, project, analysis_id
+            ),
+        )
+        return response
 
     @classmethod
     def register(

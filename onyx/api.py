@@ -440,7 +440,7 @@ class OnyxClient(OnyxClientBase):
 
         Args:
             project: Name of the project.
-            climb_id: Unique identifier for the record in the project.
+            climb_id: Unique identifier for the record.
             fields: Dictionary of field filters used to uniquely identify the record.
             include: Fields to include in the output.
             exclude: Fields to exclude from the output.
@@ -841,7 +841,7 @@ class OnyxClient(OnyxClientBase):
 
         Args:
             project: Name of the project.
-            climb_id: Unique identifier for the record in the project.
+            climb_id: Unique identifier for the record.
 
         Returns:
             Dict containing the history of the record.
@@ -905,6 +905,59 @@ class OnyxClient(OnyxClientBase):
             ```
         """
         response = super().history(project, climb_id)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def analyses(self, project: str, climb_id: str) -> List[Dict[str, Any]]:
+        """
+        View the analyses of a record in a project.
+
+        Args:
+            project: Name of the project.
+            climb_id: Unique identifier for the record.
+
+        Returns:
+            List of Dicts containing basic details of each analysis of the record.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                analyses = client.analyses("project", "C-1234567890")
+            ```
+            ```python
+            >>> analyses
+            [
+                {
+                    "analysis_id": "A-1234567890",
+                    "published_date": "2023-02-01",
+                    "analysis_date": "2023-01-01",
+                    "site": "site",
+                    "name": "First Analysis",
+                    "report": "s3://analysis_1.html",
+                    "outputs": "s3://analysis_1_outputs/",
+                },
+                {
+                    "analysis_id": "A-0987654321",
+                    "published_date": "2024-02-01",
+                    "analysis_date": "2023-01-01",
+                    "site": "site",
+                    "name": "Second Analysis",
+                    "report": "s3://analysis_2.html",
+                    "outputs": "s3://analysis_2_outputs/",
+                },
+            ]
+            ```
+        """
+        response = super().analyses(project, climb_id)
         response.raise_for_status()
         return response.json()["data"]
 
@@ -1017,7 +1070,7 @@ class OnyxClient(OnyxClientBase):
 
         Args:
             project: Name of the project.
-            climb_id: Unique identifier for the record in the project.
+            climb_id: Unique identifier for the record.
             fields: Object representing the record to be updated.
             test: If `True`, runs the command as a test. Default: `False`
 
@@ -1065,7 +1118,7 @@ class OnyxClient(OnyxClientBase):
 
         Args:
             project: Name of the project.
-            climb_id: Unique identifier for the record in the project.
+            climb_id: Unique identifier for the record.
 
         Returns:
             Dict containing the CLIMB ID of the deleted record.
@@ -1594,6 +1647,52 @@ class OnyxClient(OnyxClientBase):
             ```
         """
         response = super().analysis_history(project, analysis_id)
+        response.raise_for_status()
+        return response.json()["data"]
+
+    @onyx_errors
+    def analysis_records(self, project: str, analysis_id: str) -> List[Dict[str, Any]]:
+        """
+        View the records involved in an analysis in a project.
+
+        Args:
+            project: Name of the project.
+            analysis_id: Unique identifier for the analysis.
+
+        Returns:
+            List of Dicts containing basic details of each record involved in the analysis.
+
+        Examples:
+            ```python
+            import os
+            from onyx import OnyxConfig, OnyxEnv, OnyxClient
+
+            config = OnyxConfig(
+                domain=os.environ[OnyxEnv.DOMAIN],
+                token=os.environ[OnyxEnv.TOKEN],
+            )
+
+            with OnyxClient(config) as client:
+                records = client.analysis_records("project", "A-1234567890")
+            ```
+            ```python
+            >>> records
+            [
+                {
+                    "climb_id": "C-1234567890",
+                    "published_date": "2023-01-01",
+                    "site": "site_1",
+                },
+                {
+                    "climb_id": "C-1234567891",
+                    "published_date": "2023-01-02",
+                    "site": "site_2",
+                },
+            ]
+            ```
+        """
+
+        response = super().analysis_records(project, analysis_id)
         response.raise_for_status()
         return response.json()["data"]
 

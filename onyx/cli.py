@@ -247,7 +247,7 @@ def parse_extra_option(extra_option: List[str]) -> List[str]:
 
 
 class Panels(enum.Enum):
-    DATA = "Data"
+    INFO = "Info"
     RECORDS = "Records"
     ANALYSES = "Analyses"
     ACCOUNTS = "Accounts"
@@ -300,7 +300,9 @@ class Actions(enum.Enum):
     HISTORY = "[bold yellow]history[/]"
     IDENTIFY = "[bold white]identify[/]"
     ADD = "[bold green]add[/]"
+    TEST_ADD = "[bold green]testadd[/]"
     CHANGE = "[bold yellow]change[/]"
+    TEST_CHANGE = "[bold yellow]testchange[/]"
     DELETE = "[bold red]delete[/]"
 
 
@@ -317,6 +319,27 @@ class Method(enum.Enum):
     DELETE = "[bold red]DELETE[/]"
     OPTIONS = "[bold magenta]OPTIONS[/]"
     HEAD = "[bold white]HEAD[/]"
+
+
+class APIMethods(enum.Enum):
+    FIELDS = "fields"
+    ANALYSIS_FIELDS = "analysis_fields"
+    CHOICES = "choices"
+    ANALYSIS_CHOICES = "analysis_choices"
+    GET = "get"
+    GET_ANALYSIS = "get_analysis"
+    FILTER = "filter"
+    FILTER_ANALYSIS = "filter_analysis"
+    HISTORY = "history"
+    ANALYSIS_HISTORY = "analysis_history"
+    ANALYSES = "analyses"
+    ANALYSIS_RECORDS = "analysis_records"
+    CREATE = "create"
+    CREATE_ANALYSIS = "create_analysis"
+    UPDATE = "update"
+    UPDATE_ANALYSIS = "update_analysis"
+    DELETE = "delete"
+    DELETE_ANALYSIS = "delete_analysis"
 
 
 def format_action(action: str) -> str:
@@ -343,8 +366,12 @@ def format_action(action: str) -> str:
             return Actions.IDENTIFY.value
         case "add":
             return Actions.ADD.value
+        case "testadd":
+            return Actions.TEST_ADD.value
         case "change":
             return Actions.CHANGE.value
+        case "testchange":
+            return Actions.TEST_CHANGE.value
         case "delete":
             return Actions.DELETE.value
         case _:
@@ -413,7 +440,7 @@ def format_method(method: str) -> str:
             return method
 
 
-@app.command(rich_help_panel=Panels.DATA.value)
+@app.command(rich_help_panel=Panels.INFO.value)
 def projects(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -456,7 +483,7 @@ def projects(
         handle_error(e)
 
 
-@app.command(rich_help_panel=Panels.DATA.value)
+@app.command(rich_help_panel=Panels.INFO.value)
 def types(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -497,7 +524,7 @@ def types(
         handle_error(e)
 
 
-@app.command(rich_help_panel=Panels.DATA.value)
+@app.command(rich_help_panel=Panels.INFO.value)
 def lookups(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -655,11 +682,11 @@ def fields_base(
     context: typer.Context,
     project: str,
     format: Optional[FieldFormats],
-    method: str,
+    method: APIMethods,
 ):
     try:
         api = setup_onyx_api(context.obj)
-        fields = getattr(api.client, method)(project)
+        fields = getattr(api.client, method.value)(project)
 
         if format == FieldFormats.JSON:
             typer.echo(json_dump_pretty(fields))
@@ -731,7 +758,12 @@ def fields(
     View the field specification for a project.
     """
 
-    fields_base(context, project, format, "fields")
+    fields_base(
+        context=context,
+        project=project,
+        format=format,
+        method=APIMethods.FIELDS,
+    )
 
 
 @app.command(rich_help_panel=Panels.ANALYSES.value)
@@ -749,7 +781,12 @@ def analysis_fields(
     View the analysis field specification for a project.
     """
 
-    fields_base(context, project, format, "analysis_fields")
+    fields_base(
+        context=context,
+        project=project,
+        format=format,
+        method=APIMethods.ANALYSIS_FIELDS,
+    )
 
 
 def choices_base(
@@ -757,12 +794,12 @@ def choices_base(
     project: str,
     field: str,
     format: Optional[InfoFormats],
-    method: str,
+    method: APIMethods,
 ):
     try:
         api = setup_onyx_api(context.obj)
         field = parse_extra_option([field])[0]
-        choices = getattr(api.client, method)(project, field)
+        choices = getattr(api.client, method.value)(project, field)
 
         if format == InfoFormats.TABLE:
             table = Table(
@@ -808,7 +845,13 @@ def choices(
     View options for a choice field in a project.
     """
 
-    choices_base(context, project, field, format, "choices")
+    choices_base(
+        context=context,
+        project=project,
+        field=field,
+        format=format,
+        method=APIMethods.CHOICES,
+    )
 
 
 @app.command(rich_help_panel=Panels.ANALYSES.value)
@@ -827,17 +870,23 @@ def analysis_choices(
     View options for an analysis choice field.
     """
 
-    choices_base(context, project, field, format, "analysis_choices")
+    choices_base(
+        context=context,
+        project=project,
+        field=field,
+        format=format,
+        method=APIMethods.ANALYSIS_CHOICES,
+    )
 
 
 def get_base(
     context: typer.Context,
     project: str,
-    climb_id: Optional[str],
+    object_id: Optional[str],
     field: Optional[List[str]],
     include: Optional[List[str]],
     exclude: Optional[List[str]],
-    method: str,
+    method: APIMethods,
 ):
     try:
         api = setup_onyx_api(context.obj)
@@ -853,9 +902,9 @@ def get_base(
         if exclude:
             exclude = parse_extra_option(exclude)
 
-        record = getattr(api.client, method)(
+        record = getattr(api.client, method.value)(
             project,
-            climb_id,
+            object_id,
             fields=fields,
             include=include,
             exclude=exclude,
@@ -896,7 +945,15 @@ def get(
     Get a record from a project.
     """
 
-    get_base(context, project, climb_id, field, include, exclude, "get")
+    get_base(
+        context=context,
+        project=project,
+        object_id=climb_id,
+        field=field,
+        include=include,
+        exclude=exclude,
+        method=APIMethods.GET,
+    )
 
 
 @app.command(rich_help_panel=Panels.ANALYSES.value)
@@ -929,7 +986,15 @@ def get_analysis(
     Get an analysis from a project.
     """
 
-    get_base(context, project, analysis_id, field, include, exclude, "get_analysis")
+    get_base(
+        context=context,
+        project=project,
+        object_id=analysis_id,
+        field=field,
+        include=include,
+        exclude=exclude,
+        method=APIMethods.GET_ANALYSIS,
+    )
 
 
 def filter_base(
@@ -940,7 +1005,7 @@ def filter_base(
     exclude: Optional[List[str]],
     summarise: Optional[List[str]],
     format: Optional[DataFormats],
-    method: str,
+    method: APIMethods,
 ):
     try:
         api = setup_onyx_api(context.obj)
@@ -961,7 +1026,7 @@ def filter_base(
 
         if format == DataFormats.JSON:
             # ...nobody needs to know
-            results = onyx_errors(getattr(super(OnyxClient, api.client), method))(
+            results = onyx_errors(getattr(super(OnyxClient, api.client), method.value))(
                 project,
                 fields,
                 include=include,
@@ -998,26 +1063,18 @@ def filter_base(
                 else:
                     raise exceptions.OnyxHTTPError("", result)
         else:
-            records = getattr(api.client, method)(
+            records = getattr(api.client, method.value)(
                 project,
                 fields,
                 include=include,
                 exclude=exclude,
                 summarise=summarise,
             )
-
-            record = next(records, None)
-            if record:
-                writer = csv.DictWriter(
-                    sys.stdout,
-                    delimiter="\t" if format == DataFormats.TSV else ",",
-                    fieldnames=record.keys(),
-                )
-                writer.writeheader()
-                writer.writerow(record)
-
-                for record in records:
-                    writer.writerow(record)
+            api.client.to_csv(
+                csv_file=sys.stdout,
+                data=records,
+                delimiter="\t" if format == DataFormats.TSV else ",",
+            )
     except Exception as e:
         handle_error(e)
 
@@ -1061,7 +1118,16 @@ def filter(
     Filter multiple records from a project.
     """
 
-    filter_base(context, project, field, include, exclude, summarise, format, "filter")
+    filter_base(
+        context=context,
+        project=project,
+        field=field,
+        include=include,
+        exclude=exclude,
+        summarise=summarise,
+        format=format,
+        method=APIMethods.FILTER,
+    )
 
 
 @app.command(rich_help_panel=Panels.ANALYSES.value)
@@ -1104,20 +1170,27 @@ def filter_analysis(
     """
 
     filter_base(
-        context, project, field, include, exclude, summarise, format, "filter_analysis"
+        context=context,
+        project=project,
+        field=field,
+        include=include,
+        exclude=exclude,
+        summarise=summarise,
+        format=format,
+        method=APIMethods.FILTER_ANALYSIS,
     )
 
 
 def history_base(
     context: typer.Context,
     project: str,
-    climb_id: str,
+    object_id: str,
     format: Optional[InfoFormats],
-    method: str,
+    method: APIMethods,
 ):
     try:
         api = setup_onyx_api(context.obj)
-        history = getattr(api.client, method)(project, climb_id)
+        history = getattr(api.client, method.value)(project, object_id)
 
         if format == InfoFormats.TABLE:
             columns = ["Username", "Timestamp", "Action", "Changes"]
@@ -1178,7 +1251,13 @@ def history(
     View the history of a record in a project.
     """
 
-    history_base(context, project, climb_id, format, "history")
+    history_base(
+        context=context,
+        project=project,
+        object_id=climb_id,
+        format=format,
+        method=APIMethods.HISTORY,
+    )
 
 
 @app.command(rich_help_panel=Panels.ANALYSES.value)
@@ -1197,7 +1276,77 @@ def analysis_history(
     View the history of an analysis in a project.
     """
 
-    history_base(context, project, analysis_id, format, "analysis_history")
+    history_base(
+        context=context,
+        project=project,
+        object_id=analysis_id,
+        format=format,
+        method=APIMethods.ANALYSIS_HISTORY,
+    )
+
+
+@app.command(rich_help_panel=Panels.RECORDS.value)
+def analyses(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    climb_id: str = typer.Argument(...),
+    format: Optional[DataFormats] = typer.Option(
+        DataFormats.JSON.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View analyses of a record in a project.
+    """
+
+    try:
+        api = setup_onyx_api(context.obj)
+        analyses = api.client.analyses(project, climb_id)
+
+        if format == DataFormats.JSON:
+            typer.echo(json_dump_pretty(analyses))
+        else:
+            api.client.to_csv(
+                csv_file=sys.stdout,
+                data=analyses,
+                delimiter="\t" if format == DataFormats.TSV else ",",
+            )
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def analysis_records(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    analysis_id: str = typer.Argument(...),
+    format: Optional[DataFormats] = typer.Option(
+        DataFormats.JSON.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View records involved in an analysis in a project.
+    """
+
+    try:
+        api = setup_onyx_api(context.obj)
+        records = api.client.analysis_records(project, analysis_id)
+
+        if format == DataFormats.JSON:
+            typer.echo(json_dump_pretty(records))
+        else:
+            api.client.to_csv(
+                csv_file=sys.stdout,
+                data=records,
+                delimiter="\t" if format == DataFormats.TSV else ",",
+            )
+    except Exception as e:
+        handle_error(e)
 
 
 @app.command(rich_help_panel=Panels.RECORDS.value)
@@ -1255,7 +1404,7 @@ def create_base(
     project: str,
     field: Optional[List[str]],
     test: bool,
-    method: str,
+    method: APIMethods,
 ):
     try:
         api = setup_onyx_api(context.obj)
@@ -1265,7 +1414,7 @@ def create_base(
         else:
             fields = {}
 
-        record = getattr(api.client, method)(
+        record = getattr(api.client, method.value)(
             project,
             fields=fields,
             test=test,
@@ -1298,7 +1447,13 @@ def create(
     Create a record in a project.
     """
 
-    create_base(context, project, field, test, "create")
+    create_base(
+        context=context,
+        project=project,
+        field=field,
+        test=test,
+        method=APIMethods.CREATE,
+    )
 
 
 @app.command(rich_help_panel=Panels.ANALYSES.value)
@@ -1323,16 +1478,22 @@ def create_analysis(
     Create an analysis in a project.
     """
 
-    create_base(context, project, field, test, "create_analysis")
+    create_base(
+        context=context,
+        project=project,
+        field=field,
+        test=test,
+        method=APIMethods.CREATE_ANALYSIS,
+    )
 
 
 def update_base(
     context: typer.Context,
     project: str,
-    climb_id: str,
+    object_id: str,
     field: Optional[List[str]],
     test: bool,
-    method: str,
+    method: APIMethods,
 ):
     try:
         api = setup_onyx_api(context.obj)
@@ -1342,9 +1503,9 @@ def update_base(
         else:
             fields = {}
 
-        record = getattr(api.client, method)(
+        record = getattr(api.client, method.value)(
             project,
-            climb_id,
+            object_id,
             fields=fields,
             test=test,
         )
@@ -1377,7 +1538,14 @@ def update(
     Update a record in a project.
     """
 
-    update_base(context, project, climb_id, field, test, "update")
+    update_base(
+        context=context,
+        project=project,
+        object_id=climb_id,
+        field=field,
+        test=test,
+        method=APIMethods.UPDATE,
+    )
 
 
 @app.command(rich_help_panel=Panels.ANALYSES.value)
@@ -1403,20 +1571,27 @@ def update_analysis(
     Update an analysis in a project.
     """
 
-    update_base(context, project, analysis_id, field, test, "update_analysis")
+    update_base(
+        context=context,
+        project=project,
+        object_id=analysis_id,
+        field=field,
+        test=test,
+        method=APIMethods.UPDATE_ANALYSIS,
+    )
 
 
 def delete_base(
     context: typer.Context,
     project: str,
-    climb_id: str,
+    object_id: str,
     force: bool,
-    method: str,
+    method: APIMethods,
 ):
     if force:
         try:
             api = setup_onyx_api(context.obj)
-            record = getattr(api.client, method)(project, climb_id)
+            record = getattr(api.client, method.value)(project, object_id)
 
             typer.echo(json_dump_pretty(record))
         except Exception as e:
@@ -1442,7 +1617,13 @@ def delete(
     Delete a record in a project.
     """
 
-    delete_base(context, project, climb_id, force, "delete")
+    delete_base(
+        context=context,
+        project=project,
+        object_id=climb_id,
+        force=force,
+        method=APIMethods.DELETE,
+    )
 
 
 @app.command(rich_help_panel=Panels.ANALYSES.value)
@@ -1462,10 +1643,16 @@ def delete_analysis(
     Delete an analysis in a project.
     """
 
-    delete_base(context, project, analysis_id, force, "delete_analysis")
+    delete_base(
+        context=context,
+        project=project,
+        object_id=analysis_id,
+        force=force,
+        method=APIMethods.DELETE_ANALYSIS,
+    )
 
 
-@app.command(rich_help_panel="Accounts")
+@app.command(rich_help_panel=Panels.ACCOUNTS.value)
 def profile(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -1499,7 +1686,7 @@ def profile(
         handle_error(e)
 
 
-@app.command(rich_help_panel="Accounts")
+@app.command(rich_help_panel=Panels.ACCOUNTS.value)
 def activity(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -1554,7 +1741,7 @@ def activity(
         handle_error(e)
 
 
-@app.command(rich_help_panel="Accounts")
+@app.command(rich_help_panel=Panels.ACCOUNTS.value)
 def siteusers(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -1588,7 +1775,7 @@ def siteusers(
         handle_error(e)
 
 
-@auth_app.command(rich_help_panel="Accounts")
+@auth_app.command(rich_help_panel=Panels.ACCOUNTS.value)
 def register(context: typer.Context):
     """
     Create a new user.
@@ -1622,7 +1809,7 @@ def register(context: typer.Context):
         handle_error(e)
 
 
-@auth_app.command(rich_help_panel="Accounts")
+@auth_app.command(rich_help_panel=Panels.ACCOUNTS.value)
 def login(
     context: typer.Context,
 ):
@@ -1658,7 +1845,7 @@ def login(
         handle_error(e)
 
 
-@auth_app.command(rich_help_panel="Accounts")
+@auth_app.command(rich_help_panel=Panels.ACCOUNTS.value)
 def logout(
     context: typer.Context,
 ):
@@ -1675,7 +1862,7 @@ def logout(
         handle_error(e)
 
 
-@auth_app.command(rich_help_panel="Accounts")
+@auth_app.command(rich_help_panel=Panels.ACCOUNTS.value)
 def logoutall(
     context: typer.Context,
 ):
@@ -1692,7 +1879,7 @@ def logoutall(
         handle_error(e)
 
 
-@admin_app.command(rich_help_panel="Accounts")
+@admin_app.command(rich_help_panel=Panels.ACCOUNTS.value)
 def waiting(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(
@@ -1727,7 +1914,7 @@ def waiting(
         handle_error(e)
 
 
-@admin_app.command(rich_help_panel="Accounts")
+@admin_app.command(rich_help_panel=Panels.ACCOUNTS.value)
 def approve(
     context: typer.Context,
     username: str = typer.Argument(..., help="Name of the user being approved."),
@@ -1745,7 +1932,7 @@ def approve(
         handle_error(e)
 
 
-@admin_app.command(rich_help_panel="Accounts")
+@admin_app.command(rich_help_panel=Panels.ACCOUNTS.value)
 def allusers(
     context: typer.Context,
     format: Optional[InfoFormats] = typer.Option(

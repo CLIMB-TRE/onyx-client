@@ -26,6 +26,7 @@ def handle_endpoint(endpoint, **kwargs):
                     "fields",
                     "choices",
                     "history",
+                    "analyses",
                     "identify",
                 ],
                 "analysis_id": [
@@ -33,6 +34,7 @@ def handle_endpoint(endpoint, **kwargs):
                     "fields",
                     "choices",
                     "history",
+                    "records",
                 ],
             }
 
@@ -207,6 +209,19 @@ OnyxEndpoint = {
         project=project,
         climb_id=climb_id,
     ),
+    "analyses": lambda domain, project, climb_id: handle_endpoint(
+        lambda: posixpath.join(
+            str(domain),
+            "projects",
+            str(project),
+            "analyses",
+            str(climb_id),
+            "",
+        ),
+        domain=domain,
+        project=project,
+        climb_id=climb_id,
+    ),
     "analysis.fields": lambda domain, project: handle_endpoint(
         lambda: posixpath.join(
             str(domain),
@@ -318,6 +333,19 @@ OnyxEndpoint = {
             "projects",
             str(project),
             "analysis",
+            str(analysis_id),
+            "",
+        ),
+        domain=domain,
+        project=project,
+        analysis_id=analysis_id,
+    ),
+    "analysis.records": lambda domain, project, analysis_id: handle_endpoint(
+        lambda: posixpath.join(
+            str(domain),
+            "projects",
+            str(project),
+            "analysis/records",
             str(analysis_id),
             "",
         ),
