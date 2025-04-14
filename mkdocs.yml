@@ -30,10 +30,8 @@ theme:
       
   features:
     - navigation.tabs
-    - navigation.tabs.sticky
-    # - navigation.sections
-    # - navigation.top
-    # - toc.integrate
+    - navigation.top
+    - navigation.sections
     - content.code.copy
 
 # extra:
@@ -52,6 +50,7 @@ plugins:
             docstring_section_style: spacy
             show_source: false
             members_order: source
+            show_bases: false
   - with-pdf:
       output_path: onyx-client.pdf
       cover_subtitle: ""
@@ -74,7 +73,7 @@ extra_css:
 
 nav:
   - Overview: index.md
-  - Command-line interface: 
+  - Command-line Interface: 
     - Getting started: cli/getting-started.md
     - Documentation: cli/documentation.md
   - Python API:
