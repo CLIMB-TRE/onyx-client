@@ -766,29 +766,6 @@ def fields(
     )
 
 
-@app.command(rich_help_panel=Panels.ANALYSES.value)
-def analysis_fields(
-    context: typer.Context,
-    project: str = typer.Argument(...),
-    format: Optional[FieldFormats] = typer.Option(
-        FieldFormats.TABLE.value,
-        "-F",
-        "--format",
-        help=HelpText.FORMAT.value,
-    ),
-):
-    """
-    View the analysis field specification for a project.
-    """
-
-    fields_base(
-        context=context,
-        project=project,
-        format=format,
-        method=APIMethods.ANALYSIS_FIELDS,
-    )
-
-
 def choices_base(
     context: typer.Context,
     project: str,
@@ -851,31 +828,6 @@ def choices(
         field=field,
         format=format,
         method=APIMethods.CHOICES,
-    )
-
-
-@app.command(rich_help_panel=Panels.ANALYSES.value)
-def analysis_choices(
-    context: typer.Context,
-    project: str = typer.Argument(...),
-    field: str = typer.Argument(...),
-    format: Optional[InfoFormats] = typer.Option(
-        InfoFormats.TABLE.value,
-        "-F",
-        "--format",
-        help=HelpText.FORMAT.value,
-    ),
-):
-    """
-    View options for an analysis choice field.
-    """
-
-    choices_base(
-        context=context,
-        project=project,
-        field=field,
-        format=format,
-        method=APIMethods.ANALYSIS_CHOICES,
     )
 
 
@@ -953,47 +905,6 @@ def get(
         include=include,
         exclude=exclude,
         method=APIMethods.GET,
-    )
-
-
-@app.command(rich_help_panel=Panels.ANALYSES.value)
-def get_analysis(
-    context: typer.Context,
-    project: str = typer.Argument(...),
-    analysis_id: Optional[str] = typer.Argument(
-        None,
-    ),
-    field: Optional[List[str]] = typer.Option(
-        None,
-        "-f",
-        "--field",
-        help=HelpText.FILTER_FIELD.value,
-    ),
-    include: Optional[List[str]] = typer.Option(
-        None,
-        "-i",
-        "--include",
-        help=HelpText.INCLUDE.value,
-    ),
-    exclude: Optional[List[str]] = typer.Option(
-        None,
-        "-e",
-        "--exclude",
-        help=HelpText.EXCLUDE.value,
-    ),
-):
-    """
-    Get an analysis from a project.
-    """
-
-    get_base(
-        context=context,
-        project=project,
-        object_id=analysis_id,
-        field=field,
-        include=include,
-        exclude=exclude,
-        method=APIMethods.GET_ANALYSIS,
     )
 
 
@@ -1130,57 +1041,6 @@ def filter(
     )
 
 
-@app.command(rich_help_panel=Panels.ANALYSES.value)
-def filter_analysis(
-    context: typer.Context,
-    project: str = typer.Argument(...),
-    field: Optional[List[str]] = typer.Option(
-        None,
-        "-f",
-        "--field",
-        help=HelpText.FILTER_FIELD.value,
-    ),
-    include: Optional[List[str]] = typer.Option(
-        None,
-        "-i",
-        "--include",
-        help=HelpText.INCLUDE.value,
-    ),
-    exclude: Optional[List[str]] = typer.Option(
-        None,
-        "-e",
-        "--exclude",
-        help=HelpText.EXCLUDE.value,
-    ),
-    summarise: Optional[List[str]] = typer.Option(
-        None,
-        "-s",
-        "--summarise",
-        help=HelpText.SUMMARISE.value,
-    ),
-    format: Optional[DataFormats] = typer.Option(
-        DataFormats.JSON.value,
-        "-F",
-        "--format",
-        help=HelpText.FORMAT.value,
-    ),
-):
-    """
-    Filter multiple analyses from a project.
-    """
-
-    filter_base(
-        context=context,
-        project=project,
-        field=field,
-        include=include,
-        exclude=exclude,
-        summarise=summarise,
-        format=format,
-        method=APIMethods.FILTER_ANALYSIS,
-    )
-
-
 def history_base(
     context: typer.Context,
     project: str,
@@ -1260,31 +1120,6 @@ def history(
     )
 
 
-@app.command(rich_help_panel=Panels.ANALYSES.value)
-def analysis_history(
-    context: typer.Context,
-    project: str = typer.Argument(...),
-    analysis_id: str = typer.Argument(...),
-    format: Optional[InfoFormats] = typer.Option(
-        InfoFormats.TABLE.value,
-        "-F",
-        "--format",
-        help=HelpText.FORMAT.value,
-    ),
-):
-    """
-    View the history of an analysis in a project.
-    """
-
-    history_base(
-        context=context,
-        project=project,
-        object_id=analysis_id,
-        format=format,
-        method=APIMethods.ANALYSIS_HISTORY,
-    )
-
-
 @app.command(rich_help_panel=Panels.RECORDS.value)
 def analyses(
     context: typer.Context,
@@ -1311,38 +1146,6 @@ def analyses(
             api.client.to_csv(
                 csv_file=sys.stdout,
                 data=analyses,
-                delimiter="\t" if format == DataFormats.TSV else ",",
-            )
-    except Exception as e:
-        handle_error(e)
-
-
-@app.command(rich_help_panel=Panels.ANALYSES.value)
-def analysis_records(
-    context: typer.Context,
-    project: str = typer.Argument(...),
-    analysis_id: str = typer.Argument(...),
-    format: Optional[DataFormats] = typer.Option(
-        DataFormats.JSON.value,
-        "-F",
-        "--format",
-        help=HelpText.FORMAT.value,
-    ),
-):
-    """
-    View records involved in an analysis in a project.
-    """
-
-    try:
-        api = setup_onyx_api(context.obj)
-        records = api.client.analysis_records(project, analysis_id)
-
-        if format == DataFormats.JSON:
-            typer.echo(json_dump_pretty(records))
-        else:
-            api.client.to_csv(
-                csv_file=sys.stdout,
-                data=records,
                 delimiter="\t" if format == DataFormats.TSV else ",",
             )
     except Exception as e:
@@ -1456,37 +1259,6 @@ def create(
     )
 
 
-@app.command(rich_help_panel=Panels.ANALYSES.value)
-def create_analysis(
-    context: typer.Context,
-    project: str = typer.Argument(...),
-    field: Optional[List[str]] = typer.Option(
-        None,
-        "-f",
-        "--field",
-        help=HelpText.CREATE_FIELD.value,
-    ),
-    test: bool = typer.Option(
-        False,
-        "-t",
-        "--test",
-        show_default="False",
-        help=HelpText.TEST.value,
-    ),
-):
-    """
-    Create an analysis in a project.
-    """
-
-    create_base(
-        context=context,
-        project=project,
-        field=field,
-        test=test,
-        method=APIMethods.CREATE_ANALYSIS,
-    )
-
-
 def update_base(
     context: typer.Context,
     project: str,
@@ -1548,6 +1320,279 @@ def update(
     )
 
 
+def delete_base(
+    context: typer.Context,
+    project: str,
+    object_id: str,
+    force: bool,
+    method: APIMethods,
+):
+    if force:
+        try:
+            api = setup_onyx_api(context.obj)
+            record = getattr(api.client, method.value)(project, object_id)
+
+            typer.echo(json_dump_pretty(record))
+        except Exception as e:
+            handle_error(e)
+    else:
+        typer.echo("Operation cancelled.")
+
+
+@app.command(rich_help_panel=Panels.RECORDS.value)
+def delete(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    climb_id: str = typer.Argument(...),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        show_default="False",
+        prompt="This record will be permanently deleted. Are you sure you want to do this?",
+        help=HelpText.FORCE.value,
+    ),
+):
+    """
+    Delete a record in a project.
+    """
+
+    delete_base(
+        context=context,
+        project=project,
+        object_id=climb_id,
+        force=force,
+        method=APIMethods.DELETE,
+    )
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def analysis_fields(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    format: Optional[FieldFormats] = typer.Option(
+        FieldFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View the analysis field specification for a project.
+    """
+
+    fields_base(
+        context=context,
+        project=project,
+        format=format,
+        method=APIMethods.ANALYSIS_FIELDS,
+    )
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def analysis_choices(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    field: str = typer.Argument(...),
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View options for an analysis choice field.
+    """
+
+    choices_base(
+        context=context,
+        project=project,
+        field=field,
+        format=format,
+        method=APIMethods.ANALYSIS_CHOICES,
+    )
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def get_analysis(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    analysis_id: Optional[str] = typer.Argument(
+        None,
+    ),
+    field: Optional[List[str]] = typer.Option(
+        None,
+        "-f",
+        "--field",
+        help=HelpText.FILTER_FIELD.value,
+    ),
+    include: Optional[List[str]] = typer.Option(
+        None,
+        "-i",
+        "--include",
+        help=HelpText.INCLUDE.value,
+    ),
+    exclude: Optional[List[str]] = typer.Option(
+        None,
+        "-e",
+        "--exclude",
+        help=HelpText.EXCLUDE.value,
+    ),
+):
+    """
+    Get an analysis from a project.
+    """
+
+    get_base(
+        context=context,
+        project=project,
+        object_id=analysis_id,
+        field=field,
+        include=include,
+        exclude=exclude,
+        method=APIMethods.GET_ANALYSIS,
+    )
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def filter_analysis(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    field: Optional[List[str]] = typer.Option(
+        None,
+        "-f",
+        "--field",
+        help=HelpText.FILTER_FIELD.value,
+    ),
+    include: Optional[List[str]] = typer.Option(
+        None,
+        "-i",
+        "--include",
+        help=HelpText.INCLUDE.value,
+    ),
+    exclude: Optional[List[str]] = typer.Option(
+        None,
+        "-e",
+        "--exclude",
+        help=HelpText.EXCLUDE.value,
+    ),
+    summarise: Optional[List[str]] = typer.Option(
+        None,
+        "-s",
+        "--summarise",
+        help=HelpText.SUMMARISE.value,
+    ),
+    format: Optional[DataFormats] = typer.Option(
+        DataFormats.JSON.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    Filter multiple analyses from a project.
+    """
+
+    filter_base(
+        context=context,
+        project=project,
+        field=field,
+        include=include,
+        exclude=exclude,
+        summarise=summarise,
+        format=format,
+        method=APIMethods.FILTER_ANALYSIS,
+    )
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def analysis_history(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    analysis_id: str = typer.Argument(...),
+    format: Optional[InfoFormats] = typer.Option(
+        InfoFormats.TABLE.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View the history of an analysis in a project.
+    """
+
+    history_base(
+        context=context,
+        project=project,
+        object_id=analysis_id,
+        format=format,
+        method=APIMethods.ANALYSIS_HISTORY,
+    )
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def analysis_records(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    analysis_id: str = typer.Argument(...),
+    format: Optional[DataFormats] = typer.Option(
+        DataFormats.JSON.value,
+        "-F",
+        "--format",
+        help=HelpText.FORMAT.value,
+    ),
+):
+    """
+    View records involved in an analysis in a project.
+    """
+
+    try:
+        api = setup_onyx_api(context.obj)
+        records = api.client.analysis_records(project, analysis_id)
+
+        if format == DataFormats.JSON:
+            typer.echo(json_dump_pretty(records))
+        else:
+            api.client.to_csv(
+                csv_file=sys.stdout,
+                data=records,
+                delimiter="\t" if format == DataFormats.TSV else ",",
+            )
+    except Exception as e:
+        handle_error(e)
+
+
+@app.command(rich_help_panel=Panels.ANALYSES.value)
+def create_analysis(
+    context: typer.Context,
+    project: str = typer.Argument(...),
+    field: Optional[List[str]] = typer.Option(
+        None,
+        "-f",
+        "--field",
+        help=HelpText.CREATE_FIELD.value,
+    ),
+    test: bool = typer.Option(
+        False,
+        "-t",
+        "--test",
+        show_default="False",
+        help=HelpText.TEST.value,
+    ),
+):
+    """
+    Create an analysis in a project.
+    """
+
+    create_base(
+        context=context,
+        project=project,
+        field=field,
+        test=test,
+        method=APIMethods.CREATE_ANALYSIS,
+    )
+
+
 @app.command(rich_help_panel=Panels.ANALYSES.value)
 def update_analysis(
     context: typer.Context,
@@ -1578,51 +1623,6 @@ def update_analysis(
         field=field,
         test=test,
         method=APIMethods.UPDATE_ANALYSIS,
-    )
-
-
-def delete_base(
-    context: typer.Context,
-    project: str,
-    object_id: str,
-    force: bool,
-    method: APIMethods,
-):
-    if force:
-        try:
-            api = setup_onyx_api(context.obj)
-            record = getattr(api.client, method.value)(project, object_id)
-
-            typer.echo(json_dump_pretty(record))
-        except Exception as e:
-            handle_error(e)
-    else:
-        print("Operation cancelled.")
-
-
-@app.command(rich_help_panel=Panels.RECORDS.value)
-def delete(
-    context: typer.Context,
-    project: str = typer.Argument(...),
-    climb_id: str = typer.Argument(...),
-    force: bool = typer.Option(
-        False,
-        "--force",
-        show_default="False",
-        prompt="This record will be permanently deleted. Are you sure you want to do this?",
-        help=HelpText.FORCE.value,
-    ),
-):
-    """
-    Delete a record in a project.
-    """
-
-    delete_base(
-        context=context,
-        project=project,
-        object_id=climb_id,
-        force=force,
-        method=APIMethods.DELETE,
     )
 
 
