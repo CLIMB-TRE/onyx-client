@@ -300,7 +300,9 @@ class Actions(enum.Enum):
     HISTORY = "[bold yellow]history[/]"
     IDENTIFY = "[bold white]identify[/]"
     ADD = "[bold green]add[/]"
+    TEST_ADD = "[bold green]testadd[/]"
     CHANGE = "[bold yellow]change[/]"
+    TEST_CHANGE = "[bold yellow]testchange[/]"
     DELETE = "[bold red]delete[/]"
 
 
@@ -364,8 +366,12 @@ def format_action(action: str) -> str:
             return Actions.IDENTIFY.value
         case "add":
             return Actions.ADD.value
+        case "testadd":
+            return Actions.TEST_ADD.value
         case "change":
             return Actions.CHANGE.value
+        case "testchange":
+            return Actions.TEST_CHANGE.value
         case "delete":
             return Actions.DELETE.value
         case _:
