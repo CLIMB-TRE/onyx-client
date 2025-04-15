@@ -29,3 +29,6 @@ jobs:
       run: |
         coverage run -m pytest -v
         coverage report
+    - name: Test CLI
+      run: |
+        onyx --help
