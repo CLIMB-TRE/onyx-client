@@ -28,4 +28,5 @@ setuptools.setup(
         "typer>=0.12.3",
         "rich",
     ],
+    python_requires=">=3.9",
 )

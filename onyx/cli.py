@@ -294,16 +294,24 @@ class Status(enum.Enum):
 
 
 class Actions(enum.Enum):
-    GET = "[bold cyan]get[/]"
-    LIST = "[bold blue]list[/]"
-    FILTER = "[bold magenta]filter[/]"
-    HISTORY = "[bold yellow]history[/]"
-    IDENTIFY = "[bold white]identify[/]"
-    ADD = "[bold green]add[/]"
-    TEST_ADD = "[bold green]testadd[/]"
-    CHANGE = "[bold yellow]change[/]"
-    TEST_CHANGE = "[bold yellow]testchange[/]"
-    DELETE = "[bold red]delete[/]"
+    GET = ("get", "cyan")
+    LIST = ("list", "blue")
+    FILTER = ("filter", "magenta")
+    HISTORY = ("history", "yellow")
+    IDENTIFY = ("identify", "white")
+    ADD = ("add", "green")
+    TEST_ADD = ("testadd", "green")
+    CHANGE = ("change", "yellow")
+    TEST_CHANGE = ("testchange", "yellow")
+    DELETE = ("delete", "red")
+
+    def __init__(self, label: str, colour: str):
+        self.label = label
+        self.colour = colour
+
+    @classmethod
+    def colour_map(cls):
+        return {action.label: action.colour for action in cls}
 
 
 class ActiveStatus(enum.Enum):
@@ -312,13 +320,21 @@ class ActiveStatus(enum.Enum):
 
 
 class Method(enum.Enum):
-    GET = "[bold cyan]GET[/]"
-    POST = "[bold green]POST[/]"
-    PUT = "[bold blue]PUT[/]"
-    PATCH = "[bold yellow]PATCH[/]"
-    DELETE = "[bold red]DELETE[/]"
-    OPTIONS = "[bold magenta]OPTIONS[/]"
-    HEAD = "[bold white]HEAD[/]"
+    GET = ("get", "cyan")
+    POST = ("post", "green")
+    PUT = ("put", "blue")
+    PATCH = ("patch", "yellow")
+    DELETE = ("delete", "red")
+    OPTIONS = ("options", "magenta")
+    HEAD = ("head", "white")
+
+    def __init__(self, label: str, colour: str):
+        self.label = label
+        self.colour = colour
+
+    @classmethod
+    def colour_map(cls):
+        return {method.label: method.colour for method in cls}
 
 
 class APIMethods(enum.Enum):
@@ -353,29 +369,11 @@ def format_action(action: str) -> str:
         The formatted action.
     """
 
-    match action:
-        case "get":
-            return Actions.GET.value
-        case "list":
-            return Actions.LIST.value
-        case "filter":
-            return Actions.FILTER.value
-        case "history":
-            return Actions.HISTORY.value
-        case "identify":
-            return Actions.IDENTIFY.value
-        case "add":
-            return Actions.ADD.value
-        case "testadd":
-            return Actions.TEST_ADD.value
-        case "change":
-            return Actions.CHANGE.value
-        case "testchange":
-            return Actions.TEST_CHANGE.value
-        case "delete":
-            return Actions.DELETE.value
-        case _:
-            return action
+    colour = Actions.colour_map().get(action.lower())
+    if colour:
+        return f"[bold {colour}]{action}[/]"
+    else:
+        return action
 
 
 def format_status_code(status: Optional[int]) -> str:
@@ -421,23 +419,11 @@ def format_method(method: str) -> str:
         The formatted method.
     """
 
-    match method:
-        case "GET":
-            return Method.GET.value
-        case "POST":
-            return Method.POST.value
-        case "PUT":
-            return Method.PUT.value
-        case "PATCH":
-            return Method.PATCH.value
-        case "DELETE":
-            return Method.DELETE.value
-        case "OPTIONS":
-            return Method.OPTIONS.value
-        case "HEAD":
-            return Method.HEAD.value
-        case _:
-            return method
+    colour = Method.colour_map().get(method.lower())
+    if colour:
+        return f"[bold {colour}]{method}[/]"
+    else:
+        return method
 
 
 @app.command(rich_help_panel=Panels.INFO.value)
