@@ -2,19 +2,19 @@
 
 ## Setup
 
-#### Install from conda-forge
+### Install from [conda-forge](https://anaconda.org/conda-forge/climb-onyx-client)
 
 ```
 $ conda create --name onyx --channel conda-forge climb-onyx-client
 ```
 
-#### Install from PyPI
+### Install from [PyPI](https://pypi.org/project/climb-onyx-client/)
 
 ```
 $ pip install climb-onyx-client
 ```
 
-#### Build from source
+### Build from source
 
 Download and install the client into a Python virtual environment:
 
