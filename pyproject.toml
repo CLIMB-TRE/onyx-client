@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "climb-onyx-client"
+version = "4.7.3"
+description = "CLI and Python library for Onyx"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "GPL-3.0-or-later"
+authors = [{ name = "Thomas Brier", email = "t.o.brier@bham.ac.uk" }]
+maintainers = [{ name = "Thomas Brier", email = "t.o.brier@bham.ac.uk" }]
+keywords = ["onyx", "bioinformatics", "metadata"]
+classifiers = [
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+]
+dependencies = ["requests", "typer>=0.12.3", "rich"]
+
+[project.scripts]
+onyx = "onyx.cli:main"
+
+[project.urls]
+GitHub = "https://github.com/CLIMB-TRE/onyx-client"
