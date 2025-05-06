@@ -12,7 +12,7 @@ import typer
 from typer.core import TyperGroup
 from rich.console import Console
 from rich.table import Table
-from .version import __version__
+from importlib.metadata import version
 from .config import OnyxConfig, OnyxEnv
 from .api import OnyxClient, onyx_errors
 from . import exceptions
@@ -1954,7 +1954,7 @@ def allusers(
 
 def version_callback(value: bool):
     if value:
-        console.print(__version__)
+        console.print(version("climb-onyx-client"))
         raise typer.Exit()
 
 
