@@ -6,6 +6,7 @@ site_author: CLIMB-TRE
 
 theme:
   name: material
+  favicon: assets/logo.svg
   logo: assets/logo.svg
   icon:
     repo: fontawesome/brands/github
