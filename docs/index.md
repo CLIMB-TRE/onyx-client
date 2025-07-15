@@ -11,7 +11,7 @@ This site documents [Onyx-client](https://github.com/CLIMB-TRE/onyx-client), a p
 
 Onyx is being developed as part of the [CLIMB-TRE](https://climb-tre.github.io/) project. 
 
-![Image of the Onyx command-line interface](img/cli.png)
+![Onyx](img/onyx.png)
 
 ## Installation
 
@@ -50,7 +50,11 @@ $ pip install .
 
 ### Enable/disable colours in the command-line interface
 
-Colours are enabled by default in the output of the command-line interface. To disable them, create an environment variable `ONYX_COLOURS` with the value `NONE`:
+Colours are enabled by default in the output of the command-line interface:
+
+![Image of the Onyx command-line interface](img/cli.png)
+
+ To disable them, create an environment variable `ONYX_COLOURS` with the value `NONE`:
 
 ```
 $ export ONYX_COLOURS=NONE

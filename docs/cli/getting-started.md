@@ -5,6 +5,8 @@ This guide walks through getting started with the Onyx-client command-line inter
 
 The guide assumes an environment where authentication credentials are pre-configured.
 
+![Image of the Onyx command-line interface](../img/cli.png)
+
 ## Profile information
 
 ```
