@@ -7,7 +7,7 @@ on:
     branches: [ "master", "development" ]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -31,4 +31,5 @@ jobs:
         coverage report
     - name: Test CLI
       run: |
-        onyx --help
+        onyx
+        onyx -h
