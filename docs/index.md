@@ -5,7 +5,7 @@ hide:
 
 # Onyx-client
 
-## Introduction
+## Introduction
 
 This site documents [Onyx-client](https://github.com/CLIMB-TRE/onyx-client), a program that provides a command-line interface and Python API for interacting with the [Onyx](https://github.com/CLIMB-TRE/onyx/) database.
 
@@ -13,9 +13,9 @@ Onyx is being developed as part of the [CLIMB-TRE](https://climb-tre.github.io/)
 
 ![Onyx](img/onyx.png)
 
-## Installation
+## Installation
 
-### Install from conda-forge (recommended)
+### Install from conda-forge
 
 ```
 $ conda create --name onyx --channel conda-forge climb-onyx-client
