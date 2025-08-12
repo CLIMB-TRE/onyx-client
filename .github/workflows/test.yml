@@ -31,4 +31,5 @@ jobs:
         coverage report
     - name: Test CLI
       run: |
-        onyx --help
+        onyx
+        onyx -h
