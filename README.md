@@ -1,4 +1,19 @@
-# `onyx-client`
+![Onyx Banner Image](images/onyx.png)
+
+# Onyx-client
+
+## Overview
+
+A command-line interface and Python API for interacting with the [Onyx](https://github.com/CLIMB-TRE/onyx) database. Onyx-client provides both CLI commands and Python methods for:
+
+- Viewing projects, and their field specifications
+- Creating/updating/deleting project records and analyses
+- Retrieving full details and change history of an individual record/analysis
+- Granular filtering/aggregation functionality across multiple records and analyses
+- Exporting of data in JSON/CSV/TSV formats
+- Matching anonymised identifiers to their original values
+
+For more information, check out the [documentation](https://climb-tre.github.io/onyx-client/).
 
 ## Setup
 
@@ -86,5 +101,3 @@ $ onyx
 │ siteusers          View users from the same site.                                         │
 ╰───────────────────────────────────────────────────────────────────────────────────────────╯
 ```
-
-For more information, check out the [documentation](https://climb-tre.github.io/onyx-client/).
