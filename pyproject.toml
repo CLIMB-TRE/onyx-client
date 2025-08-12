@@ -34,4 +34,4 @@ onyx = "onyx.cli:main"
 GitHub = "https://github.com/CLIMB-TRE/onyx-client"
 
 [tool.hatch.build]
-include = ["onyx/*"]
+include = ["onyx/*.py"]
