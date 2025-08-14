@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "climb-onyx-client"
-version = "4.8.0"
+version = "4.8.1"
 description = "CLI and Python library for Onyx"
 readme = "README.md"
 requires-python = ">=3.9"
-license = "GPL-3.0-or-later"
+license = "MIT"
 authors = [{ name = "Thomas Brier", email = "t.o.brier@bham.ac.uk" }]
 maintainers = [{ name = "Thomas Brier", email = "t.o.brier@bham.ac.uk" }]
 keywords = ["onyx", "bioinformatics", "metadata"]
