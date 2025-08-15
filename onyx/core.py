@@ -1,4 +1,5 @@
 import csv
+import functools
 import inspect
 import requests
 from requests import HTTPError, RequestException
@@ -699,7 +700,7 @@ def onyx_errors(method):
     Decorator that coerces `requests` library errors into appropriate `OnyxError` subclasses.
     """
     if inspect.isgeneratorfunction(method):
-
+        @functools.wraps(method)
         def wrapped_generator_method(self, *args, **kwargs):
             try:
                 yield from method(self, *args, **kwargs)
@@ -723,7 +724,7 @@ def onyx_errors(method):
 
         return wrapped_generator_method
     else:
-
+        @functools.wraps(method)
         def wrapped_method(self, *args, **kwargs):
             try:
                 return method(self, *args, **kwargs)
