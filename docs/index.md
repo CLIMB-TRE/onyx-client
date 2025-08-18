@@ -33,10 +33,10 @@ This installs the latest version of the Onyx-Client from [PyPI](https://pypi.org
 
 ### Build from source
 
-Download the source code from Github:
+Download the source code from GitHub:
 
 ```
-$ git clone https://github.com/CLIMB-COVID/onyx-client.git
+$ git clone https://github.com/CLIMB-TRE/onyx-client.git
 ```
 
 Run installation from within the source code directory:
