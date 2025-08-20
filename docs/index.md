@@ -11,7 +11,7 @@ This is the documentation for [Onyx-client](https://github.com/CLIMB-TRE/onyx-cl
 
 Onyx is being developed as part of the [CLIMB-TRE](https://climb-tre.github.io/) project. 
 
-![Onyx](img/onyx.png)
+![](img/cli.png)
 
 ## Contents
 
