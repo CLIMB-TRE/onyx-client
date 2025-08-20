@@ -7,3 +7,7 @@
     --md-typeset-a-color: #d63384;
     --md-accent-fg-color: #d63384;
 }
+
+.md-grid {
+    max-width: 1440px;
+}

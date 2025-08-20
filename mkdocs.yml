@@ -1,8 +1,10 @@
-site_name: Onyx-client
+site_name: Onyx | CLI & Python API
 site_url: https://climb-tre.github.io/onyx-client/
 repo_url: https://github.com/CLIMB-TRE/onyx-client/
 repo_name: CLIMB-TRE/onyx-client
 site_author: CLIMB-TRE
+extra:
+  homepage: https://climb-tre.github.io/onyx/
 
 theme:
   name: material
@@ -33,14 +35,14 @@ theme:
     - navigation.tabs
     - navigation.top
     - navigation.sections
+    - navigation.footer
     - content.code.copy
-
-# extra:
-#   version:
-#     provider: mike
 
 plugins:
   - search
+  - with-pdf:
+      output_path: onyx-client.pdf
+      cover_subtitle: ""
   - autorefs
   - mkdocstrings:
       default_handler: python
@@ -52,9 +54,6 @@ plugins:
             show_source: false
             members_order: source
             show_bases: false
-  - with-pdf:
-      output_path: onyx-client.pdf
-      cover_subtitle: ""
 
 markdown_extensions:
   - attr_list
@@ -73,18 +72,21 @@ extra_css:
   - stylesheets/extra.css
 
 nav:
-  - Overview: index.md
-  - Command-line Interface: 
-    - Getting started: cli/getting-started.md
-    - Documentation: cli/documentation.md
-  - Python API:
-    # - Getting started: api/getting-started.md
-    - Documentation:
+  - Overview: https://climb-tre.github.io/onyx/
+  - CLI & Python API:
+    - Overview: index.md
+    - Installation: installation.md
+    - Accessibility: accessibility.md
+    - Command-line Interface: 
+      - Getting started: cli/getting-started.md
+      - Documentation: cli/documentation.md
+    - Python API:
       - OnyxClient: api/documentation/client.md
       - OnyxConfig: api/documentation/config.md
       - OnyxEnv: api/documentation/env.md
       - OnyxField: api/documentation/field.md
       - Exceptions: api/documentation/exceptions.md
+  - JupyterLab Extension: https://climb-tre.github.io/onyx-extension/
   - Types & Lookups:
       - Types: fields/types.md
       - Lookups: fields/lookups.md
