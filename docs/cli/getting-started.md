@@ -1,5 +1,5 @@
 [](){#cli-getting-started}
-# Getting started
+# Getting Started
 
 This guide walks through getting started with the Onyx-client command-line interface.
 

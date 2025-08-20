@@ -1,4 +1,4 @@
-![Onyx Banner Image](images/onyx.png)
+![](images/banner.png)
 
 # Onyx-client
 
@@ -34,7 +34,7 @@ $ pip install climb-onyx-client
 Download and install the client into a Python virtual environment:
 
 ```
-$ git clone https://github.com/CLIMB-COVID/onyx-client.git
+$ git clone https://github.com/CLIMB-TRE/onyx-client.git
 $ cd onyx-client/
 $ python -m venv .venv
 $ source .venv/bin/activate
