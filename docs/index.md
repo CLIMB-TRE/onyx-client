@@ -3,7 +3,7 @@ hide:
   - toc
 ---
 
-# Onyx-client
+# CLI & Python API for Onyx
 
 ## Introduction
 
