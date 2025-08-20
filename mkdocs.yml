@@ -92,6 +92,6 @@ nav:
       - Exceptions: api/documentation/exceptions.md
   - JupyterLab Extension: https://climb-tre.github.io/onyx-extension/
   - Types & Lookups:
-      - Types: fields/types.md
-      - Lookups: fields/lookups.md
+      - Types: https://climb-tre.github.io/onyx/fields/types/
+      - Lookups: https://climb-tre.github.io/onyx/fields/lookups/
   - CLIMB-TRE: https://climb-tre.github.io
