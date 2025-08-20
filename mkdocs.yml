@@ -82,7 +82,7 @@ nav:
     - Installation: installation.md
     - Accessibility: accessibility.md
     - Command-line Interface: 
-      - Getting started: cli/getting-started.md
+      - Getting Started: cli/getting-started.md
       - Documentation: cli/documentation.md
     - Python API:
       - OnyxClient: api/documentation/client.md
