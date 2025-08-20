@@ -1,69 +1,47 @@
 ---
 hide:
-  - navigation
+  - toc
 ---
 
-# Onyx-client
+# CLI & Python API for Onyx
 
 ## Introduction
 
-This site documents [Onyx-client](https://github.com/CLIMB-TRE/onyx-client), a program that provides a command-line interface and Python API for interacting with the [Onyx](https://github.com/CLIMB-TRE/onyx/) database.
+This is the documentation for [Onyx-client](https://github.com/CLIMB-TRE/onyx-client), a program that provides a command-line interface and Python API for interacting with the [Onyx](https://github.com/CLIMB-TRE/onyx/) database.
 
 Onyx is being developed as part of the [CLIMB-TRE](https://climb-tre.github.io/) project. 
 
 ![Onyx](img/onyx.png)
 
-## Installation
+## Contents
 
-### Install from conda-forge
+[Installation](installation.md)<br>
+Learn how to install the client, or build it manually for development.
 
-```
-$ conda create --name onyx --channel conda-forge climb-onyx-client
-```
+[Accessibility](accessibility.md)<br>
+Learn how to enable/disable colours in the CLI.
 
-This installs the latest version of the Onyx-Client from [conda-forge](https://anaconda.org/conda-forge/climb-onyx-client).
+### Command-line Interface
 
-### Install from PyPI
+[Getting Started](cli/getting-started.md)<br>
+Get started with filtering data on the command-line with Onyx.
 
-```
-$ pip install climb-onyx-client
-```
+[Documentation](cli/documentation.md)<br>
+Documentation on all command-line functionality.
 
-This installs the latest version of the Onyx-Client from [PyPI](https://pypi.org/project/climb-onyx-client/).
+### Python API
 
-### Build from source
+[OnyxClient](api/documentation/client.md)<br>
+Documentation on the `OnyxClient` class, used for interacting with Onyx.
 
-Download the source code from GitHub:
+[OnyxConfig](api/documentation/config.md)<br>
+Documentation on the `OnyxConfig` class, used to provide credentials to `OnyxClient`.
 
-```
-$ git clone https://github.com/CLIMB-TRE/onyx-client.git
-```
+[OnyxEnv](api/documentation/config.md)<br>
+Documentation on the `OnyxEnv` class, used as a shortcut to environment variable credentials.
 
-Run installation from within the source code directory:
+[OnyxField](api/documentation/field.md)<br>
+Documentation on the `OnyxField` class, used to represent fields in an `OnyxClient` query.
 
-```
-$ cd onyx-client/
-$ pip install .
-```
-
-## Accessibility
-
-### Enable/disable colours in the command-line interface
-
-Colours are enabled by default in the output of the command-line interface:
-
-![Image of the Onyx command-line interface](img/cli.png)
-
- To disable them, create an environment variable `ONYX_COLOURS` with the value `NONE`:
-
-```
-$ export ONYX_COLOURS=NONE
-```
-
-![Image of the Onyx command-line interface without colours](img/cli-no-colours.png)
-
-To re-enable colours, unset the environment variable:
-
-```
-$ unset ONYX_COLOURS
-```
+[Exceptions](api/documentation/exceptions.md)<br>
+Documentation on the possible exceptions raised by the `OnyxClient`.
