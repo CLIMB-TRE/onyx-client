@@ -700,6 +700,7 @@ def onyx_errors(method):
     Decorator that coerces `requests` library errors into appropriate `OnyxError` subclasses.
     """
     if inspect.isgeneratorfunction(method):
+
         @functools.wraps(method)
         def wrapped_generator_method(self, *args, **kwargs):
             try:
@@ -710,20 +711,15 @@ def onyx_errors(method):
                     # TODO: Seems this does not need handling?
                     raise e  #  type: ignore
                 elif e.response.status_code < 500:
-                    raise OnyxRequestError(
-                        message=str(e),
-                        response=e.response,
-                    ) from e
+                    raise OnyxRequestError(str(e), e.response) from e
                 else:
-                    raise OnyxServerError(
-                        message=str(e),
-                        response=e.response,
-                    ) from e
+                    raise OnyxServerError(str(e), e.response) from e
             except RequestException as e:
                 raise OnyxConnectionError(str(e)) from e
 
         return wrapped_generator_method
     else:
+
         @functools.wraps(method)
         def wrapped_method(self, *args, **kwargs):
             try:
@@ -734,15 +730,9 @@ def onyx_errors(method):
                     # TODO: Seems this does not need handling?
                     raise e  #  type: ignore
                 elif e.response.status_code < 500:
-                    raise OnyxRequestError(
-                        message=str(e),
-                        response=e.response,
-                    ) from e
+                    raise OnyxRequestError(str(e), e.response) from e
                 else:
-                    raise OnyxServerError(
-                        message=str(e),
-                        response=e.response,
-                    ) from e
+                    raise OnyxServerError(str(e), e.response) from e
             except RequestException as e:
                 raise OnyxConnectionError(str(e)) from e
 
