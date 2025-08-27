@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "climb-onyx-client"
-version = "4.8.1"
+version = "4.8.2"
 description = "CLI and Python library for Onyx"
 readme = "README.md"
 requires-python = ">=3.9"
