@@ -2209,8 +2209,20 @@ class OnyxClientTestCase(TestCase):
             UPDATE_DATA["data"],
         )
         self.assertEqual(
+            self.client.update_analysis(
+                PROJECT, ANALYSIS_ID, UPDATE_FIELDS, clear=CLEAR_FIELDS
+            ),
+            CLEARUPDATE_DATA["data"],
+        )
+        self.assertEqual(
             self.client.update_analysis(PROJECT, ANALYSIS_ID, UPDATE_FIELDS, test=True),
             TESTUPDATE_DATA["data"],
+        )
+        self.assertEqual(
+            self.client.update_analysis(
+                PROJECT, ANALYSIS_ID, UPDATE_FIELDS, clear=CLEAR_FIELDS, test=True
+            ),
+            CLEARTESTUPDATE_DATA["data"],
         )
         self.assertEqual(self.config.token, TOKEN)
 
