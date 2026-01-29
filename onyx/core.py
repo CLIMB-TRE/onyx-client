@@ -382,6 +382,7 @@ class OnyxClientBase:
         project: str,
         climb_id: str,
         fields: Optional[Dict[str, Any]] = None,
+        clear: Optional[List[str]] = None,
         test: bool = False,
         endpoint: str = "update",
     ) -> requests.Response:
@@ -392,6 +393,7 @@ class OnyxClientBase:
             method="patch",
             url=OnyxEndpoint[endpoint](self.config.domain, project, climb_id),
             json=fields,
+            params={"clear": clear},
         )
         return response
 
@@ -558,6 +560,7 @@ class OnyxClientBase:
         project: str,
         analysis_id: str,
         fields: Optional[Dict[str, Any]] = None,
+        clear: Optional[List[str]] = None,
         test: bool = False,
     ) -> requests.Response:
         return OnyxClientBase.update(
@@ -565,6 +568,7 @@ class OnyxClientBase:
             project=project,
             climb_id=analysis_id,
             fields=fields,
+            clear=clear,
             test=test,
             endpoint="analysis.update",
         )

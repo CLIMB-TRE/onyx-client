@@ -1063,6 +1063,7 @@ class OnyxClient(OnyxClientBase):
         project: str,
         climb_id: str,
         fields: Optional[Dict[str, Any]] = None,
+        clear: Optional[List[str]] = None,
         test: bool = False,
     ) -> Dict[str, Any]:
         """
@@ -1072,6 +1073,7 @@ class OnyxClient(OnyxClientBase):
             project: Name of the project.
             climb_id: Unique identifier for the record.
             fields: Object representing the record to be updated.
+            clear: List of fields to be cleared. Overrides any values provided in `fields`.
             test: If `True`, runs the command as a test. Default: `False`
 
         Returns:
@@ -1095,6 +1097,7 @@ class OnyxClient(OnyxClientBase):
                         "field1": "value1",
                         "field2": "value2",
                     },
+                    clear=["field3", "field4"],
                 )
             ```
             ```python
@@ -1103,7 +1106,13 @@ class OnyxClient(OnyxClientBase):
             ```
         """
 
-        response = super().update(project, climb_id, fields=fields, test=test)
+        response = super().update(
+            project,
+            climb_id,
+            fields=fields,
+            clear=clear,
+            test=test,
+        )
         response.raise_for_status()
         return response.json()["data"]
 
@@ -1749,6 +1758,7 @@ class OnyxClient(OnyxClientBase):
         project: str,
         analysis_id: str,
         fields: Optional[Dict[str, Any]] = None,
+        clear: Optional[List[str]] = None,
         test: bool = False,
     ) -> Dict[str, Any]:
         """
@@ -1758,6 +1768,7 @@ class OnyxClient(OnyxClientBase):
             project: Name of the project.
             analysis_id: Unique identifier for the analysis.
             fields: Object representing the analysis to be updated.
+            clear: List of fields to be cleared. Overrides any values provided in `fields`.
             test: If `True`, runs the command as a test. Default: `False`
 
         Returns:
@@ -1780,6 +1791,7 @@ class OnyxClient(OnyxClientBase):
                     fields={
                         "result": "The results were even more insane",
                     },
+                    clear=["report"],
                 )
             ```
             ```python
@@ -1789,7 +1801,11 @@ class OnyxClient(OnyxClientBase):
         """
 
         response = super().update_analysis(
-            project, analysis_id, fields=fields, test=test
+            project,
+            analysis_id,
+            fields=fields,
+            clear=clear,
+            test=test,
         )
         response.raise_for_status()
         return response.json()["data"]

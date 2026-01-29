@@ -257,6 +257,9 @@ class HelpText(enum.Enum):
     FILTER_FIELD = "Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax."
     CREATE_FIELD = "Field and value to be created. Uses a `name=value` syntax."
     UPDATE_FIELD = "Field and value to be updated. Uses a `name=value` syntax."
+    CLEAR_FIELD = (
+        "Field to be cleared. Overrides any value provided by the --field argument."
+    )
     INCLUDE = "Specify which fields to include in the output."
     EXCLUDE = "Specify which fields to exclude from the output."
     SUMMARISE = "For a given field (or group of fields), return the frequency of each unique value (or unique group of values)."
@@ -1250,6 +1253,7 @@ def update_base(
     project: str,
     object_id: str,
     field: Optional[List[str]],
+    clear: Optional[List[str]],
     test: bool,
     method: APIMethods,
 ):
@@ -1265,6 +1269,7 @@ def update_base(
             project,
             object_id,
             fields=fields,
+            clear=clear,
             test=test,
         )
 
@@ -1284,6 +1289,12 @@ def update(
         "--field",
         help=HelpText.UPDATE_FIELD.value,
     ),
+    clear: Optional[List[str]] = typer.Option(
+        None,
+        "-c",
+        "--clear",
+        help=HelpText.CLEAR_FIELD.value,
+    ),
     test: bool = typer.Option(
         False,
         "-t",
@@ -1301,6 +1312,7 @@ def update(
         project=project,
         object_id=climb_id,
         field=field,
+        clear=clear,
         test=test,
         method=APIMethods.UPDATE,
     )
@@ -1590,6 +1602,12 @@ def update_analysis(
         "--field",
         help=HelpText.UPDATE_FIELD.value,
     ),
+    clear: Optional[List[str]] = typer.Option(
+        None,
+        "-c",
+        "--clear",
+        help=HelpText.CLEAR_FIELD.value,
+    ),
     test: bool = typer.Option(
         False,
         "-t",
@@ -1607,6 +1625,7 @@ def update_analysis(
         project=project,
         object_id=analysis_id,
         field=field,
+        clear=clear,
         test=test,
         method=APIMethods.UPDATE_ANALYSIS,
     )
