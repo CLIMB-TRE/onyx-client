@@ -1063,7 +1063,7 @@ class OnyxClient(OnyxClientBase):
         project: str,
         climb_id: str,
         fields: Optional[Dict[str, Any]] = None,
-        clear: Optional[List[str]] = None,
+        clear: Union[List[str], str, None] = None,
         test: bool = False,
     ) -> Dict[str, Any]:
         """
@@ -1758,7 +1758,7 @@ class OnyxClient(OnyxClientBase):
         project: str,
         analysis_id: str,
         fields: Optional[Dict[str, Any]] = None,
-        clear: Optional[List[str]] = None,
+        clear: Union[List[str], str, None] = None,
         test: bool = False,
     ) -> Dict[str, Any]:
         """

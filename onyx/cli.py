@@ -1265,6 +1265,9 @@ def update_base(
         else:
             fields = {}
 
+        if clear:
+            clear = parse_extra_option(clear)
+
         record = getattr(api.client, method.value)(
             project,
             object_id,
