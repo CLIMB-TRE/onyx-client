@@ -55,7 +55,7 @@ Multiple filters can be provided, and only the records that satisfy *all* these 
 
 ### Advanced filtering using lookups
 
-The data can be filtered in more complex ways using [lookups][lookups]. These use a `field.lookup=value` syntax (or alternatively, `field__lookup=value`), and different ones are available depending on a field's [data type][types] (e.g. [`text`][text], [`integer`][integer]). There are lookups for searching between a range of values on a field ([`range`][range]), whether a field's value is empty ([`isnull`][isnull]), whether a field case-insensitively contains some text ([`icontains`][icontains]), and [more][lookups]. 
+The data can be filtered in more complex ways using [lookups](https://climb-tre.github.io/onyx/fields/lookups/). These use a `field.lookup=value` syntax (or alternatively, `field__lookup=value`), and different ones are available depending on a field's [data type](https://climb-tre.github.io/onyx/fields/types/) (e.g. [`text`](https://climb-tre.github.io/onyx/fields/types/#text), [`integer`](https://climb-tre.github.io/onyx/fields/types/#integer)). There are lookups for searching between a range of values on a field ([`range`](https://climb-tre.github.io/onyx/fields/lookups/#range)), whether a field's value is empty ([`isnull`](https://climb-tre.github.io/onyx/fields/lookups/#isnull)), whether a field case-insensitively contains some text ([`icontains`](https://climb-tre.github.io/onyx/fields/lookups/#icontains)), and [more](https://climb-tre.github.io/onyx/fields/lookups/). 
 
 ### Examples
 
