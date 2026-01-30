@@ -534,6 +534,7 @@ UPDATE_FIELDS = {
     "country": "England",
     "source_type": "humanoid",
 }
+CLEAR_FIELDS = ["source_type"]
 CSV_UPDATE_EMPTY_FILE = "climb_id, country, source_type\n"
 TSV_UPDATE_EMPTY_FILE = "climb_id\t country\t source_type\n"
 CSV_UPDATE_SINGLE_FILE = (
@@ -560,11 +561,29 @@ UPDATE_DATA = {
         "climb_id": CLIMB_ID,
     },
 }
+CLEARUPDATE_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": {
+        "climb_id": CLIMB_ID,
+        "clear": True,  # Not actual response field, just for testing
+    },
+}
 TESTUPDATE_DATA = {
     "status": "success",
     "code": 200,
     "data": {
         "climb_id": CLIMB_ID,
+        "test": True,  # Not actual response field, just for testing
+    },
+}
+CLEARTESTUPDATE_DATA = {
+    "status": "success",
+    "code": 200,
+    "data": {
+        "climb_id": CLIMB_ID,
+        "clear": True,  # Not actual response field, just for testing
+        "test": True,  # Not actual response field, just for testing
     },
 }
 CSV_DELETE_EMPTY_FILE = "climb_id\n"
@@ -921,13 +940,18 @@ def mock_request(
             url == OnyxEndpoint["update"](DOMAIN, PROJECT, CLIMB_ID)
             or url == OnyxEndpoint["analysis.update"](DOMAIN, PROJECT, ANALYSIS_ID)
         ) and json == UPDATE_FIELDS:
-            return MockResponse(UPDATE_DATA)
-
+            if params.get("clear"):
+                return MockResponse(CLEARUPDATE_DATA)
+            else:
+                return MockResponse(UPDATE_DATA)
         elif (
             url == OnyxEndpoint["update.test"](DOMAIN, PROJECT, CLIMB_ID)
             or url == OnyxEndpoint["analysis.update.test"](DOMAIN, PROJECT, ANALYSIS_ID)
         ) and json == UPDATE_FIELDS:
-            return MockResponse(TESTUPDATE_DATA)
+            if params.get("clear"):
+                return MockResponse(CLEARTESTUPDATE_DATA)
+            else:
+                return MockResponse(TESTUPDATE_DATA)
 
         elif url == OnyxEndpoint["approve"](DOMAIN, OTHER_USERNAME):
             return MockResponse(APPROVE_DATA)
@@ -1487,8 +1511,18 @@ class OnyxClientTestCase(TestCase):
             self.client.update(PROJECT, CLIMB_ID, UPDATE_FIELDS), UPDATE_DATA["data"]
         )
         self.assertEqual(
+            self.client.update(PROJECT, CLIMB_ID, UPDATE_FIELDS, clear=CLEAR_FIELDS),
+            CLEARUPDATE_DATA["data"],
+        )
+        self.assertEqual(
             self.client.update(PROJECT, CLIMB_ID, UPDATE_FIELDS, test=True),
             TESTUPDATE_DATA["data"],
+        )
+        self.assertEqual(
+            self.client.update(
+                PROJECT, CLIMB_ID, UPDATE_FIELDS, test=True, clear=CLEAR_FIELDS
+            ),
+            CLEARTESTUPDATE_DATA["data"],
         )
         self.assertEqual(self.config.token, TOKEN)
 
@@ -2175,8 +2209,20 @@ class OnyxClientTestCase(TestCase):
             UPDATE_DATA["data"],
         )
         self.assertEqual(
+            self.client.update_analysis(
+                PROJECT, ANALYSIS_ID, UPDATE_FIELDS, clear=CLEAR_FIELDS
+            ),
+            CLEARUPDATE_DATA["data"],
+        )
+        self.assertEqual(
             self.client.update_analysis(PROJECT, ANALYSIS_ID, UPDATE_FIELDS, test=True),
             TESTUPDATE_DATA["data"],
+        )
+        self.assertEqual(
+            self.client.update_analysis(
+                PROJECT, ANALYSIS_ID, UPDATE_FIELDS, test=True, clear=CLEAR_FIELDS
+            ),
+            CLEARTESTUPDATE_DATA["data"],
         )
         self.assertEqual(self.config.token, TOKEN)
 
