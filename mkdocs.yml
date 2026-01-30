@@ -19,7 +19,7 @@ theme:
       primary: black
       accent: custom
       toggle:
-        icon: material/weather-sunny
+        icon: material/toggle-switch-off-outline
         name: Switch to dark mode
 
     # Palette toggle for dark mode
@@ -28,7 +28,7 @@ theme:
       primary: black
       accent: custom
       toggle:
-        icon: material/weather-night
+        icon: material/toggle-switch
         name: Switch to light mode
       
   features:
