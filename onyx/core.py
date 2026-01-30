@@ -32,7 +32,7 @@ class OnyxClientBase:
     def __exit__(self, type, value, traceback):
         if self._session:
             self._session.close()
-            self._session = None
+        self._session = None
         self._request_handler = self._default_request_handler
 
     def _get_session(self) -> requests.Session:
