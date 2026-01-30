@@ -43,6 +43,7 @@ plugins:
   - with-pdf:
       output_path: onyx-client.pdf
       cover_subtitle: ""
+      copyright: " "
   - autorefs
   - mkdocstrings:
       default_handler: python
