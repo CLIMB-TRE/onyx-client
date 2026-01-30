@@ -568,8 +568,8 @@ class OnyxClientBase:
             project=project,
             climb_id=analysis_id,
             fields=fields,
-            clear=clear,
             test=test,
+            clear=clear,
             endpoint="analysis.update",
         )
 

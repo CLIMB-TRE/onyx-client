@@ -1110,8 +1110,8 @@ class OnyxClient(OnyxClientBase):
             project,
             climb_id,
             fields=fields,
-            clear=clear,
             test=test,
+            clear=clear,
         )
         response.raise_for_status()
         return response.json()["data"]
@@ -1804,8 +1804,8 @@ class OnyxClient(OnyxClientBase):
             project,
             analysis_id,
             fields=fields,
-            clear=clear,
             test=test,
+            clear=clear,
         )
         response.raise_for_status()
         return response.json()["data"]
