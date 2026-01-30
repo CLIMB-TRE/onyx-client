@@ -28,8 +28,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["ruff", "pytest", "coverage"]
-test = ["pytest", "coverage"]
+dev = ["ruff", "pytest", "coverage", "responses"]
+test = ["pytest", "coverage", "responses"]
 
 [project.scripts]
 onyx = "onyx.cli:main"

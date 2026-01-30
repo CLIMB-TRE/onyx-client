@@ -1,7 +1,9 @@
 import io
 import requests
+import responses
 import pytest
 from unittest import TestCase, mock
+from requests.adapters import HTTPAdapter
 from onyx import OnyxConfig, OnyxClient, exceptions, OnyxField, OnyxEndpoint
 
 
@@ -1011,7 +1013,112 @@ class OnyxClientTestCase(TestCase):
                 client._session.request,  #  type: ignore
             )
 
-        self.assertEqual(client._request_handler, requests.request)
+        self.assertEqual(client._session, None)
+        self.assertEqual(client._request_handler, client._default_request_handler)
+
+    def test_retry_configured(self):
+        """
+        Test that the retry adapter is configured correctly.
+        """
+
+        def test_config(session):
+            # Verify the session has retry adapters configured for both http and https
+            for scheme in ("https://", "http://"):
+                adapter = session.get_adapter(scheme)
+                assert isinstance(adapter, HTTPAdapter)
+                self.assertEqual(adapter.max_retries.total, 5)
+                self.assertEqual(adapter.max_retries.backoff_factor, 1)
+
+                for status_code in [429, 502, 503, 504]:
+                    self.assertIn(status_code, adapter.max_retries.status_forcelist)
+
+        # Test within context manager
+        with OnyxClient(self.config) as client:
+            test_config(client._session)
+
+        # Test outside context manager
+        # Capture the session being created
+        sessions = []
+
+        def _get_session():
+            session = self.client._get_session()
+            sessions.append(session)
+            return session
+
+        client = OnyxClient(self.config)
+        client._get_session = _get_session
+        with mock.patch.object(
+            requests.Session, "request", return_value=MockResponse(PROJECT_DATA)
+        ):
+            client.projects()
+        self.assertEqual(len(sessions), 1)
+        test_config(sessions[0])
+
+    @responses.activate
+    def test_retry(self):
+        """
+        Test that retries occur on selected status codes.
+        """
+
+        url = OnyxEndpoint["projects"](DOMAIN)
+        status_codes = [429, 502, 503, 504]
+
+        # Test within context manager
+        for status_code in status_codes:
+            # First two requests return badly, third returns 200
+            responses.add(responses.GET, url, status=status_code)
+            responses.add(responses.GET, url, status=status_code)
+            responses.add(responses.GET, url, json=PROJECT_DATA, status=200)
+
+            with OnyxClient(self.config) as client:
+                result = client.projects()
+            self.assertEqual(result, PROJECT_DATA["data"])
+
+        # Test outside context manager
+        for status_code in status_codes:
+            # First two requests return badly, third returns 200
+            responses.add(responses.GET, url, status=status_code)
+            responses.add(responses.GET, url, status=status_code)
+            responses.add(responses.GET, url, json=PROJECT_DATA, status=200)
+
+            result = OnyxClient(self.config).projects()
+            self.assertEqual(result, PROJECT_DATA["data"])
+
+        # 3 requests per status code * number of status codes * 2 (with/without context manager)
+        num_expected_calls = 3 * len(status_codes) * 2
+        self.assertEqual(len(responses.calls), num_expected_calls)
+
+    @responses.activate
+    def test_retry_exhausted_error(self):
+        """
+        Test that an error is raised when all retries are exhausted.
+        """
+
+        url = OnyxEndpoint["projects"](DOMAIN)
+        status_codes = [429, 502, 503, 504]
+
+        # Test within context manager
+        for status_code in status_codes:
+            # Return badly for all attempts (more than max retries)
+            for _ in range(10):
+                responses.add(responses.GET, url, status=status_code)
+
+            with OnyxClient(self.config) as client:
+                with pytest.raises(exceptions.OnyxConnectionError):
+                    client.projects()
+
+        # Test outside context manager
+        for status_code in status_codes:
+            # Return badly for all attempts (more than max retries)
+            for _ in range(10):
+                responses.add(responses.GET, url, status=status_code)
+
+            with pytest.raises(exceptions.OnyxConnectionError):
+                OnyxClient(self.config).projects()
+
+        # (1 initial request per test + 5 retries) * number of status codes * 2 (with/without context manager)
+        num_expected_calls = (1 + 5) * len(status_codes) * 2
+        self.assertEqual(len(responses.calls), num_expected_calls)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)
     def test_connection_error(self, mock_request):
