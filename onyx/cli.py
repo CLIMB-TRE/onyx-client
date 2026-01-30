@@ -257,6 +257,9 @@ class HelpText(enum.Enum):
     FILTER_FIELD = "Filter the data by providing conditions that the fields must match. Uses a `name=value` syntax."
     CREATE_FIELD = "Field and value to be created. Uses a `name=value` syntax."
     UPDATE_FIELD = "Field and value to be updated. Uses a `name=value` syntax."
+    CLEAR_FIELD = (
+        "Field to be cleared. Overrides any value provided by the --field argument."
+    )
     INCLUDE = "Specify which fields to include in the output."
     EXCLUDE = "Specify which fields to exclude from the output."
     SUMMARISE = "For a given field (or group of fields), return the frequency of each unique value (or unique group of values)."
@@ -1251,6 +1254,7 @@ def update_base(
     object_id: str,
     field: Optional[List[str]],
     test: bool,
+    clear: Optional[List[str]],
     method: APIMethods,
 ):
     try:
@@ -1261,11 +1265,15 @@ def update_base(
         else:
             fields = {}
 
+        if clear:
+            clear = parse_extra_option(clear)
+
         record = getattr(api.client, method.value)(
             project,
             object_id,
             fields=fields,
             test=test,
+            clear=clear,
         )
 
         typer.echo(json_dump_pretty(record))
@@ -1291,6 +1299,12 @@ def update(
         show_default="False",
         help=HelpText.TEST.value,
     ),
+    clear: Optional[List[str]] = typer.Option(
+        None,
+        "-c",
+        "--clear",
+        help=HelpText.CLEAR_FIELD.value,
+    ),
 ):
     """
     Update a record in a project.
@@ -1302,6 +1316,7 @@ def update(
         object_id=climb_id,
         field=field,
         test=test,
+        clear=clear,
         method=APIMethods.UPDATE,
     )
 
@@ -1597,6 +1612,12 @@ def update_analysis(
         show_default="False",
         help=HelpText.TEST.value,
     ),
+    clear: Optional[List[str]] = typer.Option(
+        None,
+        "-c",
+        "--clear",
+        help=HelpText.CLEAR_FIELD.value,
+    ),
 ):
     """
     Update an analysis in a project.
@@ -1608,6 +1629,7 @@ def update_analysis(
         object_id=analysis_id,
         field=field,
         test=test,
+        clear=clear,
         method=APIMethods.UPDATE_ANALYSIS,
     )
 
