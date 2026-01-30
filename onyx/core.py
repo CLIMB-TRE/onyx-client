@@ -382,8 +382,8 @@ class OnyxClientBase:
         project: str,
         climb_id: str,
         fields: Optional[Dict[str, Any]] = None,
-        clear: Union[List[str], str, None] = None,
         test: bool = False,
+        clear: Union[List[str], str, None] = None,
         endpoint: str = "update",
     ) -> requests.Response:
         if test:
@@ -560,8 +560,8 @@ class OnyxClientBase:
         project: str,
         analysis_id: str,
         fields: Optional[Dict[str, Any]] = None,
-        clear: Union[List[str], str, None] = None,
         test: bool = False,
+        clear: Union[List[str], str, None] = None,
     ) -> requests.Response:
         return OnyxClientBase.update(
             self,

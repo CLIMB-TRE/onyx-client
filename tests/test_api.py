@@ -1520,7 +1520,7 @@ class OnyxClientTestCase(TestCase):
         )
         self.assertEqual(
             self.client.update(
-                PROJECT, CLIMB_ID, UPDATE_FIELDS, clear=CLEAR_FIELDS, test=True
+                PROJECT, CLIMB_ID, UPDATE_FIELDS, test=True, clear=CLEAR_FIELDS
             ),
             CLEARTESTUPDATE_DATA["data"],
         )
@@ -2220,7 +2220,7 @@ class OnyxClientTestCase(TestCase):
         )
         self.assertEqual(
             self.client.update_analysis(
-                PROJECT, ANALYSIS_ID, UPDATE_FIELDS, clear=CLEAR_FIELDS, test=True
+                PROJECT, ANALYSIS_ID, UPDATE_FIELDS, test=True, clear=CLEAR_FIELDS
             ),
             CLEARTESTUPDATE_DATA["data"],
         )

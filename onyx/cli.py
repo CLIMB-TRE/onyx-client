@@ -1253,8 +1253,8 @@ def update_base(
     project: str,
     object_id: str,
     field: Optional[List[str]],
-    clear: Optional[List[str]],
     test: bool,
+    clear: Optional[List[str]],
     method: APIMethods,
 ):
     try:
@@ -1272,8 +1272,8 @@ def update_base(
             project,
             object_id,
             fields=fields,
-            clear=clear,
             test=test,
+            clear=clear,
         )
 
         typer.echo(json_dump_pretty(record))
@@ -1292,18 +1292,18 @@ def update(
         "--field",
         help=HelpText.UPDATE_FIELD.value,
     ),
-    clear: Optional[List[str]] = typer.Option(
-        None,
-        "-c",
-        "--clear",
-        help=HelpText.CLEAR_FIELD.value,
-    ),
     test: bool = typer.Option(
         False,
         "-t",
         "--test",
         show_default="False",
         help=HelpText.TEST.value,
+    ),
+    clear: Optional[List[str]] = typer.Option(
+        None,
+        "-c",
+        "--clear",
+        help=HelpText.CLEAR_FIELD.value,
     ),
 ):
     """
@@ -1315,8 +1315,8 @@ def update(
         project=project,
         object_id=climb_id,
         field=field,
-        clear=clear,
         test=test,
+        clear=clear,
         method=APIMethods.UPDATE,
     )
 
@@ -1605,18 +1605,18 @@ def update_analysis(
         "--field",
         help=HelpText.UPDATE_FIELD.value,
     ),
-    clear: Optional[List[str]] = typer.Option(
-        None,
-        "-c",
-        "--clear",
-        help=HelpText.CLEAR_FIELD.value,
-    ),
     test: bool = typer.Option(
         False,
         "-t",
         "--test",
         show_default="False",
         help=HelpText.TEST.value,
+    ),
+    clear: Optional[List[str]] = typer.Option(
+        None,
+        "-c",
+        "--clear",
+        help=HelpText.CLEAR_FIELD.value,
     ),
 ):
     """
@@ -1628,8 +1628,8 @@ def update_analysis(
         project=project,
         object_id=analysis_id,
         field=field,
-        clear=clear,
         test=test,
+        clear=clear,
         method=APIMethods.UPDATE_ANALYSIS,
     )
 

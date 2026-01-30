@@ -1063,8 +1063,8 @@ class OnyxClient(OnyxClientBase):
         project: str,
         climb_id: str,
         fields: Optional[Dict[str, Any]] = None,
-        clear: Union[List[str], str, None] = None,
         test: bool = False,
+        clear: Union[List[str], str, None] = None,
     ) -> Dict[str, Any]:
         """
         Update a record in a project.
@@ -1073,8 +1073,8 @@ class OnyxClient(OnyxClientBase):
             project: Name of the project.
             climb_id: Unique identifier for the record.
             fields: Object representing the record to be updated.
-            clear: List of fields to be cleared. Overrides any values provided in `fields`.
             test: If `True`, runs the command as a test. Default: `False`
+            clear: List of fields to be cleared. Overrides any values provided in `fields`.
 
         Returns:
             Dict containing the CLIMB ID of the updated record.
@@ -1758,8 +1758,8 @@ class OnyxClient(OnyxClientBase):
         project: str,
         analysis_id: str,
         fields: Optional[Dict[str, Any]] = None,
-        clear: Union[List[str], str, None] = None,
         test: bool = False,
+        clear: Union[List[str], str, None] = None,
     ) -> Dict[str, Any]:
         """
         Update an analysis in a project.
@@ -1768,8 +1768,8 @@ class OnyxClient(OnyxClientBase):
             project: Name of the project.
             analysis_id: Unique identifier for the analysis.
             fields: Object representing the analysis to be updated.
-            clear: List of fields to be cleared. Overrides any values provided in `fields`.
             test: If `True`, runs the command as a test. Default: `False`
+            clear: List of fields to be cleared. Overrides any values provided in `fields`.
 
         Returns:
             Dict containing the Analysis ID of the updated analysis.
