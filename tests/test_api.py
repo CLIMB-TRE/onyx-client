@@ -5,6 +5,7 @@ import pytest
 from unittest import TestCase, mock
 from requests.adapters import HTTPAdapter
 from onyx import OnyxConfig, OnyxClient, exceptions, OnyxField, OnyxEndpoint
+from onyx.core import RETRY_STATUS_CODES
 
 
 DOMAIN = "https://onyx.domain"
@@ -1029,7 +1030,7 @@ class OnyxClientTestCase(TestCase):
                 self.assertEqual(adapter.max_retries.total, 5)
                 self.assertEqual(adapter.max_retries.backoff_factor, 1)
 
-                for status_code in [429, 502, 503, 504]:
+                for status_code in RETRY_STATUS_CODES:
                     self.assertIn(status_code, adapter.max_retries.status_forcelist)
 
         # Test within context manager
@@ -1061,10 +1062,9 @@ class OnyxClientTestCase(TestCase):
         """
 
         url = OnyxEndpoint["projects"](DOMAIN)
-        status_codes = [429, 502, 503, 504]
 
         # Test within context manager
-        for status_code in status_codes:
+        for status_code in RETRY_STATUS_CODES:
             # First two requests return badly, third returns 200
             responses.add(responses.GET, url, status=status_code)
             responses.add(responses.GET, url, status=status_code)
@@ -1075,7 +1075,7 @@ class OnyxClientTestCase(TestCase):
             self.assertEqual(result, PROJECT_DATA["data"])
 
         # Test outside context manager
-        for status_code in status_codes:
+        for status_code in RETRY_STATUS_CODES:
             # First two requests return badly, third returns 200
             responses.add(responses.GET, url, status=status_code)
             responses.add(responses.GET, url, status=status_code)
@@ -1085,7 +1085,7 @@ class OnyxClientTestCase(TestCase):
             self.assertEqual(result, PROJECT_DATA["data"])
 
         # 3 requests per status code * number of status codes * 2 (with/without context manager)
-        num_expected_calls = 3 * len(status_codes) * 2
+        num_expected_calls = 3 * len(RETRY_STATUS_CODES) * 2
         self.assertEqual(len(responses.calls), num_expected_calls)
 
     @responses.activate
@@ -1095,10 +1095,9 @@ class OnyxClientTestCase(TestCase):
         """
 
         url = OnyxEndpoint["projects"](DOMAIN)
-        status_codes = [429, 502, 503, 504]
 
         # Test within context manager
-        for status_code in status_codes:
+        for status_code in RETRY_STATUS_CODES:
             # Return badly for all attempts (more than max retries)
             for _ in range(10):
                 responses.add(responses.GET, url, status=status_code)
@@ -1108,7 +1107,7 @@ class OnyxClientTestCase(TestCase):
                     client.projects()
 
         # Test outside context manager
-        for status_code in status_codes:
+        for status_code in RETRY_STATUS_CODES:
             # Return badly for all attempts (more than max retries)
             for _ in range(10):
                 responses.add(responses.GET, url, status=status_code)
@@ -1117,7 +1116,7 @@ class OnyxClientTestCase(TestCase):
                 OnyxClient(self.config).projects()
 
         # (1 initial request per test + 5 retries) * number of status codes * 2 (with/without context manager)
-        num_expected_calls = (1 + 5) * len(status_codes) * 2
+        num_expected_calls = (1 + 5) * len(RETRY_STATUS_CODES) * 2
         self.assertEqual(len(responses.calls), num_expected_calls)
 
     @mock.patch("onyx.OnyxClient._request_handler", side_effect=mock_request)

@@ -15,6 +15,13 @@ from .exceptions import (
 )
 from .endpoints import OnyxEndpoint
 
+RETRY_STATUS_CODES = [
+    502,  # Bad Gateway
+    503,  # Service Unavailable
+    504,  # Gateway Timeout
+]
+RETRY_METHODS = ["HEAD", "GET", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"]
+
 
 class OnyxClientBase:
     __slots__ = "config", "_request_handler", "_session"
@@ -40,21 +47,8 @@ class OnyxClientBase:
         retry_strategy = Retry(
             total=5,
             backoff_factor=1,
-            status_forcelist=[
-                429,  # Too Many Requests
-                502,  # Bad Gateway
-                503,  # Service Unavailable
-                504,  # Gateway Timeout
-            ],
-            allowed_methods=[
-                "HEAD",
-                "GET",
-                "OPTIONS",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-            ],
+            status_forcelist=RETRY_STATUS_CODES,
+            allowed_methods=RETRY_METHODS,
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         session.mount("https://", adapter)
