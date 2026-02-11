@@ -1074,7 +1074,7 @@ class OnyxClient(OnyxClientBase):
             climb_id: Unique identifier for the record.
             fields: Object representing the record to be updated.
             test: If `True`, runs the command as a test. Default: `False`
-            clear: List of fields to be cleared. Overrides any values provided in `fields`.
+            clear: Field or list of fields to clear. Resets nested fields to empty.
 
         Returns:
             Dict containing the CLIMB ID of the updated record.
@@ -1769,7 +1769,7 @@ class OnyxClient(OnyxClientBase):
             analysis_id: Unique identifier for the analysis.
             fields: Object representing the analysis to be updated.
             test: If `True`, runs the command as a test. Default: `False`
-            clear: List of fields to be cleared. Overrides any values provided in `fields`.
+            clear: Field or list of fields to clear. Resets nested fields to empty.
 
         Returns:
             Dict containing the Analysis ID of the updated analysis.
