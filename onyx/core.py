@@ -49,6 +49,7 @@ class OnyxClientBase:
             backoff_factor=1,
             status_forcelist=RETRY_STATUS_CODES,
             allowed_methods=RETRY_METHODS,
+            raise_on_status=False,
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         session.mount("https://", adapter)

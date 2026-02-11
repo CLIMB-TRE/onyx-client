@@ -1103,7 +1103,7 @@ class OnyxClientTestCase(TestCase):
                 responses.add(responses.GET, url, status=status_code)
 
             with OnyxClient(self.config) as client:
-                with pytest.raises(exceptions.OnyxConnectionError):
+                with pytest.raises(exceptions.OnyxServerError):
                     client.projects()
 
         # Test outside context manager
@@ -1112,7 +1112,7 @@ class OnyxClientTestCase(TestCase):
             for _ in range(10):
                 responses.add(responses.GET, url, status=status_code)
 
-            with pytest.raises(exceptions.OnyxConnectionError):
+            with pytest.raises(exceptions.OnyxServerError):
                 OnyxClient(self.config).projects()
 
         # (1 initial request per test + 5 retries) * number of status codes * 2 (with/without context manager)
