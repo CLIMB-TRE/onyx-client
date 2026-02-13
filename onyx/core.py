@@ -3,6 +3,7 @@ import functools
 import inspect
 import requests
 from requests import HTTPError, RequestException
+from requests.adapters import HTTPAdapter, Retry
 from typing import Any, Generator, List, Dict, TextIO, Optional, Union
 from .config import OnyxConfig
 from .field import OnyxField
@@ -14,6 +15,13 @@ from .exceptions import (
 )
 from .endpoints import OnyxEndpoint
 
+RETRY_STATUS_CODES = [
+    502,  # Bad Gateway
+    503,  # Service Unavailable
+    504,  # Gateway Timeout
+]
+RETRY_METHODS = ["HEAD", "GET", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"]
+
 
 class OnyxClientBase:
     __slots__ = "config", "_request_handler", "_session"
@@ -21,17 +29,36 @@ class OnyxClientBase:
     def __init__(self, config: OnyxConfig):
         self.config = config
         self._session = None
-        self._request_handler = requests.request
+        self._request_handler = self._default_request_handler
 
     def __enter__(self):
-        self._session = requests.Session()
+        self._session = self._get_session()
         self._request_handler = self._session.request
         return self
 
     def __exit__(self, type, value, traceback):
         if self._session:
             self._session.close()
-        self._request_handler = requests.request
+        self._session = None
+        self._request_handler = self._default_request_handler
+
+    def _get_session(self) -> requests.Session:
+        session = requests.Session()
+        retry_strategy = Retry(
+            total=5,
+            backoff_factor=1,
+            status_forcelist=RETRY_STATUS_CODES,
+            allowed_methods=RETRY_METHODS,
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+        return session
+
+    def _default_request_handler(self, method: str, **kwargs) -> requests.Response:
+        with self._get_session() as session:
+            return session.request(method, **kwargs)
 
     def _request(self, method: str, retries: int = 3, **kwargs) -> requests.Response:
         if not retries:
